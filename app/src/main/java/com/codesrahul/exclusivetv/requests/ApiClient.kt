@@ -18,7 +18,7 @@ class ApiClient {
     }
 
     companion object {
-        const val HOST = "https://github.com/thirumurthy/tll-player/raw/"
-        const val DOWNLOAD_HOST = "https://github.com/thirumurthy/tll-player/releases/download/"
+        const val HOST = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-APP/"
+        const val DOWNLOAD_HOST = "https://github.com/CodesRahul96/Exclusive-TV-APP/releases/download/"
     }
 }

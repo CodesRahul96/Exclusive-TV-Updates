@@ -57,7 +57,7 @@ class SettingFragment : Fragment() {
         val ctx = requireContext()
 
         binding.name.text = getString(R.string.app_name)
-        // binding.version.text = "https://github.com/thirumurthy/tll-player"
+        // binding.version.text = "https://github.com/CodesRahul96/Exclusive-TV-APP"
         binding.version.visibility = View.GONE
 
         binding.switchChannelReversal.isChecked = SP.channelReversal

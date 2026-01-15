@@ -1,38 +1,65 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/menu"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal"
     android:clickable="true"
     android:focusable="false"
     android:background="@color/overlay_background"
-    android:padding="24dp"
-    android:gravity="center"
     >
-        <!-- Categories Panel -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/group"
-            android:layout_width="280dp"
-            android:layout_height="match_parent"
-            android:layout_marginEnd="16dp"
-            android:paddingVertical="16dp"
-            android:paddingHorizontal="12dp"
-            android:clipToPadding="false"
-            android:background="@drawable/bg_menu_glass"
-            android:elevation="8dp">
-        </androidx.recyclerview.widget.RecyclerView>
 
-        <!-- Channels Panel -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/list"
-            android:layout_width="400dp"
-            android:layout_height="match_parent"
-            android:paddingVertical="16dp"
-            android:paddingHorizontal="12dp"
-            android:clipToPadding="false"
-            android:background="@drawable/bg_menu_glass"
-            android:elevation="8dp">
-        </androidx.recyclerview.widget.RecyclerView>
+    <!-- Categories Sidebar -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/group"
+        android:layout_width="280dp"
+        android:layout_height="0dp"
+        android:paddingVertical="24dp"
+        android:paddingHorizontal="12dp"
+        android:clipToPadding="false"
+        android:background="#E6000000"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:elevation="8dp">
+    </androidx.recyclerview.widget.RecyclerView>
 
-</LinearLayout>
+    <!-- Clock -->
+    <TextClock
+        android:id="@+id/clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:format12Hour="hh:mm a"
+        android:format24Hour="HH:mm"
+        android:textColor="@color/accent_gold"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-medium"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:elevation="10dp"
+        />
+
+    <!-- Channels Panel -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/list"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="80dp"
+        android:layout_marginBottom="24dp"
+        android:paddingVertical="16dp"
+        android:paddingHorizontal="12dp"
+        android:clipToPadding="false"
+        android:background="@drawable/bg_menu_glass"
+        app:layout_constraintStart_toEndOf="@id/group"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:elevation="8dp">
+    </androidx.recyclerview.widget.RecyclerView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
