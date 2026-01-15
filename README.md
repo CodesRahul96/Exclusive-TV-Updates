@@ -1,68 +1,66 @@
-# TLL Player
+# Exclusive TV
 
-TV network video player software, supports playing web videos.
+A premium TV network video player for Android TV, optimized for a seamless and immersive viewing experience.
 
-[TLL Player](https://github.com/thirumurthy/tll-player)
+[Exclusive TV Repository](https://github.com/CodesRahul96/Exclusive-TV-APP)
+
+## Key Features
+
+- **Premium UI Overhaul:** Modern "Midnight Blue & Gold" theme with Glassmorphism effects.
+- **Focused Navigation:** Optimized half-screen menu layout for easy browsing while watching.
+- **Enhanced Security:** Supports **Gua64** (Hexagram-based) encoding for secure API communication.
+- **Auto-Update:** Intelligent update mechanism checking GitHub releases.
+- **Leanback Optimized:** Full support for Android TV remote controls and D-pad navigation.
 
 ## Usage
 
-- Use the left button of the remote control/touch screen to open the program list
+- **Open Program List:** Press **DPAD_LEFT** or use the touch screen left edge.
+- **Open Settings:** Press **DPAD_RIGHT** or double-click to access configuration.
+- **Navigation:** Use DPAD buttons to browse categories (left) and channels (right).
+- **Favorites:** Press the **SELECT/OK** button long-press (or right-click) to add/cancel favorites.
+- **Configuration:** Enter your video source URL in the Settings page.
 
-- Use the right button of the remote control/touch screen to double-click to open the configuration
+## Configuration Format
 
-- Use the return button of the remote control to close the program list/configuration
+Exclusive TV supports encrypted and standard JSON formats. For the best experience, use the [Gua64 encryption](https://github.com/CodesRahul96/Exclusive-TV-APP/blob/main/walkthrough.md#3-gua64-encryption-new).
 
-- After opening the configuration page, configure the address and confirm, and update the program list
-
-- After configuring the video source address and turning on "Automatically update the video source after startup", the software will automatically update the video source after startup
-
-- When the program list is displayed, right-click to add/cancel favorites
-
-Note:
-
-- The video source can be set to a local file, such as: file:///mnt/sdcard/tmp/channels.json
-
-- If a local file is set, the software will not automatically update after restarting. Manual confirmation is required.
-- Higher versions may require authorization
-
-Currently supported configuration formats:
-
-- json
-
+### Standard JSON Schema:
 ```json
 [
   {
-    "group": "Group name",
-    "logo": "Icon",
-    "name": "Standard title",
-    "title": "Title",
-    "uris": ["Video address"],
+    "group": "Category Name",
+    "logo": "Icon URL",
+    "name": "Standard ID",
+    "title": "Display Title",
+    "uris": ["Stream URL"],
     "headers": {
-      "user-agent": ""
+      "User-Agent": "Custom User Agent (optional)"
     }
   }
 ]
 ```
 
-Download and install [releases](https://github.com/thirumurthy/tll-player/releases/)
+## Installation
+
+1.  **Direct Download:** Get the latest APK from the [GitHub Releases](https://github.com/CodesRahul96/Exclusive-TV-APP/releases).
+2.  **ADB Install:**
+    ```shell
+    adb install exclusive-tv.apk
+    ```
+3.  **Xiaomi TV:** Install via Xiaomi TV Assistant.
 
 ## Changelog
 
-[Changelog](./HISTORY.md)
+Detailed changes can be found in [HISTORY.md](./HISTORY.md).
 
-## Others
+## Development
 
-Xiaomi TV can be installed using Xiaomi TV Assistant
-
-If the TV can enable ADB, it can also be installed through ADB:
-
-```shell
-adb install tll-player.apk
-```
+- **Package Name:** `com.codesrahul.exclusivetv`
+- **Compiler:** Android SDK 34
+- **Language:** Kotlin
 
 ## TODO
 
-- Added program preview
-- Compatible with 4.0
-- Plugin Store
-- UI
+- [ ] Program EPG Preview integration
+- [ ] Plugin Store for extended functionality
+- [ ] Multi-language support
