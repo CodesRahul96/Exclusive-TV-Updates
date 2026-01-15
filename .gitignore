@@ -15,5 +15,7 @@
 .cxx
 local.properties
 files
-testing
 keystore.properties
+
+# Exclude testing folder
+testing/
