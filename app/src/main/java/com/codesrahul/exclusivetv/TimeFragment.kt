@@ -34,8 +34,9 @@ class TimeFragment : Fragment() {
         layoutParams.marginEnd = application.px2Px(binding.time.marginEnd)
         binding.time.layoutParams = layoutParams
 
-        binding.content.textSize = application.px2PxFont(binding.content.textSize)
-        binding.channel.textSize = application.px2PxFont(binding.channel.textSize)
+        binding.time.textSize = application.px2PxFont(binding.time.textSize)
+
+
 
         binding.main.layoutParams.width = application.shouldWidthPx()
         binding.main.layoutParams.height = application.shouldHeightPx()
@@ -58,7 +59,7 @@ class TimeFragment : Fragment() {
             if (_binding == null) {
                 return@Runnable
             }
-            binding.content.text = getDateFormat("hh:mm")
+            binding.time.text = getDateFormat("hh:mm")
             handler.postDelayed(showRunnable, delay)
         }
     }

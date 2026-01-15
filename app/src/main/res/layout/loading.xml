@@ -14,8 +14,10 @@
 
         <ProgressBar
             android:id="@+id/bar"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:indeterminateTint="@color/white"/>
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerInParent="true"
+            android:indeterminateTint="@color/accent_gold"
+            android:indeterminate="true" />
     </LinearLayout>
 </FrameLayout>

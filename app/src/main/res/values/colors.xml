@@ -1,20 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base Colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
 
+    <!-- Brand Colors -->
+    <!-- Midnight Blue Background Start -->
+    <color name="background_start">#060B12</color>
+    <!-- Midnight Blue Background End -->
+    <color name="background_end">#0F1520</color>
+    
+    <!-- Accent Gold -->
+    <color name="accent_gold">#FFD700</color>
+    <color name="accent_gold_dark">#C5A600</color>
+    <color name="accent_gold_light">#FFE44D</color>
+
+    <!-- State Colors -->
+    <color name="color_focus">#FFD700</color>
+    <color name="color_focus_alpha">#33FFD700</color>
+    <color name="color_selected">#FFD700</color>
+    <color name="color_unselected">#B0B0B0</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="text_tertiary">#707070</color>
+
+    <!-- UI Surface Colors -->
+    <color name="surface_dark">#CC000000</color> <!-- 80% Black -->
+    <color name="surface_glass">#E60F1520</color> <!-- 90% Midnight Blue -->
+    <color name="overlay_background">#99000000</color>
+
+    <!-- Legacy Compatibility (overwritten or kept if needed) -->
     <color name="search_opaque">#ffaa3f</color>
-    <color name="black">#000</color>
-    <color name="white">#FFF</color>
-
-    <color name="text_focus">#D82042</color>
-
-    <color name="title_blur">#FFEEEEEE</color>
-   <color name="blur">#FF263238</color>
-   <color name="description_blur">#B3EEEEEE</color>
-   <color name="focus">#0096a6</color>
-
-<!--   <color name="focus">#FF6200EE</color> &lt;!&ndash; Bright focus color &ndash;&gt;-->
-<!--    <color name="blur">#FFEEEEEE</color> &lt;!&ndash; Subtle blur color &ndash;&gt;-->
-<!--    <color name="title_blur">#FF757575</color> &lt;!&ndash; Muted text color &ndash;&gt;-->
-<!--    <color name="description_blur">#FF9E9E9E</color>-->
-    <color name="ripple_color">#1F6200EE</color> <!-- Semi-transparent version of your focus color -->
+    <color name="text_focus">#FFD700</color>
+    <color name="title_blur">#B0B0B0</color>
+    <color name="blur">#E60F1520</color>
+    <color name="description_blur">#707070</color>
+    <color name="focus">#FFD700</color>
+    <color name="ripple_color">#1FFFD700</color>
 
 </resources>
