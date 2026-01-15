@@ -817,10 +817,10 @@ class WebFragment : Fragment() {
         // Configure LoadControl for better buffering to prevent freezing
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                25000,  // Min buffer increased to 25s
-                50000,  // Max buffer 50s
-                2500,   // Buffer for playback 2.5s (default)
-                5000    // Buffer after rebuffer 5s (safe)
+                30000,  // Min buffer increased to 30s
+                60000,  // Max buffer 60s
+                4000,   // Buffer for playback 4s (more stable start)
+                8000    // Buffer after rebuffer 8s (prevent rapid pauses)
             )
             .setPrioritizeTimeOverSizeThresholds(true) // Prioritize time-based buffering
             .build()

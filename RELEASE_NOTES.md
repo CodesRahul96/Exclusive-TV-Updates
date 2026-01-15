@@ -1,4 +1,4 @@
-# v1.0.14 - UI & Experience Overhaul
+# v1.0.24 - UI & Experience Overhaul
 
 **✨ New Features**
 *   **Card-Style Settings**: A completely redesigned Settings menu featuring a centralized glass-card layout, improving both aesthetics and usability on large screens.
