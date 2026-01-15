@@ -25,6 +25,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import com.codesrahul.exclusivetv.models.TVList
+import com.codesrahul.exclusivetv.models.TVModel
 import com.codesrahul.exclusivetv.RootCheckUtil
 
 
@@ -298,7 +299,7 @@ class MainActivity : FragmentActivity() {
         tvModel.ready.removeObservers(this)
         
         // Observe Error Info
-        tvModel.errInfo.observe(this) { info ->
+        tvModel.errInfo.observe(this) { info: String? ->
             if (info != null && tvModel.tv.id == TVList.position.value) {
                 if (info == "" || info == "web ok") {
                     Log.i(TAG, "${tvModel.tv.title} Playing")
@@ -319,7 +320,7 @@ class MainActivity : FragmentActivity() {
         // Show info overlay
         infoFragment.show(tvModel)
         if (SP.channelNum) {
-            channelFragment.show(tvModel)
+            channelFragment.show(tvModel as TVModel)
         }
 
         // Auto-hide loader after timeout backup

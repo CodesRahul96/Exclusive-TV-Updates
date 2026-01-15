@@ -55,7 +55,7 @@ object TVList {
                 file.readText()
             } else {
                 Log.i(TAG, "read resource")
-                context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets_UTF_8)
+                context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8)
                     .use { it.readText() }
             }
 
@@ -485,7 +485,7 @@ object TVList {
             _position.value = position
         }
 
-        val tvModel = getTVModel(position)
+        val tvModel = getTVModel(position) ?: return false
 
         groupModel.setPosition(tvModel.groupIndex)
 
