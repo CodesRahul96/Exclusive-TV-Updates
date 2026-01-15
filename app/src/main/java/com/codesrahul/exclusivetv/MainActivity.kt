@@ -809,21 +809,12 @@ class MainActivity : FragmentActivity() {
             }
 
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                if (event != null && event.isLongPress) {
-                    showSetting()
-                    return true
-                }
-                
                 // 1. If menu is open, let menu handle it for navigation (e.g. Categories -> Channel List)
                 if (!menuFragment.isHidden) {
                     if (menuFragment.onKey(keyCode)) return true
                 }
                 
-                // 2. If nothing is open and playing, show audio selector
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && !loadingFragment.isVisible) {
-                    showAudioSelector()
-                    return true
-                }
+                // 2. Short press handling moved to onKeyUp to avoid conflict with long press
                 
                 return !trackSelectionFragment.isHidden || !menuFragment.isHidden || !settingFragment.isHidden
             }
@@ -841,13 +832,28 @@ class MainActivity : FragmentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            event?.startTracking()
+            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && !loadingFragment.isVisible) {
+                event?.startTracking()
+                return true
+            }
         }
         if (onKey(keyCode, event)) {
             return true
         }
 
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            if (event?.isTracking == true && !event.isCanceled) {
+                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && !loadingFragment.isVisible) {
+                    showAudioSelector()
+                    return true
+                }
+            }
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onDestroy() {
