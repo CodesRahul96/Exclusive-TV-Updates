@@ -84,8 +84,8 @@ class SettingFragment : Fragment() {
 //            requestFocus()
 //        }
 
-        // Focus on Default Channel input as requested
-        binding.channel.apply {
+        // Focus on first switch for better navigation
+        binding.switchChannelReversal.apply {
             isFocusable = true
             isFocusableInTouchMode = true
             requestFocus()

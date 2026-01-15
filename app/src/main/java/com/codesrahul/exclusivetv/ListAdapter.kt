@@ -297,12 +297,13 @@ class ListAdapter(
         }
 
         fun focus(hasFocus: Boolean) {
+            val colorFocused = ContextCompat.getColor(context, R.color.accent_red)
             val colorWhite = ContextCompat.getColor(context, R.color.white)
             val colorTitleBlur = ContextCompat.getColor(context, R.color.title_blur)
             val colorDescriptionBlur = ContextCompat.getColor(context, R.color.description_blur)
 
             // Text color change
-            binding.title.setTextColor(if (hasFocus) colorWhite else colorTitleBlur)
+            binding.title.setTextColor(if (hasFocus) colorFocused else colorTitleBlur)
             binding.description.setTextColor(if (hasFocus) colorWhite else colorDescriptionBlur)
 
             // Cancel any ongoing animations to avoid clashing

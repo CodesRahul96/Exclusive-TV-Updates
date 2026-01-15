@@ -90,17 +90,21 @@ if (Test-Path $apkPath) {
 
 # 5. Create GitHub Release
 Write-Host "--> Checking for GitHub CLI..."
-if (Get-Command "gh" -ErrorAction SilentlyContinue) {
+if (Test-Path "C:\Program Files\GitHub CLI\gh.exe") {
     Write-Host "Creating GitHub Release..."
 
     $notes = ""
     # Optional history generation notes...
     
+    if (Test-Path "RELEASE_NOTES.md") {
+        $notes = Get-Content "RELEASE_NOTES.md" -Raw
+    }
+    
     if ([string]::IsNullOrEmpty($notes)) {
         $notes = "Release $Version"
     }
 
-    gh release create "$Version" "$targetName" --title "$Version" --notes "$notes"
+    & "C:\Program Files\GitHub CLI\gh.exe" release create "$Version" "$targetName" --title "$Version" --notes "$notes"
     Write-Host "Release $Version published to GitHub!"
 } else {
     Write-Host "GitHub CLI (gh) not found."

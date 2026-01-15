@@ -9,26 +9,26 @@
 
     <ScrollView
         android:id="@+id/container"
-        android:layout_width="wrap_content"
-        android:minWidth="1000dp"
+        android:layout_width="600dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:padding="24dp"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:scrollbars="none">
+        android:scrollbars="none"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:descendantFocusability="afterDescendants">
 
         <LinearLayout
             android:id="@+id/content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="@drawable/tv_panel_bg"
+            android:background="@drawable/bg_menu_glass"
             android:padding="40dp"
             android:clipChildren="false"
-            android:clipToPadding="false"
-            android:focusable="true"
-            android:focusableInTouchMode="true">
+            android:clipToPadding="false">
 
             <TextView
                 android:id="@+id/name"
@@ -177,7 +177,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:paddingStart="8dp"
-                android:layout_marginBottom="10dp" />
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
 
             <Switch
                 android:id="@+id/switch_channel_num"
@@ -187,7 +190,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:paddingStart="8dp"
-                android:layout_marginBottom="10dp" />
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
 
             <Switch
                 android:id="@+id/switch_time"
@@ -197,7 +203,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:paddingStart="8dp"
-                android:layout_marginBottom="10dp" />
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
 
             <Switch
                 android:id="@+id/switch_watch_last"
@@ -207,7 +216,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:paddingStart="8dp"
-                android:layout_marginBottom="10dp" />
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
 
             <Switch
                 android:id="@+id/switch_force_high_quality"
@@ -217,7 +229,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:paddingStart="8dp"
-                android:layout_marginBottom="10dp" />
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
 
             <Switch
                 android:id="@+id/switch_boot_startup"
@@ -227,7 +242,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:paddingStart="8dp"
-                android:layout_marginBottom="10dp" />
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
 
             <Switch
                 android:id="@+id/switch_config_auto_load"
@@ -237,7 +255,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:paddingStart="8dp"
-                android:layout_marginBottom="10dp" />
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
 
             <Switch
                 android:id="@+id/switch_channel_check"
@@ -247,7 +268,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:paddingStart="8dp"
-                android:layout_marginBottom="20dp" />
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="20dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
 
             <TextView
                 android:layout_width="wrap_content"

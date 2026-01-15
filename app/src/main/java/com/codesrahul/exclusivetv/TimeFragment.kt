@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.marginEnd
 import androidx.core.view.marginTop
+import androidx.core.view.marginStart
 import androidx.fragment.app.Fragment
 import com.codesrahul.exclusivetv.Utils.getDateFormat
 import com.codesrahul.exclusivetv.databinding.TimeBinding
@@ -26,12 +27,13 @@ class TimeFragment : Fragment() {
 
         val application = requireActivity().applicationContext as MyTVApplication
 
-        binding.time.layoutParams.width = application.px2Px(binding.time.layoutParams.width)
-        binding.time.layoutParams.height = application.px2Px(binding.time.layoutParams.height)
+        // Removed incorrect scaling of width/height which corrupted WRAP_CONTENT
+        // binding.time.layoutParams.width = application.px2Px(binding.time.layoutParams.width)
+        // binding.time.layoutParams.height = application.px2Px(binding.time.layoutParams.height)
 
         val layoutParams = binding.time.layoutParams as ViewGroup.MarginLayoutParams
-        layoutParams.topMargin = application.px2Px(binding.time.marginTop)
-        layoutParams.marginEnd = application.px2Px(binding.time.marginEnd)
+        layoutParams.topMargin = application.px2Px(layoutParams.topMargin)
+        layoutParams.marginStart = application.px2Px(binding.time.marginStart)
         binding.time.layoutParams = layoutParams
 
         binding.time.textSize = application.px2PxFont(binding.time.textSize)

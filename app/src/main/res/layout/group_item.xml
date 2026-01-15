@@ -26,6 +26,7 @@
             android:layout_centerVertical="true"
             android:gravity="center_vertical"
             android:textColor="@color/selector_text_menu"
+            android:duplicateParentState="true"
             android:textSize="18sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif-medium"/>

@@ -11,11 +11,17 @@
     <!-- Midnight Blue Background End -->
     <color name="background_end">#0F1520</color>
     
+    
     <!-- Accent Gold -->
     <color name="accent_gold">#FFD700</color>
     <color name="gold">#FFD700</color>
     <color name="accent_gold_dark">#C5A600</color>
     <color name="accent_gold_light">#FFE44D</color>
+
+    <!-- Accent Red for Navigation -->
+    <color name="accent_red">#FF3B30</color>
+    <color name="accent_red_alpha">#33FF3B30</color>
+    <color name="accent_red_light">#FF6B60</color>
 
     <!-- State Colors -->
     <color name="color_focus">#FFD700</color>

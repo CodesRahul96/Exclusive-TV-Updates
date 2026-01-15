@@ -41,6 +41,7 @@ import java.util.UUID
 import android.util.Base64
 import java.nio.charset.StandardCharsets
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -813,7 +814,19 @@ class WebFragment : Fragment() {
             }
         }
 
+        // Configure LoadControl for better buffering to prevent freezing
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                25000,  // Min buffer increased to 25s
+                50000,  // Max buffer 50s
+                2500,   // Buffer for playback 2.5s (default)
+                5000    // Buffer after rebuffer 5s (safe)
+            )
+            .setPrioritizeTimeOverSizeThresholds(true) // Prioritize time-based buffering
+            .build()
+
         val builder = ExoPlayer.Builder(requireContext())
+            .setLoadControl(loadControl)
         
         // Configure Data Source with Headers
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
@@ -842,7 +855,7 @@ class WebFragment : Fragment() {
             val trackSelectionParameters = exoPlayer?.trackSelectionParameters
                 ?.buildUpon()
                 ?.setMaxVideoSizeSd() // Start with SD as baseline
-                ?.setForceHighestSupportedBitrate(true)
+                // .setForceHighestSupportedBitrate(true) // Removed to prevent freezing
                 ?.build()
             if (trackSelectionParameters != null) {
                 exoPlayer?.trackSelectionParameters = trackSelectionParameters

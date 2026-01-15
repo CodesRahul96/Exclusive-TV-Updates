@@ -70,16 +70,22 @@ class TVListModel(private val name: String, private val index: Int) : ViewModel(
 
         val newList = _tvListModel.value!!.toMutableList()
         var exists = false
-        val iterator = newList.iterator()
-        while (iterator.hasNext()) {
-            if (iterator.next().tv.id == tvModel.tv.id) {
+        
+        // Check if the channel already exists in the list
+        for (model in newList) {
+            if (model.tv.id == tvModel.tv.id) {
                 exists = true
+                break
             }
         }
+        
+        // Only add if it doesn't exist
         if (!exists) {
             newList.add(tvModel)
-            _tvListModel.value = newList
         }
+        
+        // Always update the LiveData to trigger observers
+        _tvListModel.value = newList
     }
 
     fun clear() {

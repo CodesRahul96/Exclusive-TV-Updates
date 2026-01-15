@@ -192,12 +192,12 @@ class GroupAdapter(
         }
 
         fun focus(hasFocus: Boolean) {
-            val colorWhite = ContextCompat.getColor(context, R.color.white)
+            val colorFocused = ContextCompat.getColor(context, R.color.accent_red)
             val colorBlur = ContextCompat.getColor(context, R.color.description_blur)
             val focusBackground = R.drawable.focus_background
 
             // Animate title text color change
-            binding.title.setTextColor(if (hasFocus) colorWhite else colorBlur)
+            binding.title.setTextColor(if (hasFocus) colorFocused else colorBlur)
 
             // Animate root view scale, elevation, and background change
             binding.root.animate()

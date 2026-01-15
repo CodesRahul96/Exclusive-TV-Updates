@@ -9,22 +9,21 @@
     android:background="@color/overlay_background"
     >
 
-    <!-- The 55% Guide -->
+    <!-- The 50% Guide (Left Half) -->
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline_vertical"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.55" />
+        app:layout_constraintGuide_percent="0.50" />
 
     <!-- Categories Sidebar -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/group"
-        android:layout_width="280dp"
+        android:layout_width="200dp"
         android:layout_height="0dp"
         android:layout_marginTop="24dp"
         android:layout_marginBottom="24dp"
-        android:layout_marginStart="24dp"
         android:paddingVertical="16dp"
         android:paddingHorizontal="12dp"
         android:clipToPadding="false"
@@ -56,7 +55,7 @@
     <!-- Channels Panel -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list"
-        android:layout_width="0dp"
+        android:layout_width="400dp"
         android:layout_height="0dp"
         android:layout_marginTop="24dp"
         android:layout_marginBottom="24dp"
@@ -65,7 +64,6 @@
         android:clipToPadding="false"
         android:background="@drawable/bg_menu_glass"
         app:layout_constraintStart_toEndOf="@id/group"
-        app:layout_constraintEnd_toEndOf="@id/guideline_vertical"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:elevation="8dp">
