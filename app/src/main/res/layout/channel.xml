@@ -29,12 +29,12 @@
                 android:gravity="center"
                 android:text="1"
                 android:textColor="@color/accent_gold"
-                android:textSize="80sp"
+                android:textSize="60sp"
+                android:includeFontPadding="false"
+                tools:text="99"
                 android:textStyle="bold"
                 android:fontFamily="sans-serif-black"
-                android:elevation="10dp"
-                tools:text="99"
-                android:layout_alignBaseline="@+id/time"/>
+                android:elevation="10dp" />
             <TextView
                 android:id="@+id/time"
                 android:layout_width="wrap_content"
