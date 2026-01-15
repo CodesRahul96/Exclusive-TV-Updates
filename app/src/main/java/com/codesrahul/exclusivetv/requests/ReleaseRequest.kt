@@ -28,6 +28,7 @@ class ReleaseRequest {
                         if (response.isSuccessful) {
                             continuation.resume(response.body())
                         } else {
+                            android.util.Log.e("ReleaseRequest", "Error: ${response.code()} ${response.errorBody()?.string()}")
                             continuation.resume(null)
                         }
                     }

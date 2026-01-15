@@ -68,8 +68,6 @@ object TVList {
         }
 
         SP.configAutoLoad = true
-        // SP.config = "https://besttllapp.online/tvnexa/v1/admin/channel-pllayer"
-        // SP.config = "https://raw.githubusercontent.com/CodesRahul96/Live-TV/refs/heads/main/src/assets/testing.json"
         SP.config = "https://firetv-api-worker.technoholicrahul.workers.dev/"
 
 

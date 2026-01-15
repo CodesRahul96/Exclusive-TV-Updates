@@ -45,7 +45,6 @@ class SettingFragment : Fragment() {
 
         updateManager = UpdateManager(requireContext(), requireContext().appVersionCode)
         (activity as MainActivity).ready(TAG)
-        // SP.config = "https://besttllapp.online/tvnexa/v1/admin/channel-pllayer"
         return binding.root
     }
 
@@ -253,7 +252,6 @@ class SettingFragment : Fragment() {
         binding.clear.setOnClickListener {
             //tvUiUtils?.playClickSound()
 
-            // SP.config = "https://besttllapp.online/tvnexa/v1/admin/channel-pllayer"
             SP.channel = 0
             SP.position = 0
 

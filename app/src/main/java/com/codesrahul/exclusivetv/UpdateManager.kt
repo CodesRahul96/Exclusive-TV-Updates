@@ -52,7 +52,11 @@ class UpdateManager(
                         text = "Already the latest version, no need to update"
                     }
                 }
+                if (release == null) {
+                    text = "Update Check Failed: No Response"
+                }
             } catch (e: Exception) {
+                text = "Update Error: ${e.localizedMessage}"
                 Log.e(TAG, "Error occurred: ${e.message}", e)
             }
             updateUI(text, update)
