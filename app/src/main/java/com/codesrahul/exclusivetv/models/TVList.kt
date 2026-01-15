@@ -68,7 +68,6 @@ object TVList {
             Toast.makeText(context, "Failed to read the channel, please set it in the menu", Toast.LENGTH_LONG).show()
         }
 
-        SP.configAutoLoad = true
         if (SP.config.isNullOrEmpty()) {
             SP.config = DEFAULT_CONFIG_URL
         }
@@ -428,10 +427,6 @@ object TVList {
     }
 
     private fun checkChannelsInBackground() {
-        // Temporarily disabled: Remove dead channels and automatic removal
-        // because of this many working channels get removed.
-        // Also app is getting crashed because of index changes.
-        /*
         if (!SP.channelCheck) return
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -443,18 +438,17 @@ object TVList {
             val validList = mutableListOf<TV>()
             var removedCount = 0
 
-            // Create a copy to iterate
             val currentList = list.toList()
 
             for (tv in currentList) {
                 var isAlive = false
                 if (tv.uris.isEmpty()) {
-                    isAlive = false // No URIs means dead? Or just empty? Assuming dead.
+                    isAlive = false 
                 } else {
                     for (uri in tv.uris) {
                         if (checkLink(uri)) {
                             isAlive = true
-                            break // One working link is enough
+                            break 
                         }
                     }
                 }
@@ -473,20 +467,10 @@ object TVList {
                     refreshModels()
                     "$removedCount not working channels removed".showToast(Toast.LENGTH_LONG)
                 }
-                
-                // Optional: Save the cleaned list to file?
-                // The user request was "remove from the list", implying memory.
-                // But for persistence, we might want to write it back.
-                // Logic:
-                // val gson = com.google.gson.Gson()
-                // val json = gson.toJson(list)
-                // val file = File(appDirectory, FILE_NAME)
-                // file.writeText(json)
             } else {
                 Log.i(TAG, "No dead channels found")
             }
         }
-        */
     }
 
     private fun checkLink(url: String): Boolean {

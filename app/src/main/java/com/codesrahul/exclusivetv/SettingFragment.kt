@@ -63,7 +63,6 @@ class SettingFragment : Fragment() {
         binding.switchChannelNum.isChecked = SP.channelNum
         binding.switchTime.isChecked = SP.time
         binding.switchBootStartup.isChecked = SP.bootStartup
-        binding.switchBootStartup.isChecked = SP.bootStartup
         binding.switchConfigAutoLoad.isChecked = SP.configAutoLoad
         binding.switchChannelCheck.isChecked = SP.channelCheck
         binding.switchWatchLast.isChecked = SP.watchLast
@@ -103,7 +102,6 @@ class SettingFragment : Fragment() {
             binding.switchChannelReversal,
             binding.switchChannelNum,
             binding.switchTime,
-            binding.switchBootStartup,
             binding.switchBootStartup,
             binding.switchConfigAutoLoad,
             binding.switchChannelCheck,
@@ -150,7 +148,6 @@ class SettingFragment : Fragment() {
         val views = listOf(
             binding.switchChannelReversal, binding.switchChannelNum,
             binding.switchTime, binding.switchBootStartup,
-            binding.switchTime, binding.switchBootStartup,
             binding.switchConfigAutoLoad, binding.switchChannelCheck,
             binding.switchWatchLast
         )
@@ -188,7 +185,6 @@ class SettingFragment : Fragment() {
         }
 
         binding.switchConfigAutoLoad.setOnCheckedChangeListener { _, b ->
-            SP.configAutoLoad = b
             SP.configAutoLoad = b
             (activity as MainActivity).settingActive()
         }
