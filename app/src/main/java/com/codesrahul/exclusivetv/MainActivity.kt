@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.GestureDetector
 import android.view.KeyEvent
@@ -204,33 +205,35 @@ class MainActivity : FragmentActivity() {
     override fun onResumeFragments() {
         super.onResumeFragments()
 
-        Log.i(TAG, "watch")
+        Log.i(TAG, "Setting up observers")
+        
+        // 1. Observe Group Changes (Initial Load or Update)
         TVList.groupModel.change.observe(this) { _ ->
             Log.i(TAG, "groupModel changed")
             if (TVList.groupModel.tvGroupModel.value != null) {
-                watch()
-                Log.i(TAG, "menuFragment update")
+                // Initial playback on load
+                val pos = TVList.position.value ?: -1
+                if (pos == -1) {
+                    // Decide what to play if not yet set
+                    val targetPos = if (SP.watchLast) SP.position else if (SP.channel > 0) SP.channel - 1 else 0
+                    if (TVList.setPosition(targetPos)) {
+                        "Playing channel".showToast()
+                    }
+                } else {
+                    // Already set, just play
+                    TVList.getTVModel(pos)?.let { playChannel(it) }
+                }
                 menuFragment.update()
             }
         }
 
-        // 1. Try Last Played
-        if (SP.watchLast && TVList.setPosition(SP.position)) {
-            "Play last channel".showToast(Toast.LENGTH_LONG)
-        } 
-        // 2. Try Default Channel (if set and valid)
-        // SP.channel is 1-based (0 = disabled/none), so convert to 0-based for list
-        else if (SP.channel > 0 && TVList.setPosition(SP.channel - 1)) {
-            "Play Default Channel".showToast(Toast.LENGTH_LONG)
-        } 
-        // 3. Fallback to First Channel
-        else {
-            if (TVList.setPosition(0)) {
-                "Play First Channel".showToast(Toast.LENGTH_LONG)
-            } else {
-                 Log.e(TAG, "No channels available to play.")
-            }
+        // 2. Observe Position Changes (Navigation)
+        TVList.position.observe(this) { pos ->
+            Log.i(TAG, "Position changed to $pos")
+            TVList.getTVModel(pos)?.let { playChannel(it) }
         }
+
+        setupCollectionObservers()
 
         // TODO group position
 
@@ -283,55 +286,55 @@ class MainActivity : FragmentActivity() {
        // settingFragment.setServer(server)
     }
 
-    private fun watch() {
-        TVList.listModel.forEach { tvModel ->
-            tvModel.errInfo.observe(this) { _ ->
-                if (tvModel.errInfo.value != null
-                    && tvModel.tv.id == TVList.position.value
-                ) {
+    private fun playChannel(tvModel: TVModel) {
+        Log.i(TAG, "playChannel ${tvModel.tv.title}")
+        
+        // Hide error and show loader
+        hideErrorFragment()
+        showFragment(loadingFragment)
+        
+        // Remove previous observers to avoid leaks/multi-triggers
+        tvModel.errInfo.removeObservers(this)
+        tvModel.ready.removeObservers(this)
+        
+        // Observe Error Info
+        tvModel.errInfo.observe(this) { info ->
+            if (info != null && tvModel.tv.id == TVList.position.value) {
+                if (info == "" || info == "web ok") {
+                    Log.i(TAG, "${tvModel.tv.title} Playing")
                     hideFragment(loadingFragment)
-                    if (tvModel.errInfo.value == "") {
-                        Log.i(TAG, "${tvModel.tv.title} Playing")
-                        hideErrorFragment()
-                        showFragment(webFragment)
-                    } else if (tvModel.errInfo.value == "web ok") {
-                        Log.i(TAG, "${tvModel.tv.title} Playing")
-                        hideErrorFragment()
-                        showFragment(webFragment)
-                    } else {
-                        Log.i(TAG, "${tvModel.tv.title} ${tvModel.errInfo.value.toString()}")
-                        hideFragment(webFragment)
-                        hideFragment(webFragment)
-                        showErrorFragment(tvModel.errInfo.value.toString())
-                    }
+                    showFragment(webFragment)
+                } else {
+                    Log.i(TAG, "${tvModel.tv.title} Error: $info")
+                    hideFragment(loadingFragment)
+                    hideFragment(webFragment)
+                    showErrorFragment(info)
                 }
             }
+        }
 
-            tvModel.ready.observe(this) { _ ->
+        // Play in WebFragment
+        webFragment.play(tvModel)
+        
+        // Show info overlay
+        infoFragment.show(tvModel)
+        if (SP.channelNum) {
+            channelFragment.show(tvModel)
+        }
 
-                // not first time && channel is not changed
-                if (tvModel.ready.value != null
-                    && tvModel.tv.id == TVList.position.value
-                ) {
-                    Log.i(TAG, "loading ${tvModel.tv.title}")
-                    hideErrorFragment()
-                    showFragment(loadingFragment)
-                    webFragment.play(tvModel)
-                    infoFragment.show(tvModel)
-                    if (SP.channelNum) {
-                        channelFragment.show(tvModel)
-                    }
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        hideFragment(loadingFragment)
-                    }, 4000)
-
-
-                }
+        // Auto-hide loader after timeout backup
+        handler.removeCallbacksAndMessages("loader_timeout")
+        handler.postAtTime({
+            if (tvModel.tv.id == TVList.position.value) {
+                hideFragment(loadingFragment)
             }
+        }, "loader_timeout", SystemClock.uptimeMillis() + 6000)
+    }
 
-            tvModel.like.observe(this) { _ ->
-                if (tvModel.like.value != null) {
-                    val liked = tvModel.like.value as Boolean
+    private fun setupCollectionObservers() {
+        TVList.listModel.forEach { tvModel ->
+            tvModel.like.observe(this) { liked ->
+                if (liked != null) {
                     if (liked) {
                         TVList.groupModel.getTVListModel(0)?.replaceTVModel(tvModel)
                     } else {
