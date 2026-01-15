@@ -96,7 +96,7 @@ object SP {
         set(value) = sp.edit().putString(KEY_CONFIG, value).apply()
 
     var configAutoLoad: Boolean
-        get() = sp.getBoolean(KEY_CONFIG_AUTO_LOAD, false)
+        get() = sp.getBoolean(KEY_CONFIG_AUTO_LOAD, true)
         set(value) = sp.edit().putBoolean(KEY_CONFIG_AUTO_LOAD, value).apply()
 
     var channel: Int
@@ -147,4 +147,14 @@ object SP {
                 listener?.onSharedPreferenceChanged(KEY_EPG)
             }
         }
+
+    private const val KEY_AUDIO_TRACK_PREFIX = "audio_track_"
+
+    fun getAudioTrack(channelKey: String): Int {
+        return sp.getInt(KEY_AUDIO_TRACK_PREFIX + channelKey, -1)
+    }
+
+    fun setAudioTrack(channelKey: String, index: Int) {
+        sp.edit().putInt(KEY_AUDIO_TRACK_PREFIX + channelKey, index).apply()
+    }
 }

@@ -13,6 +13,7 @@
     
     <!-- Accent Gold -->
     <color name="accent_gold">#FFD700</color>
+    <color name="gold">#FFD700</color>
     <color name="accent_gold_dark">#C5A600</color>
     <color name="accent_gold_light">#FFE44D</color>
 
@@ -30,6 +31,7 @@
     <!-- UI Surface Colors -->
     <color name="surface_dark">#CC000000</color> <!-- 80% Black -->
     <color name="surface_glass">#E60F1520</color> <!-- 90% Midnight Blue -->
+    <color name="surface_glass_alpha">#B30F1520</color> <!-- 70% Midnight Blue -->
     <color name="overlay_background">#99000000</color>
 
     <!-- Legacy Compatibility (overwritten or kept if needed) -->

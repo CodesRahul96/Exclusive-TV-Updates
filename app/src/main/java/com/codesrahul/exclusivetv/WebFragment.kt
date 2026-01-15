@@ -58,6 +58,9 @@ class WebFragment : Fragment() {
     private lateinit var playerView: PlayerView
     val client = OkHttpClient()
     private var tvModel: TVModel? = null
+    private var savedAudioTrackToApply: Int = -1
+
+    data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
     private var _binding: PlayerBinding? = null
     private val binding get() = _binding!!
@@ -698,6 +701,9 @@ class WebFragment : Fragment() {
         val url = tvModel.videoUrl.value as? String ?: return
 
         Log.i(TAG, "play ${tvModel.tv.title} $url")
+        
+        savedAudioTrackToApply = SP.getAudioTrack(url)
+        Log.i(TAG, "Saved audio track to apply: $savedAudioTrackToApply")
 
         if (url.endsWith(".m3u8", ignoreCase = true) || url.endsWith(".ts", ignoreCase = true) ||
             url.endsWith(".mpd", ignoreCase = true) ||
@@ -874,6 +880,13 @@ class WebFragment : Fragment() {
 
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
                 super.onTracksChanged(tracks)
+                
+                if (savedAudioTrackToApply != -1) {
+                    val targetIndex = savedAudioTrackToApply
+                    savedAudioTrackToApply = -1
+                    setAudioTrack(targetIndex)
+                }
+
                 var audioLabel = ""
                 for (group in tracks.groups) {
                     if (group.type == C.TRACK_TYPE_AUDIO && group.isSelected) {
@@ -942,6 +955,46 @@ class WebFragment : Fragment() {
             bytes[i] = j.toByte()
         }
         return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+    }
+
+    fun getAudioTracks(): List<AudioTrack> {
+        val tracks = mutableListOf<AudioTrack>()
+        val currentTracks = exoPlayer?.currentTracks ?: return tracks
+        
+        var trackIndex = 0
+        for (group in currentTracks.groups) {
+            if (group.type == C.TRACK_TYPE_AUDIO) {
+                for (i in 0 until group.length) {
+                    val format = group.getTrackFormat(i)
+                    val lang = format.language ?: ""
+                    val label = format.label ?: if (lang.isNotEmpty()) lang else "Audio ${trackIndex + 1}"
+                    tracks.add(AudioTrack(trackIndex, label, group.isTrackSelected(i)))
+                    trackIndex++
+                }
+            }
+        }
+        return tracks
+    }
+
+    fun setAudioTrack(trackIndex: Int) {
+        val currentTracks = exoPlayer?.currentTracks ?: return
+        var currentIndex = 0
+        for (group in currentTracks.groups) {
+            if (group.type == C.TRACK_TYPE_AUDIO) {
+                for (i in 0 until group.length) {
+                    if (currentIndex == trackIndex) {
+                        exoPlayer?.trackSelectionParameters = exoPlayer?.trackSelectionParameters
+                            ?.buildUpon()
+                            ?.setOverrideForType(
+                                androidx.media3.common.TrackSelectionOverride(group.mediaTrackGroup, i)
+                            )
+                            ?.build() ?: return
+                        return
+                    }
+                    currentIndex++
+                }
+            }
+        }
     }
 
     private fun releasePlayer() {

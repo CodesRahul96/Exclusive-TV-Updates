@@ -232,10 +232,7 @@ class ListAdapter(
                     }
                 }
 
-                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    tvModel.setLike(!(tvModel.like.value as Boolean))
-                    viewHolder.like(tvModel.like.value as Boolean)
-                }
+
 
                 return@setOnKeyListener listener?.onKey(this, keyCode) ?: false
             }

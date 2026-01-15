@@ -23,7 +23,7 @@ import java.io.File
 
 object TVList {
     private const val TAG = "TVList"
-    const val FILE_NAME = "channels_test.txt"
+    const val FILE_NAME = "channels.txt"
     const val DEFAULT_CONFIG_URL = "https://firetv-api-worker.technoholicrahul.workers.dev/"
     private lateinit var appDirectory: File
     private lateinit var serverUrl: String

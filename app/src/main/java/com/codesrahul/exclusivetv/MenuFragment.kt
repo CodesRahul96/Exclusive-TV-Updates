@@ -132,7 +132,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                     Toast.makeText(context, "No channel yet", Toast.LENGTH_LONG).show()
                     return true
                 }
-                binding.group.visibility = GONE
                 groupAdapter.focusable(false)
                 listAdapter.focusable(true)
 
@@ -166,7 +165,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     override fun onKey(listAdapter: ListAdapter, keyCode: Int): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> {
-                binding.group.visibility = VISIBLE
                 groupAdapter.focusable(true)
                 listAdapter.focusable(false)
                 listAdapter.clear()
