@@ -200,6 +200,16 @@
                 android:layout_marginBottom="10dp" />
 
             <Switch
+                android:id="@+id/switch_watch_last"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="@string/title_watch_last"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:paddingStart="8dp"
+                android:layout_marginBottom="10dp" />
+
+            <Switch
                 android:id="@+id/switch_boot_startup"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"

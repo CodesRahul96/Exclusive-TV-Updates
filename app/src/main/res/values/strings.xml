@@ -14,4 +14,5 @@
     <string name="clear">Restore Defaults</string>
     <string name="server">Network Configuration</string>
     <string name="title_channel_check">Remove dead channels</string>
+    <string name="title_watch_last">Play last channel on startup</string>
 </resources>

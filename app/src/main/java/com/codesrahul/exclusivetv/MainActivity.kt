@@ -215,7 +215,7 @@ class MainActivity : FragmentActivity() {
         }
 
         // 1. Try Last Played
-        if (TVList.setPosition(SP.position)) {
+        if (SP.watchLast && TVList.setPosition(SP.position)) {
             "Play last channel".showToast(Toast.LENGTH_LONG)
         } 
         // 2. Try Default Channel (if set and valid)

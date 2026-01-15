@@ -66,6 +66,7 @@ class SettingFragment : Fragment() {
         binding.switchBootStartup.isChecked = SP.bootStartup
         binding.switchConfigAutoLoad.isChecked = SP.configAutoLoad
         binding.switchChannelCheck.isChecked = SP.channelCheck
+        binding.switchWatchLast.isChecked = SP.watchLast
 
         val currentConfig = SP.config ?: ""
         if (currentConfig == TVList.DEFAULT_CONFIG_URL) {
@@ -106,6 +107,7 @@ class SettingFragment : Fragment() {
             binding.switchBootStartup,
             binding.switchConfigAutoLoad,
             binding.switchChannelCheck,
+            binding.switchWatchLast,
             binding.confirmConfig,
             binding.confirmChannel,
             binding.clear,
@@ -149,7 +151,8 @@ class SettingFragment : Fragment() {
             binding.switchChannelReversal, binding.switchChannelNum,
             binding.switchTime, binding.switchBootStartup,
             binding.switchTime, binding.switchBootStartup,
-            binding.switchConfigAutoLoad, binding.switchChannelCheck
+            binding.switchConfigAutoLoad, binding.switchChannelCheck,
+            binding.switchWatchLast
         )
 
         views.forEach { v ->
@@ -192,6 +195,11 @@ class SettingFragment : Fragment() {
 
         binding.switchChannelCheck.setOnCheckedChangeListener { _, b ->
             SP.channelCheck = b
+            (activity as MainActivity).settingActive()
+        }
+
+        binding.switchWatchLast.setOnCheckedChangeListener { _, b ->
+            SP.watchLast = b
             (activity as MainActivity).settingActive()
         }
 
