@@ -787,8 +787,12 @@ class MainActivity : FragmentActivity() {
                     channelUp()
                     return true
                 }
-                // If any overlay is visible, don't let activity handle it as channel change
-                return !trackSelectionFragment.isHidden || !menuFragment.isHidden || !settingFragment.isHidden 
+                // If menu is open, let the RecyclerView handle it naturally - return false
+                if (!menuFragment.isHidden) {
+                    return false
+                }
+                // For other overlays (settings, track selection), consume but don't act
+                return !trackSelectionFragment.isHidden || !settingFragment.isHidden 
             }
 
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
@@ -796,8 +800,12 @@ class MainActivity : FragmentActivity() {
                     channelDown()
                     return true
                 }
-                // If any overlay is visible, don't let activity handle it as channel change
-                return !trackSelectionFragment.isHidden || !menuFragment.isHidden || !settingFragment.isHidden
+                // If menu is open, let the RecyclerView handle it naturally - return false
+                if (!menuFragment.isHidden) {
+                    return false
+                }
+                // For other overlays (settings, track selection), consume but don't act
+                return !trackSelectionFragment.isHidden || !settingFragment.isHidden
             }
 
             KeyEvent.KEYCODE_DPAD_LEFT -> {

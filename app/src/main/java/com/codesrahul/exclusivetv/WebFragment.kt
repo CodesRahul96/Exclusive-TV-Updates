@@ -1060,40 +1060,40 @@ class WebFragment : Fragment() {
 
                     if (match != null) {
                         val m3u8Link = match.groupValues[1]
-                        println("Extracted m3u8 Link: $m3u8Link")
+                        Log.d(TAG, "Extracted m3u8 Link: $m3u8Link")
                         return m3u8Link
                     }else{
                         // specifically for athavantv
                         val athavantvRegex = """file:"(https?://[^\"]+\.m3u8)"""".toRegex()
                         val matchResult = athavantvRegex.find(responseBody)
                         val hlsLink = matchResult?.groups?.get(1)?.value
-
+ 
                         if (hlsLink != null) {
-                            println("Extracted HLS Link: $hlsLink")
+                            Log.d(TAG, "Extracted HLS Link: $hlsLink")
                             return hlsLink
                         }else{
                             val ttnregex = """source:\s*['"]([^'"]+\.m3u8)['"]""".toRegex()
-
+ 
                             val matchResult1 = ttnregex.find(responseBody)
                             val ttnhlsLink = matchResult1?.groups?.get(1)?.value
-
+ 
                             if (ttnhlsLink != null) {
-                                println("Extracted HLS Link: $ttnhlsLink")
+                                Log.d(TAG, "Extracted HLS Link: $ttnhlsLink")
                                 return ttnhlsLink
                             } else {
                                 // youtube
                                 val youtubeRegex = """"hlsManifestUrl":"(https?:\/\/[^"]+\.m3u8)"""".toRegex()
-
+ 
                                 // Extracting the match
                                 val matchResult2 = youtubeRegex.find(responseBody)
                                 val hlsLink2 = matchResult2?.groups?.get(1)?.value
-
+ 
                                 // Output the result
                                 if (hlsLink2 != null) {
-                                    println("Extracted HLS Link: $hlsLink2")
+                                    Log.d(TAG, "Extracted HLS Link: $hlsLink2")
                                     return hlsLink2
                                 } else {
-                                    println("No HLS link found.")
+                                    Log.d(TAG, "No HLS link found.")
                                 }
                             }
                         }
@@ -1104,7 +1104,7 @@ class WebFragment : Fragment() {
 
             }
         } catch (e: IOException) {
-            println("Error during the API call: ${e.message}")
+            Log.e(TAG, "Error during the API call: ${e.message}")
         }
         return m3u8Link
     }

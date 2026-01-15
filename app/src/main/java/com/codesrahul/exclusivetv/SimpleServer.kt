@@ -25,7 +25,7 @@ class SimpleServer(private val context: Context, port: Int) : NanoHTTPD(port) {
             start()
             val host = PortUtil.lan()
             (context as MainActivity).setServer("$host:$port")
-            println("Server running on $host:$port")
+            Log.d("SimpleServer", "Server running on $host:$port")
         } catch (e: IOException) {
             e.printStackTrace()
         }

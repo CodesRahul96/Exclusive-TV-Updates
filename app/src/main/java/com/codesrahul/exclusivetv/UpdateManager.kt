@@ -83,7 +83,7 @@ class UpdateManager(
             }
         }
 
-        val apkName = "tll-player"
+        val apkName = "ExclusiveTV"
         val apkFileName = "$apkName-${release.version_name}.apk"
         val downloadManager =
             context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -130,7 +130,7 @@ class UpdateManager(
         }
 
         getDownloadProgress(context, downloadReference) { progress ->
-            println("Download progress: $progress%")
+            Log.d(TAG, "Download progress: $progress%")
         }
     }
 

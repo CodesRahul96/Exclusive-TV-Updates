@@ -78,7 +78,7 @@ git push origin $Version
 
 # 4. Prepare Artifact
 $apkPath = "app\build\outputs\apk\release\app-release.apk"
-$targetName = "tll-player-$Version.apk"
+$targetName = "ExclusiveTV-$Version.apk"
 
 if (Test-Path $apkPath) {
     Copy-Item -Path $apkPath -Destination ".\$targetName"

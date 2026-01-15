@@ -78,7 +78,7 @@ git push origin $VERSION
 
 # 4. Prepare Artifact
 APK_PATH="app/build/outputs/apk/release/app-release.apk"
-TARGET_NAME="tll-player-$VERSION.apk"
+TARGET_NAME="ExclusiveTV-$VERSION.apk"
 
 if [ -f "$APK_PATH" ]; then
     cp "$APK_PATH" "$TARGET_NAME"

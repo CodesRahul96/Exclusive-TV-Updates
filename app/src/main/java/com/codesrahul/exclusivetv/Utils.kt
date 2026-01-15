@@ -2,6 +2,7 @@ package com.codesrahul.exclusivetv
 
 import android.content.res.Resources
 import android.os.Build
+import android.util.Log
 import android.util.TypedValue
 import com.google.gson.Gson
 import com.codesrahul.exclusivetv.requests.TimeResponse
@@ -31,7 +32,7 @@ object Utils {
         try {
             currentTimeMillis = getTimestampFromServer()
         } catch (e: Exception) {
-            println("Failed to retrieve timestamp from server: ${e.message}")
+            Log.e("Utils", "Failed to retrieve timestamp from server: ${e.message}")
         }
         between = System.currentTimeMillis() - currentTimeMillis
     }
