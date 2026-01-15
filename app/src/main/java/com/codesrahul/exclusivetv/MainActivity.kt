@@ -662,8 +662,8 @@ class MainActivity : FragmentActivity() {
             .commitNow()
     }
 
-    fun onKey(keyCode: Int): Boolean {
-        Log.d(TAG, "keyCode $keyCode")
+    fun onKey(keyCode: Int, event: KeyEvent?): Boolean {
+        Log.d(TAG, "keyCode $keyCode, repeat ${event?.repeatCount}")
         when (keyCode) {
             KeyEvent.KEYCODE_0 -> {
                 showChannel("0")
@@ -787,15 +787,28 @@ class MainActivity : FragmentActivity() {
             }
 
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                showSetting()
-//                return true
+                if (event != null && event.isLongPress) {
+                    showSetting()
+                    return true
+                }
             }
         }
         return false
     }
 
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            showSetting()
+            return true
+        }
+        return super.onKeyLongPress(keyCode, event)
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (onKey(keyCode)) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            event?.startTracking()
+        }
+        if (onKey(keyCode, event)) {
             return true
         }
 

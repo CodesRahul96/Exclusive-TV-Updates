@@ -831,6 +831,17 @@ class WebFragment : Fragment() {
         builder.setMediaSourceFactory(mediaSourceFactory)
         
         exoPlayer = builder.build()
+
+        if (SP.forceHighQuality) {
+            val trackSelectionParameters = exoPlayer?.trackSelectionParameters
+                ?.buildUpon()
+                ?.setMaxVideoSizeSd() // Start with SD as baseline
+                ?.setForceHighestSupportedBitrate(true)
+                ?.build()
+            if (trackSelectionParameters != null) {
+                exoPlayer?.trackSelectionParameters = trackSelectionParameters
+            }
+        }
         
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
