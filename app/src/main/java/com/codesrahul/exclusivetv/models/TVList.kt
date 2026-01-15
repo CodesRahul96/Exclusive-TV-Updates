@@ -24,6 +24,7 @@ import java.io.File
 object TVList {
     private const val TAG = "TVList"
     const val FILE_NAME = "channels_test.txt"
+    const val DEFAULT_CONFIG_URL = "https://firetv-api-worker.technoholicrahul.workers.dev/"
     private lateinit var appDirectory: File
     private lateinit var serverUrl: String
     private lateinit var list: List<TV>
@@ -68,7 +69,9 @@ object TVList {
         }
 
         SP.configAutoLoad = true
-        SP.config = "https://firetv-api-worker.technoholicrahul.workers.dev/"
+        if (SP.config.isNullOrEmpty()) {
+            SP.config = DEFAULT_CONFIG_URL
+        }
 
 
         if (SP.configAutoLoad && !SP.config.isNullOrEmpty()) {
@@ -184,7 +187,7 @@ object TVList {
         }
     }
 
-    private fun update(serverUrl: String) {
+    fun update(serverUrl: String) {
         this.serverUrl = serverUrl
         update()
     }

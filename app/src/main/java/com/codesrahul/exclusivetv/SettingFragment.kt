@@ -67,7 +67,12 @@ class SettingFragment : Fragment() {
         binding.switchConfigAutoLoad.isChecked = SP.configAutoLoad
         binding.switchChannelCheck.isChecked = SP.channelCheck
 
-        binding.config.text = Editable.Factory.getInstance().newEditable(SP.config ?: "")
+        val currentConfig = SP.config ?: ""
+        if (currentConfig == TVList.DEFAULT_CONFIG_URL) {
+            binding.config.text = Editable.Factory.getInstance().newEditable("")
+        } else {
+            binding.config.text = Editable.Factory.getInstance().newEditable(currentConfig)
+        }
         binding.channel.text = Editable.Factory.getInstance().newEditable(SP.channel.toString())
 
         scaleForTV()
@@ -213,27 +218,37 @@ class SettingFragment : Fragment() {
             (activity as MainActivity).settingActive()
         }
 
-        val config = binding.config
-        config.text = SP.config?.let { Editable.Factory.getInstance().newEditable(it) }
-            ?: Editable.Factory.getInstance().newEditable("")
+        val savedConfig = SP.config ?: ""
+        if (savedConfig == TVList.DEFAULT_CONFIG_URL) {
+            binding.config.text = Editable.Factory.getInstance().newEditable("")
+        } else {
+            binding.config.text = Editable.Factory.getInstance().newEditable(savedConfig)
+        }
 
 
         binding.confirmConfig.setOnClickListener {
             tvUiUtils?.playClickSound()
 
             val text = binding.config.text.toString().trim()
-            val url = Utils.formatUrl(text)
-            uri = Uri.parse(url)
-
-            if (uri.scheme.isNullOrEmpty()) {
-                uri = uri.buildUpon().scheme("http").build()
-            }
-
-            if (uri.isAbsolute) {
-                if (uri.scheme == "file") requestReadPermissions()
-                else TVList.parseUri(uri)
+            if (text.isEmpty()) {
+                SP.config = TVList.DEFAULT_CONFIG_URL
+                // Re-fetch to clear current list if necessary, or just show success
+                TVList.update(TVList.DEFAULT_CONFIG_URL)
+                "Configuration reset to default".showToast()
             } else {
-                binding.config.error = "Invalid address"
+                val url = Utils.formatUrl(text)
+                uri = Uri.parse(url)
+
+                if (uri.scheme.isNullOrEmpty()) {
+                    uri = uri.buildUpon().scheme("http").build()
+                }
+
+                if (uri.isAbsolute) {
+                    if (uri.scheme == "file") requestReadPermissions()
+                    else TVList.parseUri(uri)
+                } else {
+                    binding.config.error = "Invalid address"
+                }
             }
 
             (activity as MainActivity).settingActive()
@@ -252,6 +267,7 @@ class SettingFragment : Fragment() {
         binding.clear.setOnClickListener {
             //tvUiUtils?.playClickSound()
 
+            SP.config = TVList.DEFAULT_CONFIG_URL
             SP.channel = 0
             SP.position = 0
 
@@ -335,9 +351,12 @@ class SettingFragment : Fragment() {
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)
         if (!hidden) {
-            val config = binding.config
-            config.text = SP.config?.let { Editable.Factory.getInstance().newEditable(it) }
-                ?: Editable.Factory.getInstance().newEditable("")
+            val current = SP.config ?: ""
+            if (current == TVList.DEFAULT_CONFIG_URL) {
+                binding.config.text = Editable.Factory.getInstance().newEditable("")
+            } else {
+                binding.config.text = Editable.Factory.getInstance().newEditable(current)
+            }
         }
     }
 
