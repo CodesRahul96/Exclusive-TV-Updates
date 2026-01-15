@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TLL Player</string>
+    <string name="app_name">Exclusive TV</string>
     <string name="title_channel_reversal">Channel Reversal</string>
     <string name="title_channel_num">Show number during switch</string>
     <string name="check_version">Update app</string>

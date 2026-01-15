@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-    namespace = "com.thirutricks.tllplayer"
+    namespace = "com.codesrahul.exclusivetv"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.thirutricks.tllplayer"
+        applicationId = "com.codesrahul.exclusivetv"
         minSdk = 21
         targetSdk = 34
         versionCode = if (project.hasProperty("versionCodeOverride")) {
@@ -134,10 +134,18 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
+
+    testImplementation("junit:junit:4.13.2")
 }
 
 configurations.configureEach {
     resolutionStrategy {
         force("com.google.code.gson:gson:2.10.1")
+    }
+}
+
+tasks.withType<Test> {
+    testLogging {
+        showStandardStreams = true
     }
 }

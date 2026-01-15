@@ -1,0 +1,98 @@
+
+> Configure project :app
+Building with VersionCode: 16782849, VersionName: 1.0.22-1-gd9e4a73
+
+> Task :app:cleanTestDebugUnitTest
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:injectCrashlyticsMappingFileIdDebug UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+
+> Task :app:testDebugUnitTest
+
+com.thirutricks.tllplayer.ChannelDecoderTest > decodeChannels STANDARD_OUT
+    Read 404616 chars from file
+    DECODED_START:
+    [
+        {
+            "group": "Tamil Rasi",
+            "logo": "https:\/\/247tamilradios.com\/storage\/images\/tvs\/f05b9e02b0d6ee94bb090f809f93d7ec.png",
+            "name": " Rasi Tamil",
+            "title": " Rasi Tamil",
+            "uris": [
+                "http:\/\/rasinetworks.in:1935\/rasitamil\/rasitamil.stream_aac\/index.m3u8"
+            ]
+        },
+        {
+            "group": "Tamil Rasi",
+            "logo": "https:\/\/247tamilradios.com\/storage\/images\/tvs\/de7e781db9e296abd990d6b1bb7e9673.png",
+            "name": "Rasi Movies",
+            "title": "Rasi Movies",
+            "uris": [
+                "http:\/\/rasinetworks.in:1935\/rasimovies\/rasimovies.stream_aac\/index.m3u8"
+            ]
+        },
+        {
+            "group": "Tamil Rasi",
+            "logo": "https:\/\/upload.wikimedia.org\/wikipedia\/commons\/5\/51\/Cinemax_LA_logo.png?20101220235006",
+            "name": " Rasi Cinemax TV",
+            "title": " Rasi Cinemax TV",
+            "uris": [
+                "rtmp:\/\/rasinetworks.in:1935\/rasicinemax\/rasicinemax.stream_aac"
+            ]
+        },
+        {
+            "group": "Tamil Rasi",
+            "logo": "https:\/\/play-lh.googleusercontent.com\/QxadK0MHS7txDkDYQcAgTRpUGmXSiYlkF3R0542GRoy21gSQqzedS8wgeWTOgzGrJA=w240-h480-rw",
+            "name": " Vinayaga Movies",
+            "title": " Vinayaga Movies",
+            "uris": [
+                "rtmp:\/\/acv.7starcloud.com:1935\/live\/ramtv"
+            ]
+        },
+        {
+            "group": "Tamil Rasi",
+            "logo": "https:\/\/play-lh.googleusercontent.com\/ex6JZgJ5vlmt_7K95JyKZRaEfgIe1jVqFZ8jhMo-a-r0bQhwcTbEeSTtsOnzNb7p3PHF=w240-h480-rw",
+            "name": "MaXMovies TV",
+            "title": "MaXMovies TV",
+            "uris": [
+                "https:\/\/live.sscloud7.in\/live\/maxmovies\/index.m3u8"
+            ]
+        },
+        {
+            "group": "Tamil Rasi",
+            "logo": "https:\/\/image.winudf.com\/v2\/image\/aW5kaWFtYXRyaXgucmFzaXR2X3NjcmVlbl8xXzE1MzE1NDE5NTVfMDk1\/screen-1.jpg?fakeurl=1&type=.jpg",
+            "name": " Rasi TV HD",
+            "title": " Rasi TV HD",
+            "uris": [
+                "http:\/\/rasinetwor
+
+BUILD SUCCESSFUL in 3s
+29 actionable tasks: 3 executed, 26 up-to-date

@@ -1,0 +1,113 @@
+
+> Configure project :app
+Building with VersionCode: 16782849, VersionName: 1.0.22-1-gd9e4a73
+
+> Task :app:cleanTestDebugUnitTest
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:generateDebugResources
+> Task :app:injectCrashlyticsMappingFileIdDebug UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:parseDebugLocalResources
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesDebug
+> Task :app:mapDebugSourceSetPaths
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:processDebugResources
+
+> Task :app:compileDebugKotlin
+w: file:///D:/Android%20Projects/tll-player/app/src/main/java/com/thirutricks/tllplayer/WebFragment.kt:67:15 'onActivityCreated(Bundle?): Unit' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/tll-player/app/src/main/java/com/thirutricks/tllplayer/WebFragment.kt:84:35 'setAllowUniversalAccessFromFileURLs(Boolean): Unit' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/tll-player/app/src/main/java/com/thirutricks/tllplayer/WebFragment.kt:104:38 Parameter 'v' is never used, could be renamed to _
+w: file:///D:/Android%20Projects/tll-player/app/src/main/java/com/thirutricks/tllplayer/WebFragment.kt:697:42 No cast needed
+w: file:///D:/Android%20Projects/tll-player/app/src/main/java/com/thirutricks/tllplayer/WebFragment.kt:980:30 Unnecessary safe call on a non-null receiver of type String
+w: file:///D:/Android%20Projects/tll-player/app/src/main/java/com/thirutricks/tllplayer/WebFragment.kt:987:43 Type mismatch: inferred type is Request? but Request was expected
+w: file:///D:/Android%20Projects/tll-player/app/src/main/java/com/thirutricks/tllplayer/WebFragment.kt:994:45 Unnecessary safe call on a non-null receiver of type String?
+w: file:///D:/Android%20Projects/tll-player/app/src/main/java/com/thirutricks/tllplayer/WebFragment.kt:997:29 Name shadowed: m3u8Link
+
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+
+> Task :app:testDebugUnitTest
+
+com.thirutricks.tllplayer.ChannelDecoderTest > decodeChannels STANDARD_OUT
+    Read 652480 chars from file
+    DECODED_START:
+    [
+        {
+            "group": "TLL",
+            "logo": "blob:https:\/\/web.telegram.org\/3cd62b16-fc0e-489f-aba8-2233a6b472b1",
+            "name": "Update",
+            "title": "Update",
+            "uris": [
+                "https:\/\/raw.githubusercontent.com\/naveenland4\/daddylive\/refs\/heads\/main\/info\/index.m3u8"
+            ]
+        },
+        {
+            "group": "Rasi",
+            "logo": "https:\/\/247tamilradios.com\/storage\/images\/tvs\/f05b9e02b0d6ee94bb090f809f93d7ec.png",
+            "name": " Rasi Tamil",
+            "title": " Rasi Tamil",
+            "uris": [
+                "https:\/\/rasinetworks.in\/live\/rasitamilhd\/index.mpd"
+            ]
+        },
+        {
+            "group": "Rasi",
+            "logo": "https:\/\/image.winudf.com\/v2\/image\/aW5kaWFtYXRyaXgucmFzaXR2X3NjcmVlbl8xXzE1MzE1NDE5NTVfMDk1\/screen-1.jpg?fakeurl=1&type=.jpg",
+            "name": " Rasi TV HD",
+            "title": " Rasi TV HD",
+            "uris": [
+                "https:\/\/rasinetworks.in\/live\/rasitvhd\/index.mpd"
+            ]
+        },
+        {
+            "group": "Rasi",
+            "logo": "https:\/\/247tamilradios.com\/storage\/images\/tvs\/de7e781db9e296abd990d6b1bb7e9673.png",
+            "name": "Rasi Movies",
+            "title": "Rasi Movies",
+            "uris": [
+                "https:\/\/rasinetworks.in\/live\/rasimovieshd\/index.mpd"
+            ]
+        },
+        {
+            "group": "Rasi",
+            "logo": "https:\/\/st3.depositphotos.com\/1688079\/17310\/i\/450\/depositphotos_173101668-stock-photo-cinema-black-round-button.jpg",
+            "name": " Rasi Cinema TV",
+            "title": " Rasi Cinema TV",
+            "uris": [
+                "https:\/\/rasinetworks.in\/live\/rasicinemahd\/index.mpd"
+            ]
+        },
+        {
+            "group": "Rasi",
+            "logo": "https:\/\/www.247tamilradios.com\/storage\/images\/tvs\/22d27c42b8520f313cecda20686f9733.png",
+            "name": "Rasi Hollywood",
+            "title": "Rasi Hollywood",
+            "uris": [
+                "https:\/\/rasinetworks.in\/live\/rasihollywoodhd\/index.mpd"
+            ]
+        },
+        {
+            "group": "Rasi",
+            "logo": "h
+
+BUILD SUCCESSFUL in 6s
+29 actionable tasks: 13 executed, 16 up-to-date
