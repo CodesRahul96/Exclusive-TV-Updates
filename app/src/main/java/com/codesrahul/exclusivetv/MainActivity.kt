@@ -155,9 +155,9 @@ class MainActivity : FragmentActivity() {
                 .hide(settingFragment)
                 .hide(importProgressFragment)
                 .hide(errorFragment)
-                .hide(loadingFragment)
+                .show(loadingFragment)
                 .hide(timeFragment)
-                .show(webFragment)
+                .hide(webFragment)
                 .commitNow()
         } else {
              // restore fragments

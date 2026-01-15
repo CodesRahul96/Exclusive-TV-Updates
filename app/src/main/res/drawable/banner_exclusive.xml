@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+
+    <!-- Background Gradient -->
+    <path android:pathData="M0,0h320v180h-320z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="320"
+                android:endY="180"
+                android:startX="0"
+                android:startY="0"
+                android:type="linear">
+                <item android:offset="0" android:color="#FF0D47A1"/>
+                <item android:offset="1" android:color="#FF000000"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Decorative Gold Line -->
+    <path
+        android:pathData="M0,170 L320,170"
+        android:strokeWidth="4"
+        android:strokeColor="#FFD700"/>
+
+    <!-- Center Icon Group (Scaled down version of logo) -->
+    <group
+        android:pivotX="160"
+        android:pivotY="90"
+        android:scaleX="0.25"
+        android:scaleY="0.25"
+        android:translateX="0"
+        android:translateY="0">
+
+        <!-- Logo Copy -->
+        <!-- Deep Blue Background Circle Shape (Just for contrast if needed, but we have bg) -->
+        <!-- Ring -->
+        <group
+            android:translateX="160"
+            android:translateY="166">
+            <path
+                android:pathData="M160,90m-240,0a240,240 0,1 1,480 0a240,240 0,1 1,-480 0"
+                android:strokeWidth="20"
+                android:strokeColor="#FFD700"/>
+        </group> 
+            <!-- Manual adjustment because viewport is different. 
+                 Let's reuse the paths from logo but centered. 
+                 Original viewport 512x512. Center 256,256. 
+                 Target Center 160,90. 
+                 Offset: X = 160 - 256 = -96 ?? No, let's just draw the E relative to 160,90 
+            -->
+    </group>
+    
+    <!-- Simpler Approach: Draw the E directly in the center of 320x180 -->
+    <!-- Height of E is ~250 in 512 viewport. Here we have 180 height total. 
+         Let's make E height ~80. Scale factor ~0.3
+         Center X=160, Y=90.
+    -->
+    
+    <group
+        android:translateX="85"
+        android:translateY="10"
+        android:scaleX="0.3"
+        android:scaleY="0.3">
+        
+         <!-- Vertical Bar -->
+        <path
+            android:pathData="M150,130 L200,130 L200,382 L150,382 Z"
+            android:fillColor="#FFFFFF"/>
+
+        <!-- Top Horizontal Bar -->
+        <path
+            android:pathData="M200,130 L362,130 L362,170 L200,170 Z"
+            android:fillColor="#FFFFFF"/>
+
+        <!-- Middle Horizontal Bar -->
+        <path
+            android:pathData="M200,236 L340,236 L340,276 L200,276 Z"
+            android:fillColor="#FFD700"/>
+
+        <!-- Bottom Horizontal Bar -->
+        <path
+            android:pathData="M200,342 L362,342 L362,382 L200,382 Z"
+            android:fillColor="#FFFFFF"/>
+    </group>
+
+    <!-- "TV" Text Shapes next to it? Hard manually. 
+         Let's stick to the Monogram centered, it looks classy.
+    -->
+
+</vector>

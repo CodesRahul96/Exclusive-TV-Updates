@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Deep Blue Background Circle -->
+    <path android:pathData="M256,256m-256,0a256,256 0,1 1,512 0a256,256 0,1 1,-512 0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="256"
+                android:centerY="256"
+                android:gradientRadius="256"
+                android:type="radial">
+                <item android:offset="0" android:color="#FF1A237E"/>
+                <item android:offset="1" android:color="#FF000000"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Gold Ring -->
+    <path
+        android:pathData="M256,256m-240,0a240,240 0,1 1,480 0a240,240 0,1 1,-480 0"
+        android:strokeWidth="10"
+        android:strokeColor="#FFD700"/>
+
+    <!-- Stylized "E" Monogram (abstract shapes) -->
+    <!-- Main Vertical Bar -->
+    <path
+        android:pathData="M150,130 L200,130 L200,382 L150,382 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Top Horizontal Bar -->
+    <path
+        android:pathData="M200,130 L362,130 L362,170 L200,170 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Middle Horizontal Bar -->
+    <path
+        android:pathData="M200,236 L340,236 L340,276 L200,276 Z"
+        android:fillColor="#FFD700"/>
+
+    <!-- Bottom Horizontal Bar -->
+    <path
+        android:pathData="M200,342 L362,342 L362,382 L200,382 Z"
+        android:fillColor="#FFFFFF"/>
+
+</vector>
