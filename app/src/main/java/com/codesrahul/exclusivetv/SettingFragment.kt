@@ -43,7 +43,7 @@ class SettingFragment : Fragment() {
         setupListeners()
         setupFocusAnimations()  // ⭐ ADD TIVIMATE STYLE FOCUS EFFECTS
 
-        updateManager = UpdateManager(requireContext(), requireContext().appVersionCode)
+        updateManager = UpdateManager(requireContext(), com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
         (activity as MainActivity).ready(TAG)
         return binding.root
     }

@@ -40,6 +40,8 @@ object SP {
     private const val KEY_MOVE_MODE = "move_mode"
     private const val KEY_WATCH_LAST = "watch_last"
     private const val KEY_FORCE_HIGH_QUALITY = "force_high_quality"
+    private const val KEY_LAST_VERSION = "last_version"
+    private const val KEY_LAST_CHANNEL_URL = "last_channel_url"
 
     private lateinit var sp: SharedPreferences
 
@@ -104,7 +106,7 @@ object SP {
         set(value) = sp.edit().putInt(KEY_CHANNEL, value).apply()
 
     var channelCheck: Boolean
-        get() = sp.getBoolean(KEY_CONFIG_CHANNEL_CHECK, true)
+        get() = sp.getBoolean(KEY_CONFIG_CHANNEL_CHECK, false)
         set(value) = sp.edit().putBoolean(KEY_CONFIG_CHANNEL_CHECK, value).apply()
 
     var moveMode: Boolean
@@ -118,6 +120,14 @@ object SP {
     var forceHighQuality: Boolean
         get() = sp.getBoolean(KEY_FORCE_HIGH_QUALITY, true)
         set(value) = sp.edit().putBoolean(KEY_FORCE_HIGH_QUALITY, value).apply()
+
+    var lastVersion: Int
+        get() = sp.getInt(KEY_LAST_VERSION, 0)
+        set(value) = sp.edit().putInt(KEY_LAST_VERSION, value).apply()
+
+    var lastChannelUrl: String
+        get() = sp.getString(KEY_LAST_CHANNEL_URL, "") ?: ""
+        set(value) = sp.edit().putString(KEY_LAST_CHANNEL_URL, value).apply()
 
     fun getLike(id: Int): Boolean {
         val stringSet = sp.getStringSet(KEY_LIKE, emptySet())

@@ -26,7 +26,7 @@ import java.io.File
 
 class UpdateManager(
     private var context: Context,
-    private var versionCode: Long
+    private var versionCode: Int
 ) :
     ConfirmationFragment.ConfirmationListener {
 

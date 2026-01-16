@@ -66,6 +66,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val checkInterval: Long = 5000 // Check every 5 seconds
     private var wasRooted = false
 
+    private var lastRefreshTime = 0L
+    private val refreshHandler = Handler(Looper.getMainLooper())
+    private val refreshInterval: Long = 30 * 60 * 1000L // 30 minutes
+    private val resumeRefreshThreshold: Long = 15 * 60 * 1000L // 15 minutes
+
     private lateinit var connectivityManager: ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -206,8 +211,38 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         showTime()
 
-        updateManager = UpdateManager(this, this.appVersionCode)
+        updateManager = UpdateManager(this, com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
         updateManager.checkAndUpdate()
+        
+        startPeriodicRefresh()
+    }
+
+    private fun startPeriodicRefresh() {
+        refreshHandler.postDelayed(object : Runnable {
+            override fun run() {
+                Log.i(TAG, "Triggering periodic background refresh")
+                val config = SP.config
+                if (!config.isNullOrEmpty() && config.startsWith("http")) {
+                    TVList.update(config, silent = true)
+                }
+                lastRefreshTime = System.currentTimeMillis()
+                refreshHandler.postDelayed(this, refreshInterval)
+            }
+        }, refreshInterval)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Check for refresh on resume
+        val now = System.currentTimeMillis()
+        if (now - lastRefreshTime > resumeRefreshThreshold) {
+            Log.i(TAG, "Triggering resume refresh")
+            val config = SP.config
+            if (!config.isNullOrEmpty() && config.startsWith("http")) {
+                TVList.update(config, silent = true)
+                lastRefreshTime = now
+            }
+        }
     }
 
     override fun onResumeFragments() {
@@ -219,16 +254,26 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         TVList.groupModel.change.observe(this) { _ ->
             Log.i(TAG, "groupModel changed")
             if (TVList.groupModel.tvGroupModel.value != null) {
-                // Initial playback on load
+                val currentPlayingUrl = webFragment.getCurrentUrl() ?: ""
                 val pos = TVList.position.value ?: -1
+                
                 if (pos == -1) {
-                    // Decide what to play if not yet set
-                    val targetPos = if (SP.watchLast) SP.position else if (SP.channel > 0) SP.channel - 1 else 0
-                    if (TVList.setPosition(targetPos)) {
+                    // Initial playback on load
+                    val targetPos = if (SP.watchLast) com.codesrahul.exclusivetv.models.TVList.restorePosition() else if (SP.channel > 0) SP.channel - 1 else 0
+                    if (com.codesrahul.exclusivetv.models.TVList.setPosition(targetPos)) {
                         "Playing channel".showToast()
                     }
+                } else if (currentPlayingUrl.isNotEmpty()) {
+                    // This was a silent background refresh
+                    // Find the new index of the current URL
+                    val newIndex = com.codesrahul.exclusivetv.models.TVList.restorePosition() // Now uses lastChannelUrl which we updated in setPosition
+                    if (newIndex != -1 && newIndex != pos) {
+                        Log.i(TAG, "Updating index for current channel from $pos to $newIndex")
+                        // Use a silent internal set if possible, but setPosition with old URL check is fine
+                        com.codesrahul.exclusivetv.models.TVList.setPosition(newIndex)
+                    }
                 } else {
-                    // Already set, just play
+                    // No video playing, maybe first load finished or error state
                     TVList.getTVModel(pos)?.let { playChannel(it) }
                 }
                 menuFragment.update()
@@ -239,7 +284,18 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // 2. Observe Position Changes (Navigation)
         TVList.position.observe(this) { pos ->
             Log.i(TAG, "Position changed to $pos")
-            TVList.getTVModel(pos)?.let { playChannel(it) }
+            val model = TVList.getTVModel(pos)
+            if (model != null) {
+                // IMPORTANT: Only trigger payChannel if it's NOT already playing this URL
+                val currentUrl = webFragment.getCurrentUrl() ?: ""
+                val targetUrl = model.tv.uris.firstOrNull() ?: ""
+                
+                if (targetUrl != currentUrl || currentUrl.isEmpty()) {
+                    playChannel(model)
+                } else {
+                    Log.i(TAG, "Skipping playChannel - URL already playing")
+                }
+            }
         }
 
         // setupCollectionObservers() moved to groupModel.change observer
@@ -893,6 +949,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         super.onDestroy()
         connectivityManager.unregisterNetworkCallback(networkCallback)
         rootHandler.removeCallbacksAndMessages(null) // Stop monitoring to prevent memory leaks
+        refreshHandler.removeCallbacksAndMessages(null)
         server?.stop()
     }
 

@@ -30,6 +30,8 @@ object TVList {
     private lateinit var list: List<TV>
     var listModel: List<TVModel> = listOf()
     val groupModel = TVGroupModel()
+    
+    private var isUpdating = false
 
     private val _position = MutableLiveData<Int>()
     val position: LiveData<Int>
@@ -48,6 +50,17 @@ object TVList {
 
         appDirectory = context.filesDir
         
+        // Check for App Update
+        val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
+        if (currentVersion > SP.lastVersion) {
+            Log.i(TAG, "App updated from ${SP.lastVersion} to $currentVersion. Clearing cache.")
+            val cacheFile = File(appDirectory, FILE_NAME)
+            if (cacheFile.exists()) {
+                cacheFile.delete()
+            }
+            SP.lastVersion = currentVersion
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
             val file = File(appDirectory, FILE_NAME)
             val str = if (file.exists()) {
@@ -110,33 +123,55 @@ object TVList {
         }
     }
 
-    private fun update() {
+    fun update(serverUrl: String, silent: Boolean = false) {
+        this.serverUrl = serverUrl
+        update(silent)
+    }
+
+    private fun update(silent: Boolean = false) {
+        if (isUpdating) {
+            Log.w(TAG, "Update already in progress. Skipping.")
+            return
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
+            isUpdating = true
             withContext(Dispatchers.Main) {
-                if (size() == 0) {
+                if (size() == 0 && !silent) {
                      _importProgress.value = 5
-                } else {
+                } else if (!silent) {
                      _importProgress.value = 0
                 }
             }
             try {
-                Log.i(TAG, "request $serverUrl")
-                // Use the custom unsafe client
-                val client = unsafeClient
-                val request = okhttp3.Request.Builder().url(serverUrl).build()
-                val response = client.newCall(request).execute()
-
-                if (response.isSuccessful) {
+                // Use HttpURLConnection as fallback
+                val targetUrl = serverUrl
+                
+                val urlObj = java.net.URL(targetUrl)
+                val conn = urlObj.openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.connectTimeout = 30000
+                conn.readTimeout = 30000
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+                conn.setRequestProperty("version_code", com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE.toString())
+                
+                val responseCode = conn.responseCode
+                
+                if (responseCode == 200) {
                     // Update progress to 60 (Server responded)
-                     withContext(Dispatchers.Main) {
-                        _importProgress.value = 60
+                    if (!silent) {
+                        withContext(Dispatchers.Main) {
+                            _importProgress.value = 60
+                        }
                     }
 
                     val file = File(appDirectory, FILE_NAME)
                     if (!file.exists()) {
                         file.createNewFile()
                     }
-                    val str = response.body()!!.string()
+
+                    val str = conn.inputStream.bufferedReader().use { it.readText() }
+                    Log.i(TAG, "Body length: ${str.length}")
 
                     // Process JSON in background
                     val success = str2List(str)
@@ -146,49 +181,61 @@ object TVList {
                              if (success) {
                                 file.writeText(str)
                                 SP.config = serverUrl
-                                "Channel imported successfully".showToast()
-                                checkChannelsInBackground()
+                                if (!silent) "Channel imported successfully".showToast()
+                                
+                                // checkChannelsInBackground()
 
                                 // Update progress to 100 (Done)
-                                _importProgress.value = 100
+                                if (!silent) {
+                                    _importProgress.value = 100
+                                }
                             } else {
-                                "Channel import error: Invalid content".showToast()
-                                _importProgress.value = 0 // Reset/Fail
+                                if (!silent) {
+                                    "Channel import error: Invalid content".showToast()
+                                    _importProgress.value = 0 // Reset/Fail
+                                }
                             }
                         } catch (e: Exception) {
                              Log.e(TAG, "Parsing error", e)
-                             "Channel import error: ${e.message}".showToast()
-                             _importProgress.value = 0 // Reset/Fail
+                             if (!silent) {
+                                 "Channel import error: ${e.message}".showToast()
+                                 _importProgress.value = 0 // Reset/Fail
+                             }
                         }
                     }
                 } else {
-                    Log.e("", "request status ${response.code()}")
-                    withContext(Dispatchers.Main) {
-                        "Channel status error: ${response.code()}".showToast()
+                    Log.e("", "request status $responseCode")
+                    if (!silent) {
+                        withContext(Dispatchers.Main) {
+                            "Channel status error: $responseCode".showToast()
+                        }
                     }
                 }
             } catch (e: JsonSyntaxException) {
                 Log.e("JSON Parse Error", e.toString())
-                withContext(Dispatchers.Main) {
-                    "Channel format error".showToast()
+                if (!silent) {
+                    withContext(Dispatchers.Main) {
+                        "Channel format error".showToast()
+                    }
                 }
             } catch (e: NullPointerException) {
                 Log.e("Null Pointer Error", e.toString())
-                 withContext(Dispatchers.Main) {
-                    "Unable to read channel".showToast()
-                 }
+                if (!silent) {
+                    withContext(Dispatchers.Main) {
+                        "Unable to read channel".showToast()
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("", "request error $e")
-                 withContext(Dispatchers.Main) {
-                    "Channel request error: ${e.message}".showToast()
-                 }
+                if (!silent) {
+                    withContext(Dispatchers.Main) {
+                        "Channel request error: ${e.message}".showToast()
+                    }
+                }
+            } finally {
+                isUpdating = false
             }
         }
-    }
-
-    fun update(serverUrl: String) {
-        this.serverUrl = serverUrl
-        update()
     }
 
     fun parseUri(uri: Uri) {
@@ -210,7 +257,7 @@ object TVList {
                         if (success) {
                             SP.config = uri.toString()
                             "Channel imported successfully".showToast(Toast.LENGTH_LONG)
-                            checkChannelsInBackground()
+                            // checkChannelsInBackground()
                         } else {
                             "Channel import failed".showToast(Toast.LENGTH_LONG)
                         }
@@ -491,10 +538,38 @@ object TVList {
 
         SP.positionGroup = tvModel.groupIndex
         SP.position = position
+        
+        // Save stable identifier (URL)
+        if (tvModel.tv.uris.isNotEmpty()) {
+            SP.lastChannelUrl = tvModel.tv.uris[0]
+        }
+        
         return true
     }
 
     fun size(): Int {
         return listModel.size
+    }
+
+    fun restorePosition(): Int {
+        val savedUrl = SP.lastChannelUrl
+        val savedPos = SP.position
+        
+        if (savedUrl.isNotEmpty()) {
+            // Find index by URL
+            val index = listModel.indexOfFirst { 
+                it.tv.uris.isNotEmpty() && it.tv.uris[0] == savedUrl 
+            }
+            if (index != -1) {
+                return index
+            }
+        }
+        
+        // Fallback to saved position if valid
+        if (savedPos >= 0 && savedPos < listModel.size) {
+            return savedPos
+        }
+        
+        return 0
     }
 }

@@ -58,6 +58,7 @@ class WebFragment : Fragment() {
     private lateinit var webView: WebView
     private var exoPlayer: ExoPlayer? = null
     private lateinit var playerView: PlayerView
+    private var currentVideoUrl: String = ""
     val client = OkHttpClient()
     private var tvModel: TVModel? = null
     private var savedAudioTrackToApply: Int = -1
@@ -714,13 +715,16 @@ class WebFragment : Fragment() {
         Log.i(TAG, "stop")
         webView.loadUrl("about:blank")
         releasePlayer()
+        retryCount = 0 // Stop retrying
         playerView.visibility = View.GONE
         webView.visibility = View.GONE
     }
 
     fun play(tvModel: TVModel) {
         this.tvModel = tvModel
-        val url = tvModel.videoUrl.value as? String ?: return
+        retryCount = 0 // Reset for new channel
+        val url = tvModel.videoUrl.value ?: return
+        this.currentVideoUrl = url
 
         Log.i(TAG, "play ${tvModel.tv.title} $url")
         
@@ -771,7 +775,7 @@ class WebFragment : Fragment() {
         webView.loadUrl(url)
     }
 
-    private var currentVideoUrl: String = ""
+
 
     private fun initializePlayer(url: String) {
         // Always release the previous player to ensure we can configure DRM correctly for the new content
@@ -1090,75 +1094,47 @@ class WebFragment : Fragment() {
     }
 
     private fun performNetworkRequest(url: String): String? {
-        // Simulated network operation
-        val m3u8Link = null
         try {
+            val request = Request.Builder()
+                .url(url)
+                .build()
 
-// Create the request
-            val request = url?.let {
-                Request.Builder()
-                    .url(it)
-                    .build()
-            }
-
-            // Execute the request
             val response = client.newCall(request).execute()
-
             if (response.isSuccessful) {
-                val responseBody = response.body()?.string()
-                if (responseBody != null) {
-                    val regex = """src:\s*"(https://.*?\.m3u8.*?)"""".toRegex()
-                    // Find matches
-                    val match = responseBody?.let { regex.find(it) }
-
-                    if (match != null) {
-                        val m3u8Link = match.groupValues[1]
-                        Log.d(TAG, "Extracted m3u8 Link: $m3u8Link")
-                        return m3u8Link
-                    }else{
-                        // specifically for athavantv
-                        val athavantvRegex = """file:"(https?://[^\"]+\.m3u8)"""".toRegex()
-                        val matchResult = athavantvRegex.find(responseBody)
-                        val hlsLink = matchResult?.groups?.get(1)?.value
- 
-                        if (hlsLink != null) {
-                            Log.d(TAG, "Extracted HLS Link: $hlsLink")
-                            return hlsLink
-                        }else{
-                            val ttnregex = """source:\s*['"]([^'"]+\.m3u8)['"]""".toRegex()
- 
-                            val matchResult1 = ttnregex.find(responseBody)
-                            val ttnhlsLink = matchResult1?.groups?.get(1)?.value
- 
-                            if (ttnhlsLink != null) {
-                                Log.d(TAG, "Extracted HLS Link: $ttnhlsLink")
-                                return ttnhlsLink
-                            } else {
-                                // youtube
-                                val youtubeRegex = """"hlsManifestUrl":"(https?:\/\/[^"]+\.m3u8)"""".toRegex()
- 
-                                // Extracting the match
-                                val matchResult2 = youtubeRegex.find(responseBody)
-                                val hlsLink2 = matchResult2?.groups?.get(1)?.value
- 
-                                // Output the result
-                                if (hlsLink2 != null) {
-                                    Log.d(TAG, "Extracted HLS Link: $hlsLink2")
-                                    return hlsLink2
-                                } else {
-                                    Log.d(TAG, "No HLS link found.")
-                                }
-                            }
-                        }
+                val body = response.body()?.string()
+                if (body != null) {
+                    val m3u8Regex = """src:\s*"(https://.*?\.m3u8.*?)"""".toRegex()
+                    val m3u8Match = m3u8Regex.find(body)
+                    if (m3u8Match != null) {
+                        return m3u8Match.groupValues[1]
                     }
 
+                    val athavantvRegex = """file:"(https?://[^\"]+\.m3u8)"""".toRegex()
+                    val athavanMatch = athavantvRegex.find(body)
+                    if (athavanMatch != null) {
+                        return athavanMatch.groupValues[1]
+                    }
+
+                    val ttnRegex = """source:\s*['"]([^'"]+\.m3u8)['"]""".toRegex()
+                    val ttnMatch = ttnRegex.find(body)
+                    if (ttnMatch != null) {
+                        return ttnMatch.groupValues[1]
+                    }
+
+                    val youtubeRegex = """"hlsManifestUrl":"(https?:\/\/[^"]+\.m3u8)"""".toRegex()
+                    val youtubeMatch = youtubeRegex.find(body)
+                    if (youtubeMatch != null) {
+                        return youtubeMatch.groupValues[1]
+                    }
                 }
-
-
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             Log.e(TAG, "Error during the API call: ${e.message}")
         }
-        return m3u8Link
+        return null
+    }
+
+    fun getCurrentUrl(): String? {
+        return currentVideoUrl
     }
 }
