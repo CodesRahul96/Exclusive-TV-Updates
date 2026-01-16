@@ -771,6 +771,8 @@ class WebFragment : Fragment() {
         webView.loadUrl(url)
     }
 
+    private var currentVideoUrl: String = ""
+
     private fun initializePlayer(url: String) {
         // Always release the previous player to ensure we can configure DRM correctly for the new content
         releasePlayer()
@@ -780,6 +782,7 @@ class WebFragment : Fragment() {
              wakeLock?.acquire(4 * 60 * 60 * 1000L) // 4 hours timeout safety
         }
 
+        currentVideoUrl = url
         var videoUrl = url
         // ... (DRM parsing logic remains same) ...
         var drmConfig: DrmConfig? = null
@@ -893,10 +896,9 @@ class WebFragment : Fragment() {
                     tvModel?.setErrInfo("Retrying... ($retryCount/$maxRetries)")
                     
                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        if (retryCount > 0 && exoPlayer != null) { // Check if still in retry mode and player exists
-                            Log.i(TAG, "Retrying playback...")
-                            exoPlayer?.prepare()
-                            exoPlayer?.play()
+                        if (retryCount > 0 && currentVideoUrl.isNotEmpty()) { 
+                            Log.i(TAG, "Retrying playback (Re-initializing)...")
+                            initializePlayer(currentVideoUrl)
                         }
                     }, delay)
                 } else {
@@ -918,11 +920,9 @@ class WebFragment : Fragment() {
                 val label = when {
                     height >= 2160 -> "4K"
                     height >= 1440 -> "2K"
-                    height >= 1080 -> "1080p"
-                    height >= 720 -> "720p"
-                    height >= 480 -> "480p"
-                    height > 0 -> "SD"
-                    else -> ""
+                    height >= 1080 -> "FHD"
+                    height >= 720 -> "HD"
+                    else -> "SD"
                 }
                 tvModel?.setVideoQuality(label)
             }

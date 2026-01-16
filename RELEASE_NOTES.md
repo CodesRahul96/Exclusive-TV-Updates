@@ -1,9 +1,18 @@
-# v1.0.25 - Favorites Fixed & Modern UI
+# ExclusiveTV v1.0.28 Major Update
 
-**✨ Visual Updates**
-*   **Modern Update Card**: The "Update Available" dialog is now a premium Glass Card with bold typography and "Red Accent" buttons.
-*   **Premium Channel Card**: The channel number overlay is now a "Glassy Card" with increased padding (`16dp`).
+### 🚀 Force Update & Stability
+-   **Mandatory Update Mechanism**: Ensures all users are on the latest, most secure version.
+-   **Performance Overhaul**: Tuned buffering Engine (ExoPlayer) for instant channel zapping and smoother playback.
 
-**🚀 Fixes & Stability**
-*   **Favorites Fixed**: Resolved "Add to My Collection" issue. Favorites now save reliability.
-*   **Aggressive Anti-Freeze**: Updated buffering logic (Startup 4s, Deep Buffer 30-60s) to stop freezing.
+### ⚡ Non-Stop Playback
+-   **Auto-Retry System**: Automatically recovers from network drops or stream failures (retries up to 10 times) for uninterrupted viewing.
+-   **WakeLock Integration**: Prevents device sleep during long viewing sessions.
+
+### 🎨 UI & UX Improvements
+-   **Modern Settings**: Revamped Settings menu with a dedicated **"Check Update"** button.
+-   **Visual Enhancements**: Audio Track selection now highlights the focused item in **RED** for better visibility.
+-   **Dark Theme Optimization**: Modernized update and confirmation dialogs with glassmorphism effects.
+
+### 🛠️ Bug Fixes
+-   Fixed APK installation issues on certain Android TV devices.
+-   Resolved "Dead Channel" detection false positives.
