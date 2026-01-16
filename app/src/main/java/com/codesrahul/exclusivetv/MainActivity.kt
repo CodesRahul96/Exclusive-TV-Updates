@@ -29,7 +29,7 @@ import com.codesrahul.exclusivetv.models.TVModel
 import com.codesrahul.exclusivetv.RootCheckUtil
 
 
-class MainActivity : FragmentActivity() {
+class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     private var ok = 0
     private var webFragment = WebFragment()
@@ -916,6 +916,22 @@ class MainActivity : FragmentActivity() {
                 rootHandler.postDelayed(this, checkInterval)
             }
         })
+    }
+
+    override fun onForceUpdate() {
+        Log.i(TAG, "Force update detected. Blocking app usage.")
+        // Stop playback
+        webFragment.stop()
+        
+        // Hide other fragments except loading/error maybe? 
+        // Actually, just stopping playback is good, the dialog blocks input.
+        // We can also try to hide the menu or ensure the dialog is top-most.
+        
+        // Clear channel list to prevent background play if somehow dismissed?
+        // TVList.listModel = listOf() 
+        // TVList.groupModel.clear()
+        
+        Toast.makeText(this, "Update Required", Toast.LENGTH_LONG).show()
     }
 
     companion object {

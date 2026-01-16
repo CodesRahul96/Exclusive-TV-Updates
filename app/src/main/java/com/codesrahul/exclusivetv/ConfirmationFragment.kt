@@ -12,7 +12,8 @@ import android.widget.TextView
 class ConfirmationFragment(
     private val listener: ConfirmationListener,
     private val message: String,
-    private val update: Boolean
+    private val update: Boolean,
+    private val force: Boolean = false
 ) : DialogFragment() {
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
@@ -28,16 +29,24 @@ class ConfirmationFragment(
 
             tvMessage.text = message
 
+            // Prevent cancellation if forced
+            isCancelable = !force
+
             if (update) {
                 tvTitle.text = "Update Available"
                 btnUpdate.text = "Update Now"
                 btnUpdate.setOnClickListener {
                     listener.onConfirm()
-                    dismiss()
+                    if (!force) dismiss() // Only dismiss if not forced (wait for download)
                 }
-                btnCancel.setOnClickListener {
-                    listener.onCancel()
-                    dismiss()
+                
+                if (force) {
+                    btnCancel.visibility = android.view.View.GONE
+                } else {
+                    btnCancel.setOnClickListener {
+                        listener.onCancel()
+                        dismiss()
+                    }
                 }
             } else {
                 tvTitle.text = "Up to Date"
@@ -50,19 +59,24 @@ class ConfirmationFragment(
 
             val focusListener = android.view.View.OnFocusChangeListener { view, hasFocus ->
                 if (hasFocus) {
-                    view.animate().scaleX(1.10f).scaleY(1.10f).setDuration(120).start()
-                    view.elevation = 24f
+                    view.animate().scaleX(1.05f).scaleY(1.05f).setDuration(120).start()
+                    view.elevation = 10f
+                    view.setBackgroundResource(if(view.id == R.id.btnUpdate) R.drawable.selector_item_focus else R.drawable.selector_item_place)
                 } else {
                     view.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
                     view.elevation = 0f
+                     view.setBackgroundResource(if(view.id == R.id.btnUpdate) R.drawable.tv_button_bg else R.drawable.tv_button_bg) // Reset to default if needed, or just let selector handle it
                 }
             }
 
-            btnUpdate.onFocusChangeListener = focusListener
-            btnCancel.onFocusChangeListener = focusListener
+           // btnUpdate.onFocusChangeListener = focusListener
+           // btnCancel.onFocusChangeListener = focusListener
 
             builder.setView(view)
-            builder.create()
+            val dialog = builder.create()
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            dialog.setCanceledOnTouchOutside(!force)
+            dialog
         } ?: throw IllegalStateException("Activity cannot be null")
     }
 

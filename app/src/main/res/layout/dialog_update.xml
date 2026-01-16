@@ -1,81 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="500dp"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="400dp"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_menu_glass"
-    android:padding="32dp">
+    android:orientation="vertical"
+    android:padding="30dp"
+    android:gravity="center_horizontal">
 
-    <!-- Icon (Optional, keeping it simple text for now or could use a drawable if avail) -->
-    
     <TextView
         android:id="@+id/tvTitle"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center"
         android:text="Update Available"
-        android:textColor="#FFFFFF"
-        android:textSize="26sp"
-        android:fontFamily="sans-serif-black"
+        android:textColor="@android:color/white"
+        android:textSize="22sp"
         android:textStyle="bold"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:layout_marginBottom="16dp"/>
 
     <TextView
         android:id="@+id/tvMessage"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
         android:gravity="center"
-        android:text="New version available"
-        android:textColor="#DDFFFFFF"
-        android:textSize="18sp"
+        android:text="A new version of the app is available. Please update to continue."
+        android:textColor="#CCFFFFFF"
+        android:textSize="16sp"
         android:lineSpacingExtra="4dp"
-        app:layout_constraintTop_toBottomOf="@+id/tvTitle"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:layout_marginBottom="30dp"/>
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
         android:gravity="center"
-        android:orientation="horizontal"
-        app:layout_constraintTop_toBottomOf="@+id/tvMessage"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:orientation="horizontal">
 
         <Button
             android:id="@+id/btnCancel"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            android:background="@drawable/btn_cancel_bg"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/selector_item_focus"
             android:text="Later"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:paddingHorizontal="24dp"
-            android:minWidth="120dp"
+            android:textColor="@android:color/white"
+            android:textAllCaps="false"
             android:focusable="true"
-            android:focusableInTouchMode="true" />
+            android:focusableInTouchMode="true" 
+            android:visibility="gone"/>
 
         <Button
             android:id="@+id/btnUpdate"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:background="@drawable/btn_update_bg"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/selector_item_focus"
             android:text="Update Now"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:paddingHorizontal="32dp"
-            android:minWidth="160dp"
+            android:textColor="@android:color/white"
+            android:textAllCaps="false"
             android:focusable="true"
             android:focusableInTouchMode="true" />
     </LinearLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

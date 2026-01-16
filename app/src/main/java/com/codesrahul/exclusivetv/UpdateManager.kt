@@ -46,7 +46,7 @@ class UpdateManager(
                 if (release?.version_code != null) {
                     // Update only if remote version code is STRICTLY GREATER than current
                     if (release?.version_code!! > versionCode) {
-                        text = "Latest version:${release?.version_name}"
+                        text = "New version available: ${release?.version_name}\n\nPlease update to continue using the app."
                         update = true
                     } else {
                         text = "Already the latest version, no need to update"
@@ -59,17 +59,28 @@ class UpdateManager(
                 text = "Update Error: ${e.localizedMessage}"
                 Log.e(TAG, "Error occurred: ${e.message}", e)
             }
-            updateUI(text, update)
+            updateUI(text, update, update) // Force update is true if update is available
         }
     }
 
-    private fun updateUI(text: String, update: Boolean) {
+    private fun updateUI(text: String, update: Boolean, force: Boolean = false) {
         if (update) {
-            val dialog = ConfirmationFragment(this@UpdateManager, text, update)
+            val dialog = ConfirmationFragment(this@UpdateManager, text, update, force)
             dialog.show((context as FragmentActivity).supportFragmentManager, TAG)
+            
+            // Notify listener to block usage
+            if (force && context is UpdateListener) {
+                (context as UpdateListener).onForceUpdate()
+            }
         } else {
+             // Optional: only show toast if manual check. For auto-check we might want to be silent unless error.
+             // keeping existing logic for now
              Toast.makeText(context, text, Toast.LENGTH_LONG).show()
         }
+    }
+
+    interface UpdateListener {
+        fun onForceUpdate()
     }
 
     private fun startDownload(release: ReleaseResponse) {
@@ -233,27 +244,43 @@ class UpdateManager(
         }
 
         private fun installNewVersion() {
-            val apkFile = File(
-                context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-                apkFileName
-            )
-            Log.i(TAG, "apkFile $apkFile")
+            try {
+                val downloadManager =
+                    context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                var apkUri: Uri? = downloadManager.getUriForDownloadedFile(downloadReference)
 
-            if (apkFile.exists()) {
-                val apkUri = androidx.core.content.FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    apkFile
-                )
-                Log.i(TAG, "apkUri $apkUri")
-                val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(apkUri, "application/vnd.android.package-archive")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Fallback to FileProvider if DownloadManager URI is null
+                if (apkUri == null) {
+                    val apkFile = File(
+                        context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+                        apkFileName
+                    )
+                    Log.i(TAG, "Fallback to FileProvider: $apkFile")
+                    if (apkFile.exists()) {
+                        apkUri = androidx.core.content.FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            apkFile
+                        )
+                    }
                 }
 
-                context.startActivity(installIntent)
-            } else {
-                Log.e(TAG, "APK file does not exist!")
+                if (apkUri != null) {
+                    Log.i(TAG, "Install URI: $apkUri")
+                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(apkUri, "application/vnd.android.package-archive")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    }
+                    context.startActivity(installIntent)
+                } else {
+                    Log.e(TAG, "Failed to get APK URI")
+                    Toast.makeText(context, "Install failed: File not found", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Install error: ${e.message}", e)
+                Toast.makeText(context, "Install Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
     }
