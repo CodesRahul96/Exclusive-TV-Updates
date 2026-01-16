@@ -61,7 +61,7 @@ class ConfirmationFragment(
                 if (hasFocus) {
                     view.animate().scaleX(1.05f).scaleY(1.05f).setDuration(120).start()
                     view.elevation = 10f
-                    view.setBackgroundResource(if(view.id == R.id.btnUpdate) R.drawable.selector_item_focus else R.drawable.selector_item_place)
+                    view.setBackgroundResource(if(view.id == R.id.btnUpdate) R.drawable.selector_item_focus else R.drawable.tv_button_bg)
                 } else {
                     view.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
                     view.elevation = 0f

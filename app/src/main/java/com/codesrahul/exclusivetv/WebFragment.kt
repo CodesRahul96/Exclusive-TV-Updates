@@ -697,6 +697,14 @@ class WebFragment : Fragment() {
         }
     }
 
+    fun stop() {
+        Log.i(TAG, "stop")
+        webView.loadUrl("about:blank")
+        releasePlayer()
+        playerView.visibility = View.GONE
+        webView.visibility = View.GONE
+    }
+
     fun play(tvModel: TVModel) {
         this.tvModel = tvModel
         val url = tvModel.videoUrl.value as? String ?: return
