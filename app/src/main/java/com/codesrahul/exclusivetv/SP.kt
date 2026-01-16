@@ -167,4 +167,9 @@ object SP {
     fun setAudioTrack(channelKey: String, index: Int) {
         sp.edit().putInt(KEY_AUDIO_TRACK_PREFIX + channelKey, index).apply()
     }
+
+    private const val KEY_LAST_VERSION = "last_version"
+    var lastVersion: Int
+        get() = sp.getInt(KEY_LAST_VERSION, -1)
+        set(value) = sp.edit().putInt(KEY_LAST_VERSION, value).apply()
 }

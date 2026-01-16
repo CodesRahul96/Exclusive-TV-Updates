@@ -16,6 +16,7 @@
 local.properties
 files
 keystore.properties
+*.jks
 
 # Exclude testing folder
 testing/

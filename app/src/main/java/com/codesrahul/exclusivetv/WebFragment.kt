@@ -284,13 +284,7 @@ class WebFragment : Fragment() {
                         }
                     }
 
-                    "besttllapp.online"-> webView.evaluateJavascript(context.resources.openRawResource(R.raw.snx)
-                        .bufferedReader()
-                        .use { it.readText() }) { value ->
-                        if (value == "success") {
-                            Log.e(TAG, "success")
-                        }
-                    }
+
 
                     "www.gdtv.cn" -> {
                         webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
@@ -748,18 +742,7 @@ class WebFragment : Fragment() {
         webView.visibility = View.VISIBLE
         releasePlayer()
 
-        if (url.contains("yupptv.com") || url.contains("athavantv.com") || url.contains("ttn.tv") || url.contains("youtube.com")) {
-            CoroutineScope(Dispatchers.IO).launch {
-                val result = performNetworkRequest(url)
-                if(result!=null){
-                    withContext(Dispatchers.Main) {
-                        val encodedUrl = java.net.URLEncoder.encode(result, "UTF-8")
-                        webView.loadUrl("file:///android_asset/tll_player.html?channel=$encodedUrl")
-                    }
-                }
-            }
-            return
-        }
+
 
         val uri = Uri.parse(url)
         Log.e(TAG, "uri ${uri.host}")

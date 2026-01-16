@@ -24,7 +24,7 @@ import java.io.File
 object TVList {
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    const val DEFAULT_CONFIG_URL = "https://firetv-api-worker.technoholicrahul.workers.dev/"
+    const val DEFAULT_CONFIG_URL = "https://exclusivetv-api.vercel.app/"
     private lateinit var appDirectory: File
     private lateinit var serverUrl: String
     private lateinit var list: List<TV>
@@ -83,6 +83,15 @@ object TVList {
 
             if (SP.config.isNullOrEmpty()) {
                 SP.config = DEFAULT_CONFIG_URL
+            }
+
+            // Check for App Update
+            val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
+            if (currentVersion != SP.lastVersion) {
+                Log.i(TAG, "App updated. Resetting config to default.")
+                SP.config = DEFAULT_CONFIG_URL
+                SP.lastVersion = currentVersion
+                File(appDirectory, FILE_NAME).delete() // Clear old cache
             }
 
             if (SP.configAutoLoad && !SP.config.isNullOrEmpty()) {
