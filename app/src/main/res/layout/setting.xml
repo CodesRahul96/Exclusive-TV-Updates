@@ -328,7 +328,7 @@
                         android:layout_width="0dp"
                         android:layout_height="60dp"
                         android:layout_weight="1"
-                        android:text="@string/appreciate"
+                        android:text="Check Update"
                         android:background="@drawable/tv_button_bg"
                         android:textColor="#FFFFFF"
                         android:textSize="14sp"

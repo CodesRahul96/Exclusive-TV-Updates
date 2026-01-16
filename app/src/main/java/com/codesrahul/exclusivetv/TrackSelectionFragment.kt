@@ -87,9 +87,11 @@ class TrackSelectionFragment : Fragment() {
                 if (hasFocus) {
                     view.setBackgroundResource(R.drawable.focus_background)
                     view.animate().scaleX(1.05f).scaleY(1.05f).setDuration(200).start()
+                    holder.name.setTextColor(android.graphics.Color.RED)
                 } else {
                     view.setBackgroundResource(R.drawable.list_item_bg)
                     view.animate().scaleX(1.0f).scaleY(1.0f).setDuration(200).start()
+                    holder.name.setTextColor(android.graphics.Color.WHITE)
                 }
             }
         }

@@ -307,12 +307,8 @@ class SettingFragment : Fragment() {
         }
 
         binding.appreciate.setOnClickListener {
-            //tvUiUtils?.playClickSound()
-            val modal = ModalFragment()
-            val args = Bundle()
-            args.putInt(ModalFragment.KEY_DRAWABLE_ID, R.drawable.appreciate)
-            modal.arguments = args
-            modal.show(requireFragmentManager(), ModalFragment.TAG)
+            tvUiUtils?.playClickSound()
+            requestInstallPermissions()
             (activity as MainActivity).settingActive()
         }
 

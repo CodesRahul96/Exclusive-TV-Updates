@@ -3,6 +3,7 @@ package com.codesrahul.exclusivetv
 import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -117,9 +118,21 @@ class WebFragment : Fragment() {
         return binding.root
     }
 
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
+    private var retryCount = 0
+    private val maxRetries = 10
+    
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val context = requireContext()
         super.onViewCreated(view, savedInstanceState)
+        
+        // Initialize WakeLock
+        try {
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ExclusiveTV:PlayerWakeLock")
+        } catch (e: Exception) {
+            Log.e(TAG, "WakeLock Init Failed", e)
+        }
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun getDefaultVideoPoster(): Bitmap {
@@ -762,7 +775,13 @@ class WebFragment : Fragment() {
         // Always release the previous player to ensure we can configure DRM correctly for the new content
         releasePlayer()
 
+        // Acquire WakeLock
+        if (wakeLock?.isHeld == false) {
+             wakeLock?.acquire(4 * 60 * 60 * 1000L) // 4 hours timeout safety
+        }
+
         var videoUrl = url
+        // ... (DRM parsing logic remains same) ...
         var drmConfig: DrmConfig? = null
         val requestHeaders = mutableMapOf<String, String>()
         var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -790,27 +809,21 @@ class WebFragment : Fragment() {
                         }
                         "drmlicense" -> {
                              // Check if it's currently set to clearkey logic above, simplified here:
-                             // We re-check params logic or just store it. 
-                             // Let's iterate again or store in map first? 
-                             // Better to iterate once.
                         }
                         "user-agent" -> userAgent = value
                         "cookie" -> requestHeaders["Cookie"] = value
                         "referer" -> requestHeaders["Referer"] = value
                         "origin" -> requestHeaders["Origin"] = value
                         "x-forwarded-for" -> requestHeaders["X-Forwarded-For"] = value
-                        // Add other headers if needed
                     }
                 }
             }
             
-            // Re-parse for DRM specifically to keep existing logic structure or adapt it
             val queryParams = params.associate {
                 val parts = it.split("=", limit = 2)
                 if (parts.size == 2) parts[0].trim() to parts[1].trim() else "" to ""
             }
             
-            // Case insensitive lookup for DRM
             val schemeKey = queryParams.keys.find { it.equals("drmScheme", ignoreCase = true) }
             val licenseKey = queryParams.keys.find { it.equals("drmLicense", ignoreCase = true) }
 
@@ -822,21 +835,20 @@ class WebFragment : Fragment() {
             }
         }
 
-        // Configure LoadControl for better buffering to prevent freezing
+        // OPTIMIZED BUFFER SETTINGS
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                30000,  // Min buffer increased to 30s
-                60000,  // Max buffer 60s
-                4000,   // Buffer for playback 4s (more stable start)
-                8000    // Buffer after rebuffer 8s (prevent rapid pauses)
+                15000,  // Min buffer 15s (Optimal for stability vs memory)
+                50000,  // Max buffer 50s
+                2500,   // Playback start buffer 2.5s (Fast zap)
+                5000    // Rebuffer 5s
             )
-            .setPrioritizeTimeOverSizeThresholds(true) // Prioritize time-based buffering
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
         val builder = ExoPlayer.Builder(requireContext())
             .setLoadControl(loadControl)
         
-        // Configure Data Source with Headers
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(userAgent)
             .setAllowCrossProtocolRedirects(true)
@@ -862,8 +874,7 @@ class WebFragment : Fragment() {
         if (SP.forceHighQuality) {
             val trackSelectionParameters = exoPlayer?.trackSelectionParameters
                 ?.buildUpon()
-                ?.setMaxVideoSizeSd() // Start with SD as baseline
-                // .setForceHighestSupportedBitrate(true) // Removed to prevent freezing
+                ?.setMaxVideoSizeSd() // Start with SD
                 ?.build()
             if (trackSelectionParameters != null) {
                 exoPlayer?.trackSelectionParameters = trackSelectionParameters
@@ -874,13 +885,30 @@ class WebFragment : Fragment() {
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
                 Log.e(TAG, "ExoPlayer Error: ${error.message}", error)
-                tvModel?.setErrInfo("Player Error: ${error.message}")
+                
+                // AUTO RETRY LOGIC
+                if (retryCount < maxRetries) {
+                    retryCount++
+                    val delay = if(error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) 1000L else 3000L
+                    tvModel?.setErrInfo("Retrying... ($retryCount/$maxRetries)")
+                    
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        if (retryCount > 0 && exoPlayer != null) { // Check if still in retry mode and player exists
+                            Log.i(TAG, "Retrying playback...")
+                            exoPlayer?.prepare()
+                            exoPlayer?.play()
+                        }
+                    }, delay)
+                } else {
+                     tvModel?.setErrInfo("Stream Failed: ${error.message}")
+                }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
                  if (playbackState == Player.STATE_READY) {
-                        tvModel?.setErrInfo("") // Clear error info on successful play
+                        tvModel?.setErrInfo("") 
+                        retryCount = 0 // Reset retry count on success
                  }
             }
 
@@ -898,6 +926,7 @@ class WebFragment : Fragment() {
                 }
                 tvModel?.setVideoQuality(label)
             }
+
 
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
                 super.onTracksChanged(tracks)
@@ -1019,6 +1048,9 @@ class WebFragment : Fragment() {
     }
 
     private fun releasePlayer() {
+        if (wakeLock?.isHeld == true) {
+            wakeLock?.release()
+        }
         exoPlayer?.release()
         exoPlayer = null
     }
