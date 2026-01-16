@@ -404,10 +404,12 @@ class ListAdapter(
         this.listener = listener
     }
 
+
     private fun showChannelOptions(position: Int, tvModel: TVModel) {
         val channelName = tvModel.tv.title
+        val isFavorite = tvModel.like.value ?: false
 
-        val optionsDialog = ChannelOptionsDialogFragment.newInstance(channelName)
+        val optionsDialog = ChannelOptionsDialogFragment.newInstance(channelName, isFavorite)
         optionsDialog.setChannelOptionsListener(object : ChannelOptionsDialogFragment.ChannelOptionsListener {
             override fun onMoveSelected() {
                 startMove(position)
@@ -415,6 +417,11 @@ class ListAdapter(
 
             override fun onRenameSelected() {
                 showRenameDialog(tvModel)
+            }
+
+            override fun onFavoriteSelected() {
+                 tvModel.setLike(!(tvModel.like.value ?: false))
+                 // Refresh handled by like observer in ViewHolder
             }
 
             override fun onCancelSelected() {

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
+    android:layout_width="300dp"
     android:layout_height="wrap_content"
-    android:background="@android:drawable/dialog_holo_light_frame"
+    android:background="@drawable/bg_menu_glass"
     android:orientation="vertical"
-    android:padding="24dp"
-    android:theme="@style/Theme.MyTV1">
+    android:padding="20dp"
+    android:gravity="center_horizontal">
 
     <TextView
         android:id="@+id/dialog_title"
@@ -13,50 +13,67 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:text="Channel Options"
-        android:textColor="@android:color/black"
-        android:textSize="22sp"
-        android:textStyle="bold" />
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingBottom="16dp" />
 
-    <LinearLayout
+    <Button
+        android:id="@+id/btn_favorite"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:gravity="center"
-        android:orientation="horizontal">
+        android:background="@drawable/selector_item_focus"
+        android:text="Add to Favorites"
+        android:textAllCaps="false"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp"/>
 
-        <Button
-            android:id="@+id/btn_move"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/tv_button_bg"
-            android:text="Move"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:textColor="@android:color/white" />
+    <Button
+        android:id="@+id/btn_move"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector_item_focus"
+        android:text="Move Channel"
+        android:textAllCaps="false"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp" />
 
-        <Button
-            android:id="@+id/btn_rename"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/tv_button_bg"
-            android:text="Rename"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:textColor="@android:color/white" />
+    <Button
+        android:id="@+id/btn_rename"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector_item_focus"
+        android:text="Rename Channel"
+        android:textAllCaps="false"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp" />
 
-        <Button
-            android:id="@+id/btn_cancel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/tv_button_bg"
-            android:text="Cancel"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:textColor="@android:color/white" />
-    </LinearLayout>
+    <Button
+        android:id="@+id/btn_cancel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector_item_focus"
+        android:text="Cancel"
+        android:textAllCaps="false"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        android:alpha="0.8"
+        android:padding="12dp" />
 
 </LinearLayout>

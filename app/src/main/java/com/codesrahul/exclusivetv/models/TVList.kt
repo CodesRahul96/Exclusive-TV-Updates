@@ -440,7 +440,7 @@ object TVList {
                 .head() // Try HEAD first
                 .build()
             
-            val client = SecureHttpClient.client
+            val client = unsafeClient
             var response = client.newCall(request).execute()
             
             if (response.isSuccessful) {

@@ -347,6 +347,17 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <Button
+                android:id="@+id/close_menu"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:text="Close Settings"
+                android:background="@drawable/tv_button_bg"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:layout_marginTop="12dp" />
+
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

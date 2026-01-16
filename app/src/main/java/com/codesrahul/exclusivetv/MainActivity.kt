@@ -53,7 +53,8 @@ class MainActivity : FragmentActivity() {
 
     private val handler = Handler(Looper.myLooper()!!)
     private val delayHideMenu = 10 * 1000L
-    private val delayHideSetting = 3 * 60 * 1000L
+    private val delayHideSetting = 10 * 1000L
+    private val delayHideTrackSelection = 10 * 1000L
 
     private var doubleBackToExitPressedOnce = false
 
@@ -231,6 +232,7 @@ class MainActivity : FragmentActivity() {
                     TVList.getTVModel(pos)?.let { playChannel(it) }
                 }
                 menuFragment.update()
+                setupCollectionObservers()
             }
         }
 
@@ -240,7 +242,7 @@ class MainActivity : FragmentActivity() {
             TVList.getTVModel(pos)?.let { playChannel(it) }
         }
 
-        setupCollectionObservers()
+        // setupCollectionObservers() moved to groupModel.change observer
 
         // TODO group position
 
@@ -523,6 +525,19 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    fun trackSelectionActive() {
+        handler.removeCallbacks(hideTrackSelection)
+        handler.postDelayed(hideTrackSelection, delayHideTrackSelection)
+    }
+
+    private val hideTrackSelection = Runnable {
+        if (!isFinishing && !supportFragmentManager.isStateSaved) {
+            if (!trackSelectionFragment.isHidden) {
+                supportFragmentManager.beginTransaction().hide(trackSelectionFragment).commitNow()
+            }
+        }
+    }
+
     fun showTime() {
         if (SP.time) {
             showFragment(timeFragment)
@@ -645,6 +660,7 @@ class MainActivity : FragmentActivity() {
         supportFragmentManager.beginTransaction()
             .show(trackSelectionFragment)
             .commitNow()
+        trackSelectionActive()
     }
 
     private fun hideTrackSelectionFragment() {
@@ -677,6 +693,11 @@ class MainActivity : FragmentActivity() {
     }
 
     fun onKey(keyCode: Int, event: KeyEvent?): Boolean {
+        // Reset auto-close timers on user interaction
+        if (!menuFragment.isHidden) menuActive()
+        if (!settingFragment.isHidden) settingActive()
+        if (!trackSelectionFragment.isHidden) trackSelectionActive()
+
         Log.d(TAG, "onKey keyCode $keyCode, repeat ${event?.repeatCount}")
         when (keyCode) {
             KeyEvent.KEYCODE_0 -> {

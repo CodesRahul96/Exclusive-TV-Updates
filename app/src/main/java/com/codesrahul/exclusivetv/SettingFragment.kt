@@ -113,7 +113,8 @@ class SettingFragment : Fragment() {
             binding.clear,
             binding.resetOrder,
             binding.appreciate,
-            binding.exit
+            binding.exit,
+            binding.closeMenu
         )
 
         focusViews.forEach { v ->
@@ -318,6 +319,11 @@ class SettingFragment : Fragment() {
         binding.exit.setOnClickListener {
             //tvUiUtils?.playClickSound()
             requireActivity().finishAffinity()
+        }
+
+        binding.closeMenu.setOnClickListener {
+            //tvUiUtils?.playClickSound()
+            hideSelf()
         }
     }
 

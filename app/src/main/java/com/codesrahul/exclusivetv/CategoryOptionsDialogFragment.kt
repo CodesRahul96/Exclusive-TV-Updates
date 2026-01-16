@@ -32,6 +32,7 @@ class CategoryOptionsDialogFragment : DialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         categoryName = arguments?.getString(ARG_CATEGORY_NAME) ?: ""
+        setStyle(STYLE_NO_TITLE, 0)
     }
 
     fun setCategoryOptionsListener(listener: CategoryOptionsListener) {
@@ -65,6 +66,8 @@ class CategoryOptionsDialogFragment : DialogFragment() {
         }
 
         builder.setView(view)
-        return builder.create()
+        val dialog = builder.create()
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        return dialog
     }
 }

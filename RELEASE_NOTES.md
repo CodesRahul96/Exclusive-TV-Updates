@@ -1,12 +1,9 @@
-# v1.0.24 - UI & Experience Overhaul
+# v1.0.25 - Favorites Fixed & Modern UI
 
-**✨ New Features**
-*   **Card-Style Settings**: A completely redesigned Settings menu featuring a centralized glass-card layout, improving both aesthetics and usability on large screens.
-*   **Redesigned Navigation**: Implemented a unified "Red Accent" theme across the entire application (Menu, Settings, Player) for consistent and clear visual feedback.
-*   **Glassy Clock**: The player clock now features a premium "Glassy Text" effect with optimized top-left positioning, removing obtrusive backgrounds while maintaining readability.
+**✨ Visual Updates**
+*   **Modern Update Card**: The "Update Available" dialog is now a premium Glass Card with bold typography and "Red Accent" buttons.
+*   **Premium Channel Card**: The channel number overlay is now a "Glassy Card" with increased padding (`16dp`).
 
-**🚀 Improvements & Fixes**
-*   **Freeze-Free Playback**: Resolved channel freezing issues by optimizing streaming buffer settings and enabling adaptive bitrate.
-*   **Instant Favorites**: Fixed synchronization issues in "My Collection"; favorites now update immediately without requiring a restart.
-*   **Menu Polish**: Refined layout margins in the channel selection menu for a cleaner look.
-*   **Accessibility**: Enhanced text contrast and focus indicators throughout the app.
+**🚀 Fixes & Stability**
+*   **Favorites Fixed**: Resolved "Add to My Collection" issue. Favorites now save reliability.
+*   **Aggressive Anti-Freeze**: Updated buffering logic (Startup 4s, Deep Buffer 30-60s) to stop freezing.

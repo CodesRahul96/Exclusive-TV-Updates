@@ -39,6 +39,7 @@ class RenameDialogFragment : DialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         currentName = arguments?.getString(ARG_CURRENT_NAME) ?: ""
+        setStyle(STYLE_NO_TITLE, 0)
     }
 
     fun setRenameListener(listener: RenameListener) {
@@ -92,6 +93,7 @@ class RenameDialogFragment : DialogFragment() {
         builder.setView(view)
         val dialog = builder.create()
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         return dialog
     }
 
