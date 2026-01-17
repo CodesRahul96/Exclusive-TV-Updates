@@ -54,6 +54,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var doubleBackToExitPressedOnce = false
 
     lateinit var gestureDetector: GestureDetector
+    lateinit var gestureListener: GestureListener
 
     private var server: SimpleServer? = null
 
@@ -202,7 +203,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
              }
         }
 
-        gestureDetector = GestureDetector(this, GestureListener(this))
+        gestureListener = GestureListener(this)
+        gestureDetector = GestureDetector(this, gestureListener)
 
         showTime()
 
@@ -239,12 +241,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private fun startPeriodicRefresh() {
         refreshHandler.postDelayed(object : Runnable {
             override fun run() {
-                Log.i(TAG, "Triggering periodic background refresh")
-                val config = SP.config
-                if (!config.isNullOrEmpty() && config.startsWith("http")) {
-                    TVList.update(this@MainActivity, config, silent = true)
+                if (!isUpdateRequired) {
+                    Log.i(TAG, "Triggering periodic background refresh")
+                    val config = SP.config
+                    if (!config.isNullOrEmpty() && config.startsWith("http")) {
+                        TVList.update(this@MainActivity, config, silent = true)
+                    }
+                    lastRefreshTime = System.currentTimeMillis()
                 }
-                lastRefreshTime = System.currentTimeMillis()
                 refreshHandler.postDelayed(this, refreshInterval)
             }
         }, refreshInterval)
@@ -252,14 +256,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onResume() {
         super.onResume()
-        // Check for refresh on resume
-        val now = System.currentTimeMillis()
-        if (now - lastRefreshTime > resumeRefreshThreshold) {
-            Log.i(TAG, "Triggering resume refresh")
-            val config = SP.config
-            if (!config.isNullOrEmpty() && config.startsWith("http")) {
-                TVList.update(config, silent = true)
-                lastRefreshTime = now
+        if (!isUpdateRequired) {
+            // Check for refresh on resume
+            val now = System.currentTimeMillis()
+            if (now - lastRefreshTime > resumeRefreshThreshold) {
+                Log.i(TAG, "Triggering resume refresh")
+                val config = SP.config
+                if (!config.isNullOrEmpty() && config.startsWith("http")) {
+                    TVList.update(config, silent = true)
+                    lastRefreshTime = now
+                }
             }
         }
     }
@@ -433,17 +439,57 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (event != null) {
+            val screenWidth = windowManager.defaultDisplay.width
+            val isRightHalf = event.x > screenWidth / 2
+            
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (isRightHalf && menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+                        gestureListener.startTimedLongPress()
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    gestureListener.cancelTimedLongPress()
+                }
+            }
+            
             gestureDetector.onTouchEvent(event)
         }
         return super.onTouchEvent(event)
     }
 
-    private inner class GestureListener(private val context: Context) :
+    inner class GestureListener(private val context: Context) :
         GestureDetector.SimpleOnGestureListener() {
 
         private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        private val longPressHandler = Handler(Looper.getMainLooper())
+        private var isLongPressActive = false
+        private val audioRunnable = Runnable {
+            if (isLongPressActive) {
+                showAudioSelector()
+                isLongPressActive = false // Prevent 5s callback
+            }
+        }
+        private val settingsRunnable = Runnable {
+            if (isLongPressActive) {
+                showSetting()
+                isLongPressActive = false
+            }
+        }
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            // Close settings or audio track selector if they're open
+            if (!settingFragment.isHidden) {
+                hideSettingFragment()
+                return true
+            }
+            
+            if (!trackSelectionFragment.isHidden) {
+                hideTrackSelectionFragment()
+                return true
+            }
+            
+            // Single tap anywhere → menu
             showFragment(menuFragment)
             return true
         }
@@ -451,6 +497,22 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         override fun onDoubleTap(e: MotionEvent): Boolean {
             showSetting()
             return true
+        }
+
+        fun startTimedLongPress() {
+            isLongPressActive = true
+            
+            // Schedule 3-second callback for audio selector
+            longPressHandler.postDelayed(audioRunnable, 3000)
+            
+            // Schedule 5-second callback for settings
+            longPressHandler.postDelayed(settingsRunnable, 5000)
+        }
+
+        fun cancelTimedLongPress() {
+            isLongPressActive = false
+            longPressHandler.removeCallbacks(audioRunnable)
+            longPressHandler.removeCallbacks(settingsRunnable)
         }
 
         override fun onFling(
@@ -945,7 +1007,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            showSetting()
+            showAudioSelector()
             return true
         }
         return super.onKeyLongPress(keyCode, event)
@@ -1009,14 +1071,24 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onForceUpdate() {
         Log.i(TAG, "Force update detected. Blocking app usage.")
-        // Stop playback
+        isUpdateRequired = true
+        
         // Stop playback
         webFragment.stop()
         
-        Toast.makeText(this, "Update Required", Toast.LENGTH_LONG).show()
+        // Hide all fragments to prevent usage
+        hideFragment(webFragment)
+        hideFragment(menuFragment)
+        hideFragment(settingFragment)
+        hideFragment(trackSelectionFragment)
+        
+        Toast.makeText(this, "Update Required - Please update to continue", Toast.LENGTH_LONG).show()
     }
 
     companion object {
         private const val TAG = "MainActivity"
+        @JvmStatic
+        var isUpdateRequired = false
+            private set
     }
 }

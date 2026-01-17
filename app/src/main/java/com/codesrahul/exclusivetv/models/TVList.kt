@@ -94,7 +94,21 @@ object TVList {
             if (SP.configAutoLoad && !SP.config.isNullOrEmpty()) {
                 val cfg = SP.config
                 if (cfg != null) {
-                    update(context, cfg)
+                    // Check if update is required before loading channels
+                    val mainActivityClass = try {
+                        Class.forName("com.codesrahul.exclusivetv.MainActivity")
+                    } catch (e: Exception) {
+                        null
+                    }
+                    val isUpdateRequired = mainActivityClass?.let {
+                        it.getDeclaredField("isUpdateRequired").apply { isAccessible = true }.getBoolean(null)
+                    } ?: false
+                    
+                    if (!isUpdateRequired) {
+                        update(context, cfg)
+                    } else {
+                        Log.i(TAG, "Skipping channel load - update required")
+                    }
                 }
             }
         }
@@ -182,7 +196,7 @@ object TVList {
                              if (success) {
                                 file.writeText(str)
                                 SP.config = serverUrl
-                                if (!silent) "Channel imported successfully".showToast()
+                                if (!silent) "Channels updated".showToast()
                                 
                                  // checkChannelsInBackground()
                                  
@@ -269,7 +283,7 @@ object TVList {
                     withContext(Dispatchers.Main) {
                         if (success) {
                             SP.config = uri.toString()
-                            "Channel imported successfully".showToast(Toast.LENGTH_LONG)
+                            "Channels updated".showToast(Toast.LENGTH_LONG)
                             // checkChannelsInBackground()
                         } else {
                             "Channel import failed".showToast(Toast.LENGTH_LONG)

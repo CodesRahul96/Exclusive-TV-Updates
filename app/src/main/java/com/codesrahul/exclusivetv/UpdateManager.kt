@@ -72,11 +72,8 @@ class UpdateManager(
             if (force && context is UpdateListener) {
                 (context as UpdateListener).onForceUpdate()
             }
-        } else {
-             // Optional: only show toast if manual check. For auto-check we might want to be silent unless error.
-             // keeping existing logic for now
-             Toast.makeText(context, text, Toast.LENGTH_LONG).show()
         }
+        // Removed: Don't show "up to date" message
     }
 
     interface UpdateListener {
