@@ -889,7 +889,18 @@ class WebFragment : Fragment() {
                         }
                     }, delay)
                 } else {
-                     tvModel?.setErrInfo("Stream Failed: ${error.message}")
+                     // Try fallback to next source
+                     if (tvModel?.nextVideoUrl() == true) {
+                         Log.i(TAG, "Switching to next source...")
+                         tvModel?.setErrInfo("Switching Source...")
+                         retryCount = 0 // Reset for new source
+                         val nextUrl = tvModel?.videoUrl?.value
+                         if (!nextUrl.isNullOrEmpty()) {
+                             initializePlayer(nextUrl)
+                         }
+                     } else {
+                        tvModel?.setErrInfo("Channel Not Available")
+                     }
                 }
             }
 

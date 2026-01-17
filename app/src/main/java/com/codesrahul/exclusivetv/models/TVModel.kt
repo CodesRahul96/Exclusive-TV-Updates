@@ -97,6 +97,16 @@ class TVModel(var tv: TV) : ViewModel() {
         tv = t
     }
 
+    fun nextVideoUrl(): Boolean {
+        val current = _videoIndex.value ?: 0
+        if (current + 1 < tv.uris.size) {
+            _videoIndex.value = current + 1
+            _videoUrl.value = getVideoUrl()
+            return true
+        }
+        return false
+    }
+
     companion object {
         private const val TAG = "TVModel"
     }
