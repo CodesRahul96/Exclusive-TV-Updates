@@ -17,6 +17,9 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.Gravity
+import android.widget.FrameLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.view.WindowCompat
@@ -43,6 +46,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var trackSelectionFragment = TrackSelectionFragment()
 
     private lateinit var updateManager: UpdateManager
+    
+    // Watermark views
+    private lateinit var watermarkContainer: FrameLayout
+    private lateinit var tvWatermark: TextView
 
 
 
@@ -50,6 +57,20 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val delayHideMenu = 15 * 1000L
     private val delayHideSetting = 30 * 1000L
     private val delayHideTrackSelection = 30 * 1000L
+    
+    // Right arrow key hold tracking for audio track
+    private val rightArrowHandler = Handler(Looper.getMainLooper())
+    private var isRightArrowPressed = false
+    private val rightArrowHoldRunnable = Runnable {
+        if (isRightArrowPressed) {
+            showAudioSelector()
+            isRightArrowPressed = false
+        }
+    }
+
+    // Periodic Update Check
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private val updateCheckInterval: Long = 15 * 60 * 1000 // 15 minutes
 
     private var doubleBackToExitPressedOnce = false
 
@@ -211,7 +232,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         updateManager = UpdateManager(this, com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
         updateManager.checkAndUpdate()
         
+        // Setup watermark
+        setupWatermark()
+        
         startPeriodicRefresh()
+        startPeriodicUpdateCheck()
 
         // EPG Update Listener
         SP.setOnSharedPreferenceChangeListener(object : OnSharedPreferenceChangeListener {
@@ -252,6 +277,45 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 refreshHandler.postDelayed(this, refreshInterval)
             }
         }, refreshInterval)
+    }
+    
+    private fun setupWatermark() {
+        watermarkContainer = findViewById<FrameLayout>(R.id.watermarkContainer)
+        tvWatermark = findViewById<TextView>(R.id.tvWatermark)
+        
+        updateWatermarkVisibility()
+        updateWatermarkOpacity()
+        updateWatermarkPosition()
+    }
+    
+    private fun startPeriodicUpdateCheck() {
+        updateHandler.postDelayed(object : Runnable {
+            override fun run() {
+                Log.i(TAG, "Triggering periodic update check")
+                updateManager.checkAndUpdate()
+                updateHandler.postDelayed(this, updateCheckInterval)
+            }
+        }, updateCheckInterval)
+    }
+    
+    fun updateWatermarkVisibility() {
+        watermarkContainer.visibility = if (SP.watermarkEnabled) View.VISIBLE else View.GONE
+    }
+    
+    private fun updateWatermarkOpacity() {
+        val opacity = SP.watermarkOpacity
+        tvWatermark.alpha = opacity / 100f
+    }
+    
+    private fun updateWatermarkPosition() {
+        val layoutParams = watermarkContainer.layoutParams as FrameLayout.LayoutParams
+        when (SP.watermarkPosition) {
+            "bottom_right" -> layoutParams.gravity = Gravity.BOTTOM or Gravity.END
+            "bottom_left" -> layoutParams.gravity = Gravity.BOTTOM or Gravity.START
+            "top_right" -> layoutParams.gravity = Gravity.TOP or Gravity.END
+            "top_left" -> layoutParams.gravity = Gravity.TOP or Gravity.START
+        }
+        watermarkContainer.layoutParams = layoutParams
     }
 
     override fun onResume() {
@@ -978,16 +1042,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 // For settings and track selection, let them handle navigation naturally
                 return false
             }
-
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
-                    showFragment(menuFragment)
-                    return true
-                }
-                // Let fragments handle their own left navigation
-                return false
-            }
-
+            
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
                 // 1. If menu is open, let menu handle it for navigation (e.g. Categories -> Channel List)
                 if (!menuFragment.isHidden) {
@@ -999,27 +1054,61 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     return false
                 }
                 
+                // 3. Handle right arrow for audio track selector (3s hold) when all fragments are hidden
+                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+                    if (event?.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                        // Start 3-second timer on first press
+                        isRightArrowPressed = true
+                        rightArrowHandler.postDelayed(rightArrowHoldRunnable, 3000)
+                        return true
+                    } else if (event?.action == KeyEvent.ACTION_UP) {
+                        // Cancel timer on release
+                        isRightArrowPressed = false
+                        rightArrowHandler.removeCallbacks(rightArrowHoldRunnable)
+                        return true
+                    }
+                }
+                
                 return false
             }
+
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+                    showFragment(menuFragment)
+                    return true
+                }
+                // Let fragments handle their own left navigation
+                return false
+            }
+
+
         }
         return false
     }
 
-    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            showAudioSelector()
-            return true
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        if (android.content.Intent.ACTION_SEARCH == intent.action) {
+            val query = intent.getStringExtra(android.app.SearchManager.QUERY)
+            if (!query.isNullOrEmpty()) {
+                Log.i(TAG, "Voice Search Query: $query")
+                handleVoiceSearch(query)
+            }
         }
-        return super.onKeyLongPress(keyCode, event)
+    }
+
+    private fun handleVoiceSearch(query: String) {
+        // Find channel by name (fuzzy match)
+        val channel = TVList.findChannelByName(query)
+        if (channel != null) {
+            Toast.makeText(this, "Playing: ${channel.tv.title}", Toast.LENGTH_SHORT).show()
+            webFragment.play(channel)
+        } else {
+            Toast.makeText(this, "Channel not found: $query", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && !loadingFragment.isVisible) {
-                event?.startTracking()
-                return true
-            }
-        }
         if (onKey(keyCode, event)) {
             return true
         }
@@ -1028,14 +1117,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            if (event?.isTracking == true && !event.isCanceled) {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && !loadingFragment.isVisible) {
-                    showAudioSelector()
-                    return true
-                }
-            }
-        }
         return super.onKeyUp(keyCode, event)
     }
 
@@ -1044,6 +1125,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         connectivityManager.unregisterNetworkCallback(networkCallback)
         rootHandler.removeCallbacksAndMessages(null) // Stop monitoring to prevent memory leaks
         refreshHandler.removeCallbacksAndMessages(null)
+        updateHandler.removeCallbacksAndMessages(null)
         server?.stop()
     }
 

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/watermarkContainer"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom|end"
+    android:layout_margin="16dp"
+    android:visibility="gone">
+    
+    <TextView
+        android:id="@+id/tvWatermark"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Exclusive TV"
+        android:textSize="14sp"
+        android:textColor="#CCFFFFFF"
+        android:fontFamily="sans-serif-medium"
+        android:padding="8dp"
+        android:background="@drawable/watermark_background"
+        android:elevation="4dp"
+        android:letterSpacing="0.05" />
+</FrameLayout>

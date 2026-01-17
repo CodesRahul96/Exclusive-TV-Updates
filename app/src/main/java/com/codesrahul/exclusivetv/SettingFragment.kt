@@ -74,6 +74,7 @@ class SettingFragment : Fragment() {
         binding.statusConfigAutoLoad.text = if (SP.configAutoLoad) "ON" else "OFF"
         binding.statusChannelCheck.text = if (SP.channelCheck) "ON" else "OFF"
         binding.statusEpg.text = if (SP.epgEnabled) "ON" else "OFF"
+        binding.statusWatermark.text = if (SP.watermarkEnabled) "ON" else "OFF"
 
         // Set text colors based on state
         val activeColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
@@ -82,12 +83,16 @@ class SettingFragment : Fragment() {
         val statusViews = listOf(
             binding.statusChannelReversal, binding.statusChannelNum, binding.statusTime,
             binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
-            binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg
+            binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
+            binding.statusWatermark, binding.statusBufferMode
         )
 
         statusViews.forEach { v ->
-            v.setTextColor(if (v.text == "ON") activeColor else inactiveColor)
+            v.setTextColor(if (v.text == "ON" || v.text.toString().startsWith("Mode")) activeColor else inactiveColor)
         }
+
+        val bufferModes = arrayOf("Default", "Max Stability", "Low Latency") // 0, 1, 2
+        binding.statusBufferMode.text = bufferModes.getOrElse(SP.bufferMode) { "Default" }
     }
 
     private fun setupFocusAnimations() {
@@ -102,7 +107,10 @@ class SettingFragment : Fragment() {
             binding.cardBootStartup,
             binding.cardConfigAutoLoad,
             binding.cardChannelCheck,
+            binding.cardChannelCheck,
             binding.cardEpg,
+            binding.cardWatermark,
+            binding.cardBufferMode,
             binding.clear,
             binding.checkVersion,
             binding.closeMenu
@@ -133,6 +141,8 @@ class SettingFragment : Fragment() {
         binding.cardConfigAutoLoad.setOnClickListener { toggleSetting("configAutoLoad") }
         binding.cardChannelCheck.setOnClickListener { toggleSetting("channelCheck") }
         binding.cardEpg.setOnClickListener { toggleSetting("epgEnabled") }
+        binding.cardWatermark.setOnClickListener { toggleSetting("watermark") }
+        binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
 
         binding.confirmConfig.setOnClickListener {
             tvUiUtils?.playClickSound()
@@ -195,6 +205,17 @@ class SettingFragment : Fragment() {
                 } else {
                     TVList.listModel.forEach { it.updateEPG() }
                 }
+            }
+            "watermark" -> {
+                SP.watermarkEnabled = !SP.watermarkEnabled
+                (activity as? MainActivity)?.updateWatermarkVisibility()
+                (activity as? MainActivity)?.updateWatermarkVisibility()
+            }
+            "bufferMode" -> {
+                var current = SP.bufferMode
+                current = (current + 1) % 3 // 0->1->2->0
+                SP.bufferMode = current
+                Toast.makeText(requireContext(), "Buffering: " + arrayOf("Default", "Max Stability", "Low Latency")[current], Toast.LENGTH_SHORT).show()
             }
         }
         syncStatusUI()

@@ -4,7 +4,7 @@
 # Usage: .\release-dual.ps1 v1.0.X
 
 param (
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$Version
 )
 
@@ -50,7 +50,8 @@ if (Test-Path ".\gradlew.bat") {
         exit 1
     }
     Write-Host "Build Successful." -ForegroundColor Green
-} else {
+}
+else {
     Write-Error "gradlew.bat not found."
     exit 1
 }
@@ -79,7 +80,8 @@ $targetName = "ExclusiveTV-$Version.apk"
 if (Test-Path $apkPath) {
     Copy-Item -Path $apkPath -Destination ".\$targetName"
     Write-Host "APK copied to .\$targetName" -ForegroundColor Green
-} else {
+}
+else {
     Write-Error "APK not found at $apkPath"
     exit 1
 }
@@ -92,6 +94,13 @@ if (-not (Test-Path "C:\Program Files\GitHub CLI\gh.exe")) {
 
 $ghExe = "C:\Program Files\GitHub CLI\gh.exe"
 
+# Validate Auth
+& $ghExe auth status
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "GitHub CLI not authenticated. Run 'gh auth login' first."
+    exit 1
+}
+
 # 6. Release to Primary Repository
 Write-Host "`n--> Creating Release on PRIMARY Repository ($PRIMARY_REPO)..." -ForegroundColor Yellow
 
@@ -103,7 +112,8 @@ if (Test-Path "RELEASE_NOTES.md") {
 & $ghExe release create "$Version" "$targetName" --repo $PRIMARY_REPO --title "$Version" --notes "$notes"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "PRIMARY release published successfully!" -ForegroundColor Green
-} else {
+}
+else {
     Write-Error "Failed to create PRIMARY release."
     exit 1
 }
@@ -114,13 +124,46 @@ Write-Host "`n--> Creating Release on FALLBACK Repository ($FALLBACK_REPO)..." -
 & $ghExe release create "$Version" "$targetName" --repo $FALLBACK_REPO --title "$Version" --notes "$notes"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "FALLBACK release published successfully!" -ForegroundColor Green
-} else {
+}
+else {
     Write-Warning "Failed to create FALLBACK release. Please create it manually."
 }
 
-# 8. Update version.json in Fallback Repo (if it's a separate repo)
+# 8. Update version.json in Fallback Repo
 Write-Host "`n--> Updating version.json in FALLBACK repository..." -ForegroundColor Yellow
-Write-Host "Note: You may need to manually push version.json to the fallback repo if it's separate." -ForegroundColor Yellow
+
+$fallbackLocalPath = "..\Exclusive-TV-Updates"
+if (Test-Path $fallbackLocalPath) {
+    Write-Host "Found local fallback repo at $fallbackLocalPath" -ForegroundColor Cyan
+    
+    # Copy files
+    Copy-Item -Path "version.json" -Destination $fallbackLocalPath -Force
+    if (Test-Path "RELEASE_NOTES.md") {
+        Copy-Item -Path "RELEASE_NOTES.md" -Destination $fallbackLocalPath -Force
+    }
+
+    # Commit and Push
+    $currentDir = Get-Location
+    Set-Location $fallbackLocalPath
+    
+    try {
+        git add version.json RELEASE_NOTES.md
+        git commit -m "Update version to $Version"
+        git push origin main
+        Write-Host "Fallback repository updated successfully." -ForegroundColor Green
+    }
+    catch {
+        Write-Warning "Failed to push to fallback repo: $_"
+    }
+    finally {
+        Set-Location $currentDir
+    }
+
+}
+else {
+    Write-Warning "Fallback repo folder not found at $fallbackLocalPath. Skipping file update."
+    Write-Host "You must manually update version.json in $FALLBACK_REPO to ensure updates work!" -ForegroundColor Red
+}
 
 # Summary
 Write-Host "`n=============================================" -ForegroundColor Cyan

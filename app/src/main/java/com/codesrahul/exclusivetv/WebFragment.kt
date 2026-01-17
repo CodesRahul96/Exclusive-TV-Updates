@@ -826,15 +826,7 @@ class WebFragment : Fragment() {
         }
 
         // OPTIMIZED BUFFER SETTINGS
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                15000,  // Min buffer 15s (Optimal for stability vs memory)
-                50000,  // Max buffer 50s
-                2500,   // Playback start buffer 2.5s (Fast zap)
-                5000    // Rebuffer 5s
-            )
-            .setPrioritizeTimeOverSizeThresholds(true)
-            .build()
+        val loadControl = getLoadControl()
 
         val builder = ExoPlayer.Builder(requireContext())
             .setLoadControl(loadControl)
@@ -1130,5 +1122,42 @@ class WebFragment : Fragment() {
 
     fun getCurrentUrl(): String? {
         return currentVideoUrl
+    }
+
+    private fun getLoadControl(): androidx.media3.exoplayer.LoadControl {
+        val bufferMode = SP.bufferMode
+        Log.i(TAG, "Initializing Player with Buffer Mode: $bufferMode")
+        
+        // Mode 0: Default (Balanced)
+        // Mode 1: Max Stability (Large buffer for slow net)
+        // Mode 2: Low Latency (Small buffer for fast net)
+
+        val minBuffer = when (bufferMode) {
+            1 -> 30000 // 30s
+            2 -> 5000  // 5s
+            else -> 15000 // 15s
+        }
+
+        val maxBuffer = when (bufferMode) {
+            1 -> 60000 // 60s
+            2 -> 15000 // 15s
+            else -> 50000 // 50s
+        }
+
+        val startBuffer = when (bufferMode) {
+            1 -> 5000 // 5s start
+            2 -> 1000 // 1s start
+            else -> 2500 // 2.5s start
+        }
+        
+        return DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                minBuffer,
+                maxBuffer,
+                startBuffer,
+                5000 // Rebuffer
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
     }
 }

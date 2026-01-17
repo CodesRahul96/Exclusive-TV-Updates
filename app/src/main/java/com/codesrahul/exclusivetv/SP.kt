@@ -43,6 +43,11 @@ object SP {
     private const val KEY_LAST_VERSION = "last_version"
     private const val KEY_LAST_CHANNEL_URL = "last_channel_url"
     const val KEY_EPG_ENABLED = "epg_enabled"
+    
+    // Watermark settings
+    private const val KEY_WATERMARK_ENABLED = "watermark_enabled"
+    private const val KEY_WATERMARK_OPACITY = "watermark_opacity"
+    private const val KEY_WATERMARK_POSITION = "watermark_position"
 
     private lateinit var sp: SharedPreferences
 
@@ -95,6 +100,12 @@ object SP {
     var positionGroup: Int
         get() = sp.getInt(KEY_POSITION_GROUP, 0)
         set(value) = sp.edit().putInt(KEY_POSITION_GROUP, value).apply()
+
+    private const val KEY_BUFFER_MODE = "buffer_mode" // 0=Default, 1=Stable (Max), 2=Fast (Low)
+
+    var bufferMode: Int
+        get() = sp.getInt(KEY_BUFFER_MODE, 0)
+        set(value) = sp.edit().putInt(KEY_BUFFER_MODE, value).apply()
 
     var positionSub: Int
         get() = sp.getInt(KEY_POSITION_SUB, 0)
@@ -187,6 +198,19 @@ object SP {
     fun setAudioTrack(channelKey: String, index: Int) {
         sp.edit().putInt(KEY_AUDIO_TRACK_PREFIX + channelKey, index).apply()
     }
+    
+    // Watermark settings
+    var watermarkEnabled: Boolean
+        get() = sp.getBoolean(KEY_WATERMARK_ENABLED, true) // Default: enabled
+        set(value) = sp.edit().putBoolean(KEY_WATERMARK_ENABLED, value).apply()
+
+    var watermarkOpacity: Int
+        get() = sp.getInt(KEY_WATERMARK_OPACITY, 40) // Default: 40%
+        set(value) = sp.edit().putInt(KEY_WATERMARK_OPACITY, value).apply()
+
+    var watermarkPosition: String
+        get() = sp.getString(KEY_WATERMARK_POSITION, "bottom_right") ?: "bottom_right"
+        set(value) = sp.edit().putString(KEY_WATERMARK_POSITION, value).apply()
 
     fun reset() {
         sp.edit().clear().apply()

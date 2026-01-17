@@ -32,8 +32,8 @@ object EPGManager {
     private fun normalizeName(name: String): String {
         return normalizedCache.getOrPut(name) {
             name.lowercase(Locale.ROOT)
-                .replace(Regex("\\(.*?\\)"), "") // Remove content in brackets (e.g. Jio, HD, TS)
-                .replace(Regex("\\b(hd|fhd|uhd|4k|sd|hdr)\\b"), "")
+                .replace(Regex("\\(.*?\\)"), "") // Remove content in brackets (e.g. Jio, HD, TS) - Keep this for noise reduction
+                // Removed HD/SD stripping to preventing collisions between Star Gold and Star Gold HD
                 .replace(Regex("[^a-z0-9]"), "")
                 .trim()
         }
@@ -80,6 +80,8 @@ object EPGManager {
             Log.e(TAG, "EPG Error", e)
         }
     }
+
+    private var epgDataById = mutableMapOf<String, MutableList<EPGProgram>>() // New map for ID lookup
 
     private fun parseXML(inputStream: InputStream): Int {
         val parser = Xml.newPullParser()
@@ -140,7 +142,13 @@ object EPGManager {
         }
         
         val newData = mutableMapOf<String, MutableList<EPGProgram>>()
+        val newDataById = mutableMapOf<String, MutableList<EPGProgram>>() // Populate ID map
+
         for ((id, prog) in rawPrograms) {
+            // Populate ID map
+            newDataById.getOrPut(id) { mutableListOf() }.add(prog)
+            
+            // Populate Name map
             val names = channelIdToNames[id] ?: setOf(id)
             for (n in names) {
                 val norm = normalizeName(n)
@@ -149,21 +157,45 @@ object EPGManager {
         }
 
         newData.forEach { (_, progs) -> progs.sortBy { it.start } }
+        newDataById.forEach { (_, progs) -> progs.sortBy { it.start } }
+        
         epgData = newData
+        epgDataById = newDataById
+        
         return channelIdToNames.size
     }
 
-    fun getCurrentProgram(channelName: String): EPGProgram? {
+    fun getCurrentProgram(channelName: String, channelApiId: String = ""): EPGProgram? {
+        val now = System.currentTimeMillis()
+        
+        // Try ID match first if available
+        if (channelApiId.isNotEmpty()) {
+            val progsById = epgDataById[channelApiId]
+            if (progsById != null) {
+                return progsById.find { now in it.start until it.stop }
+            }
+        }
+        
+        // Fallback to Name match
         val normalized = normalizeName(channelName)
         val programs = epgData[normalized] ?: return null
-        val now = System.currentTimeMillis()
         return programs.find { now in it.start until it.stop }
     }
 
-    fun getUpcomingProgram(channelName: String): EPGProgram? {
+    fun getUpcomingProgram(channelName: String, channelApiId: String = ""): EPGProgram? {
+        val now = System.currentTimeMillis()
+        
+        // Try ID match first
+        if (channelApiId.isNotEmpty()) {
+             val progsById = epgDataById[channelApiId]
+             if (progsById != null) {
+                 return progsById.find { it.start > now }
+             }
+        }
+
+        // Fallback to Name match
         val normalized = normalizeName(channelName)
         val programs = epgData[normalized] ?: return null
-        val now = System.currentTimeMillis()
         return programs.find { it.start > now }
     }
 

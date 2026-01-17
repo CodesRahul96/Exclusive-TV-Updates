@@ -92,8 +92,8 @@ class TVModel(var tv: TV) : ViewModel() {
 
     fun updateEPG() {
         if (SP.epgEnabled) {
-            _currentProgram.postValue(EPGManager.getCurrentProgram(tv.title))
-            _upcomingProgram.postValue(EPGManager.getUpcomingProgram(tv.title))
+            _currentProgram.postValue(EPGManager.getCurrentProgram(tv.title, tv.apiId))
+            _upcomingProgram.postValue(EPGManager.getUpcomingProgram(tv.title, tv.apiId))
         } else {
             _currentProgram.postValue(null)
             _upcomingProgram.postValue(null)

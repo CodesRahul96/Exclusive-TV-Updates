@@ -43,6 +43,23 @@ object TVList {
     val importProgress: LiveData<Int>
         get() = _importProgress
 
+    fun findChannelByName(query: String): TVModel? {
+        val q = query.lowercase().trim()
+        // 1. Exact match (title)
+        listModel.find { it.tv.title.lowercase() == q }?.let { return it }
+        
+        // 2. Contains match (title)
+        listModel.find { it.tv.title.lowercase().contains(q) }?.let { return it }
+        
+        // 3. Normalized match (remove spaces/special chars)
+        val qNorm = q.replace(Regex("[^a-z0-9]"), "")
+        listModel.find { 
+            it.tv.title.lowercase().replace(Regex("[^a-z0-9]"), "").contains(qNorm) 
+        }?.let { return it }
+        
+        return null
+    }
+
     fun init(context: Context) {
         _position.value = 0
         _importProgress.value = 0

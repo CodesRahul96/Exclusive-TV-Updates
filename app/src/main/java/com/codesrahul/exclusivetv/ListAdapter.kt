@@ -73,6 +73,11 @@ class ListAdapter(
         binding.heart.layoutParams = layoutParamsHeart
 
         binding.description.textSize = application.px2PxFont(binding.description.textSize)
+        
+        // Scale channel number for TV
+        binding.channelNumber.layoutParams.width = application.px2Px(binding.channelNumber.layoutParams.width)
+        binding.channelNumber.layoutParams.height = application.px2Px(binding.channelNumber.layoutParams.height)
+        binding.channelNumber.textSize = application.px2PxFont(binding.channelNumber.textSize)
 
         return ViewHolder(context, binding)
     }
@@ -293,6 +298,10 @@ class ListAdapter(
             }
 
             bindImage(tvModel.tv.logo, tvModel.tv.id)
+            
+            // Bind channel number (position + 1 for 1-based indexing)
+            binding.channelNumber.text = (tvModel.tv.id + 1).toString()
+            
             setArrows(movingPosition == position)
             like(tvModel.like.value as Boolean)
         }

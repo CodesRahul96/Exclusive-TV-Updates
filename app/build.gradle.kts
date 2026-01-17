@@ -166,6 +166,7 @@ dependencies {
     implementation("com.google.firebase:firebase-crashlytics")
 
     implementation("androidx.cardview:cardview:1.0.0")
+    implementation("androidx.tvprovider:tvprovider:1.0.0")
     testImplementation("junit:junit:4.13.2")
 }
 
