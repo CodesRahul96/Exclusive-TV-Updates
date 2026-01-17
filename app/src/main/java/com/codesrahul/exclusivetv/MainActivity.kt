@@ -220,9 +220,21 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         SP.setOnSharedPreferenceChangeListener(object : OnSharedPreferenceChangeListener {
             override fun onSharedPreferenceChanged(key: String) {
                 if (key == SP.KEY_EPG) {
-                    Log.i(TAG, "EPG setting changed, forcing refresh")
+                    if (SP.epgEnabled) {
+                        Log.i(TAG, "EPG URL changed, forcing refresh")
+                        runOnUiThread {
+                            com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
+                        }
+                    }
+                } else if (key == SP.KEY_EPG_ENABLED) {
+                    Log.i(TAG, "EPG toggle changed: ${SP.epgEnabled}")
                     runOnUiThread {
-                        com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
+                        if (SP.epgEnabled) {
+                            com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
+                        } else {
+                            // Silently refresh UI models to clear EPG data from view
+                            com.codesrahul.exclusivetv.models.TVList.refreshModels(this@MainActivity)
+                        }
                     }
                 }
             }

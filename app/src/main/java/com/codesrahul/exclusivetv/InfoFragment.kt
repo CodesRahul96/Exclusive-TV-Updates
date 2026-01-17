@@ -108,8 +108,14 @@ class InfoFragment : Fragment() {
         }
 
         // --- Date and Time ---
-        handler.removeCallbacks(timeRunnable)
-        handler.post(timeRunnable)
+        if (SP.epgEnabled) {
+            binding.dateTime.visibility = View.VISIBLE
+            handler.removeCallbacks(timeRunnable)
+            handler.post(timeRunnable)
+        } else {
+            binding.dateTime.visibility = View.GONE
+            handler.removeCallbacks(timeRunnable)
+        }
 
         // --- EPG BINDING ---
         if (SP.epgEnabled) {

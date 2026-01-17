@@ -98,13 +98,15 @@ object EPGManager {
                         channelIdToNames.getOrPut(id) { mutableSetOf() }.add(id)
                         var depth = 1
                         while (depth > 0) {
-                            val nextType = parser.next()
+                            val nextType = try { parser.next() } catch (e: Exception) { break }
+                            if (nextType == XmlPullParser.END_DOCUMENT) break
+                            
                             if (nextType == XmlPullParser.START_TAG) {
                                 depth++
                                 if (parser.name == "display-name") {
-                                    val dn = parser.nextText()
-                                    channelIdToNames[id]?.add(dn)
-                                    depth--
+                                    val dn = try { parser.nextText() } catch (e: Exception) { "" }
+                                    if (dn.isNotEmpty()) channelIdToNames[id]?.add(dn)
+                                    depth-- // nextText consumes END_TAG
                                 }
                             } else if (nextType == XmlPullParser.END_TAG) {
                                 depth--
@@ -119,20 +121,22 @@ object EPGManager {
                     if (channelId != null && start != null && stop != null) {
                         var title = ""
                         var desc = ""
-                        var innerEvent = parser.next()
+                        var innerEvent = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
                         while (innerEvent != XmlPullParser.END_DOCUMENT) {
                             if (innerEvent == XmlPullParser.END_TAG && parser.name == "programme") break
                             if (innerEvent == XmlPullParser.START_TAG) {
-                                if (parser.name == "title") title = parser.nextText()
-                                else if (parser.name == "desc") desc = parser.nextText()
+                                if (parser.name == "title") title = try { parser.nextText() } catch (e: Exception) { "" }
+                                else if (parser.name == "desc") desc = try { parser.nextText() } catch (e: Exception) { "" }
                             }
-                            innerEvent = parser.next()
+                            innerEvent = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
                         }
-                        rawPrograms.add(channelId to EPGProgram(title, start, stop, desc))
+                        if (title.isNotEmpty()) {
+                            rawPrograms.add(channelId to EPGProgram(title, start, stop, desc))
+                        }
                     }
                 }
             }
-            eventType = parser.next()
+            eventType = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
         }
         
         val newData = mutableMapOf<String, MutableList<EPGProgram>>()

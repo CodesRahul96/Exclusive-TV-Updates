@@ -193,7 +193,6 @@ object TVList {
                                      CoroutineScope(Dispatchers.IO).launch {
                                          EPGManager.fetchEPG(force = true)
                                          withContext(Dispatchers.Main) {
-                                             EPGManager.epgStatus.showToast()
                                              listModel.forEach { it.updateEPG() }
                                          }
                                      }
@@ -453,7 +452,6 @@ object TVList {
                     CoroutineScope(Dispatchers.IO).launch {
                         EPGManager.fetchEPG(force = true)
                         withContext(Dispatchers.Main) {
-                            EPGManager.epgStatus.showToast()
                             listModel.forEach { it.updateEPG() }
                         }
                     }
