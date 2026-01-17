@@ -26,6 +26,7 @@ import com.codesrahul.exclusivetv.models.TVListModel
 import com.codesrahul.exclusivetv.models.TVModel
 import com.codesrahul.exclusivetv.OrderPreferenceManager
 import com.codesrahul.exclusivetv.RenameDialogFragment
+import com.codesrahul.exclusivetv.MyTVApplication
 import android.widget.Toast
 import android.view.MotionEvent
 import java.util.Collections
@@ -111,7 +112,7 @@ class ListAdapter(
                 Collections.swap(currentOrder, from, to)
                 OrderPreferenceManager.saveChannelOrder(categoryName, currentOrder)
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                    com.codesrahul.exclusivetv.models.TVList.refreshModels()
+                    com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
                 }
                 notifyItemMoved(from, to)
                 return true
@@ -241,6 +242,13 @@ class ListAdapter(
 
         viewHolder.bindTitle(tvModel.tv.title)
 
+        // Bind EPG description
+        if (SP.epgEnabled) {
+            viewHolder.bindDescription(tvModel.currentProgram.value?.title)
+        } else {
+            viewHolder.bindDescription(null)
+        }
+
         viewHolder.bindImage(tvModel.tv.logo, tvModel.tv.id)
 
         viewHolder.setArrows(movingPosition == position)
@@ -264,6 +272,15 @@ class ListAdapter(
 
         fun bindTitle(text: String) {
             binding.title.text = text
+        }
+
+        fun bindDescription(text: String?) {
+            if (text.isNullOrEmpty()) {
+                binding.description.visibility = View.GONE
+            } else {
+                binding.description.text = text
+                binding.description.visibility = View.VISIBLE
+            }
         }
 
         fun bindImage(url: String?, id: Int) {
@@ -473,7 +490,7 @@ class ListAdapter(
                     Toast.makeText(context, "Channel renamed", Toast.LENGTH_SHORT).show()
                     // Trigger refresh to apply rename
                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                        com.codesrahul.exclusivetv.models.TVList.refreshModels()
+                        com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
                     }
                     // Update the adapter
                     update(tvListModel)
@@ -501,7 +518,7 @@ class ListAdapter(
             Collections.swap(currentOrder, index, index - 1)
             OrderPreferenceManager.saveChannelOrder(categoryName, currentOrder)
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels()
+                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
             }
             
             // Get the updated model from the group model to ensure we have the fresh data
@@ -534,7 +551,7 @@ class ListAdapter(
             Collections.swap(currentOrder, index, index + 1)
             OrderPreferenceManager.saveChannelOrder(categoryName, currentOrder)
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels()
+                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
             }
             
             // Get the updated model from the group model to ensure we have the fresh data

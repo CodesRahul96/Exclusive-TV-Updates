@@ -259,7 +259,20 @@
                 android:layout_marginBottom="10dp"
                 android:focusable="true"
                 android:focusableInTouchMode="true" />
-
+ 
+            <Switch
+                android:id="@+id/switch_epg"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="Enable EPG (Electronic Program Guide)"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:paddingStart="8dp"
+                android:background="@drawable/selector_item_focus"
+                android:layout_marginBottom="10dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+ 
             <Switch
                 android:id="@+id/switch_channel_check"
                 android:layout_width="match_parent"

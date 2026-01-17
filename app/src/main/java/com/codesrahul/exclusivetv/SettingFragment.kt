@@ -67,6 +67,7 @@ class SettingFragment : Fragment() {
         binding.switchChannelCheck.isChecked = SP.channelCheck
         binding.switchWatchLast.isChecked = SP.watchLast
         binding.switchForceHighQuality.isChecked = SP.forceHighQuality
+        binding.switchEpg.isChecked = SP.epgEnabled
 
         val currentConfig = SP.config ?: ""
         if (currentConfig == TVList.DEFAULT_CONFIG_URL) {
@@ -108,6 +109,7 @@ class SettingFragment : Fragment() {
             binding.switchChannelCheck,
             binding.switchWatchLast,
             binding.switchForceHighQuality,
+            binding.switchEpg,
             binding.confirmConfig,
             binding.confirmChannel,
             binding.clear,
@@ -152,7 +154,8 @@ class SettingFragment : Fragment() {
             binding.switchChannelReversal, binding.switchChannelNum,
             binding.switchTime, binding.switchBootStartup,
             binding.switchConfigAutoLoad, binding.switchChannelCheck,
-            binding.switchWatchLast, binding.switchForceHighQuality
+            binding.switchWatchLast, binding.switchForceHighQuality,
+            binding.switchEpg
         )
 
         views.forEach { v ->
@@ -205,6 +208,17 @@ class SettingFragment : Fragment() {
         binding.switchForceHighQuality.setOnCheckedChangeListener { _, b ->
             SP.forceHighQuality = b
             (activity as MainActivity).settingActive()
+        }
+
+        binding.switchEpg.setOnCheckedChangeListener { _, b ->
+            SP.epgEnabled = b
+            (activity as MainActivity).settingActive()
+            // Trigger refresh if enabled
+            if (b) {
+                TVList.update(requireContext(), SP.config ?: TVList.DEFAULT_CONFIG_URL, silent = true)
+            } else {
+                TVList.listModel.forEach { it.updateEPG() }
+            }
         }
 
         binding.qrcode.setOnClickListener {

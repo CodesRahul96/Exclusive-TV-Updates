@@ -42,6 +42,7 @@ object SP {
     private const val KEY_FORCE_HIGH_QUALITY = "force_high_quality"
     private const val KEY_LAST_VERSION = "last_version"
     private const val KEY_LAST_CHANNEL_URL = "last_channel_url"
+    private const val KEY_EPG_ENABLED = "epg_enabled"
 
     private lateinit var sp: SharedPreferences
 
@@ -128,6 +129,10 @@ object SP {
     var lastChannelUrl: String
         get() = sp.getString(KEY_LAST_CHANNEL_URL, "") ?: ""
         set(value) = sp.edit().putString(KEY_LAST_CHANNEL_URL, value).apply()
+
+    var epgEnabled: Boolean
+        get() = sp.getBoolean(KEY_EPG_ENABLED, false)
+        set(value) = sp.edit().putBoolean(KEY_EPG_ENABLED, value).apply()
 
     fun getLike(id: Int): Boolean {
         val stringSet = sp.getStringSet(KEY_LIKE, emptySet())

@@ -10,7 +10,9 @@ import androidx.lifecycle.MutableLiveData
 import com.google.gson.JsonSyntaxException
 import com.codesrahul.exclusivetv.R
 import com.codesrahul.exclusivetv.SP
+import com.codesrahul.exclusivetv.EPGManager
 import com.codesrahul.exclusivetv.showToast
+import com.codesrahul.exclusivetv.MyTVApplication
 import com.codesrahul.exclusivetv.SecureHttpClient
 import com.codesrahul.exclusivetv.OrderPreferenceManager
 import okhttp3.Request
@@ -90,8 +92,9 @@ object TVList {
             }
 
             if (SP.configAutoLoad && !SP.config.isNullOrEmpty()) {
-                SP.config?.let {
-                    update(it)
+                val cfg = SP.config
+                if (cfg != null) {
+                    update(context, cfg)
                 }
             }
         }
@@ -128,16 +131,10 @@ object TVList {
     }
 
     fun update(serverUrl: String, silent: Boolean = false) {
-        this.serverUrl = serverUrl
-        update(silent)
+        update(MyTVApplication.getInstance(), serverUrl, silent)
     }
 
-    private fun update(silent: Boolean = false) {
-        if (isUpdating) {
-            Log.w(TAG, "Update already in progress. Skipping.")
-            return
-        }
-
+    fun update(ctx: Context, serverUrl: String, silent: Boolean = false) {
         CoroutineScope(Dispatchers.IO).launch {
             isUpdating = true
             withContext(Dispatchers.Main) {
@@ -169,7 +166,7 @@ object TVList {
                         }
                     }
 
-                    val file = File(appDirectory, FILE_NAME)
+                    val file = File(ctx.filesDir, FILE_NAME)
                     if (!file.exists()) {
                         file.createNewFile()
                     }
@@ -187,7 +184,16 @@ object TVList {
                                 SP.config = serverUrl
                                 if (!silent) "Channel imported successfully".showToast()
                                 
-                                // checkChannelsInBackground()
+                                 // checkChannelsInBackground()
+                                 
+                                 // Fetch EPG if enabled
+                                 if (SP.epgEnabled) {
+                                     Log.i(TAG, "Fetching EPG...")
+                                     EPGManager.init(ctx)
+                                     EPGManager.fetchEPG()
+                                     EPGManager.epgStatus.showToast()
+                                     listModel.forEach { it.updateEPG() }
+                                 }
 
                                 // Update progress to 100 (Done)
                                 if (!silent) {
@@ -273,7 +279,7 @@ object TVList {
                 "Failed to read channel".showToast(Toast.LENGTH_LONG)
             }
         } else {
-            update(uri.toString())
+            update(MyTVApplication.getInstance(), uri.toString())
         }
     }
 
@@ -313,127 +319,140 @@ object TVList {
             return@withContext false
         }
 
-        refreshModels()
+        refreshModels(MyTVApplication.getInstance())
         return@withContext true
     }
 
 
-    suspend fun refreshModels() = withContext(Dispatchers.Default) {
-        if (!::list.isInitialized || list.isEmpty()) {
-            Log.w(TAG, "Cannot refresh models: list not initialized or empty")
-            return@withContext
-        }
-
-        // Preparation Phase (Background) - Work with TV objects, NOT TVModel
-        val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
-        for (v in list) {
-            if (v.group !in map) {
-                map[v.group] = mutableListOf()
+    fun refreshModels(ctx: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            if (!::list.isInitialized || list.isEmpty()) {
+                Log.w(TAG, "Cannot refresh models: list not initialized or empty")
+                return@launch
             }
-            map[v.group]?.add(v)
-        }
 
-        // Apply saved category order
-        val categoryOrder = OrderPreferenceManager.getCategoryOrder()
-        val categoryRenames = OrderPreferenceManager.getCategoryRenames()
-        
-        val sortedCategories = if (categoryOrder != null && categoryOrder.isNotEmpty()) {
-            val orderedCategories = mutableListOf<String>()
-            val unorderedCategories = map.keys.filter { it !in categoryOrder }.toMutableList()
-            for (catName in categoryOrder) {
-                if (catName in map) {
-                    orderedCategories.add(catName)
+            // Preparation Phase (Background) - Work with TV objects, NOT TVModel
+            val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
+            for (v in list) {
+                if (v.group !in map) {
+                    map[v.group] = mutableListOf()
                 }
+                map[v.group]?.add(v)
             }
-            orderedCategories.addAll(unorderedCategories)
-            orderedCategories
-        } else {
-            map.keys.toList()
-        }
 
-        // Prepare raw data structures for Main thread update
-        // Triple<CategoryName, GroupIndex, List<TV>>
-        val preparedGroups = mutableListOf<Triple<String, Int, List<TV>>>()
-        
-        var groupIndex = 2
-        // We will assign IDs and build TVModels in the main thread to be safe, 
-        // OR we can assign IDs here if 'id' in TV is just an Int and not LiveData.
-        // TV.id is Int. So checks are fine.
-        // But TVModel creation MUST be on Main.
-        
-        for (categoryName in sortedCategories) {
-            val originalCategoryName = categoryName
-            val displayCategoryName = categoryRenames[originalCategoryName] ?: originalCategoryName
-            val channels = map[originalCategoryName] ?: continue
+            // Apply saved category order
+            val categoryOrder = OrderPreferenceManager.getCategoryOrder()
+            val categoryRenames = OrderPreferenceManager.getCategoryRenames()
             
-            // Apply saved channel order
-            val channelOrder = OrderPreferenceManager.getChannelOrder(originalCategoryName)
-            val channelRenames = OrderPreferenceManager.getChannelRenames()
-            
-            val sortedChannels = if (channelOrder != null && channelOrder.isNotEmpty()) {
-                val urlToModel = channels.associateBy { it.uris.firstOrNull() ?: "" }
-                val orderedChannels = mutableListOf<TV>()
-                val unorderedChannels = channels.filter { 
-                    it.uris.firstOrNull()?.let { url -> url !in channelOrder } ?: true 
-                }.toMutableList()
-                
-                for (url in channelOrder) {
-                    urlToModel[url]?.let { orderedChannels.add(it) }
+            val sortedCategories = if (categoryOrder != null && categoryOrder.isNotEmpty()) {
+                val orderedCategories = mutableListOf<String>()
+                val unorderedCategories = map.keys.filter { it !in categoryOrder }.toMutableList()
+                for (catName in categoryOrder) {
+                    if (catName in map) {
+                        orderedCategories.add(catName)
+                    }
                 }
-                orderedChannels.addAll(unorderedChannels)
-                orderedChannels
+                orderedCategories.addAll(unorderedCategories)
+                orderedCategories
             } else {
-                channels
+                map.keys.toList()
             }
+
+            // Prepare raw data structures for Main thread update
+            // Triple<CategoryName, GroupIndex, List<TV>>
+            val preparedGroups = mutableListOf<Triple<String, Int, List<TV>>>()
             
-            // Renaming can happen here safely on TV objects
-            for (tv in sortedChannels) {
-                 val channelUrl = tv.uris.firstOrNull() ?: ""
-                 val renamedTitle = channelRenames[channelUrl]
-                 if (renamedTitle != null) {
-                     tv.title = renamedTitle
-                 }
+            var groupIndex = 2
+            // We will assign IDs and build TVModels in the main thread to be safe, 
+            // OR we can assign IDs here if 'id' in TV is just an Int and not LiveData.
+            // TV.id is Int. So checks are fine.
+            // But TVModel creation MUST be on Main.
+            
+            for (categoryName in sortedCategories) {
+                val originalCategoryName = categoryName
+                val displayCategoryName = categoryRenames[originalCategoryName] ?: originalCategoryName
+                val channels = map[originalCategoryName] ?: continue
+                
+                // Apply saved channel order
+                val channelOrder = OrderPreferenceManager.getChannelOrder(originalCategoryName)
+                val channelRenames = OrderPreferenceManager.getChannelRenames()
+                
+                val sortedChannels = if (channelOrder != null && channelOrder.isNotEmpty()) {
+                    val urlToModel = channels.associateBy { it.uris.firstOrNull() ?: "" }
+                    val orderedChannels = mutableListOf<TV>()
+                    val unorderedChannels = channels.filter { 
+                        it.uris.firstOrNull()?.let { url -> url !in channelOrder } ?: true 
+                    }.toMutableList()
+                    
+                    for (url in channelOrder) {
+                        urlToModel[url]?.let { orderedChannels.add(it) }
+                    }
+                    orderedChannels.addAll(unorderedChannels)
+                    orderedChannels
+                } else {
+                    channels
+                }
+                
+                // Renaming can happen here safely on TV objects
+                for (tv in sortedChannels) {
+                     val channelUrl = tv.uris.firstOrNull() ?: ""
+                     val renamedTitle = channelRenames[channelUrl]
+                     if (renamedTitle != null) {
+                         tv.title = renamedTitle
+                     }
+                }
+                
+                preparedGroups.add(Triple(displayCategoryName, groupIndex, sortedChannels))
+                groupIndex++
             }
-            
-            preparedGroups.add(Triple(displayCategoryName, groupIndex, sortedChannels))
-            groupIndex++
-        }
 
-        // Update Phase (Main Thread)
-        withContext(Dispatchers.Main) {
-            groupModel.clear()
-            val listModelNew: MutableList<TVModel> = mutableListOf()
-            var id = 0
-            
-            for ((name, idx, channels) in preparedGroups) {
-                // TVListModel init calls _position.value which requires Main Thread
-                val tvListModel = TVListModel(name, idx)
-                val groupChannels = mutableListOf<TVModel>()
+            // Update Phase (Main Thread)
+            withContext(Dispatchers.Main) {
+                groupModel.clear()
+                val listModelNew: MutableList<TVModel> = mutableListOf()
+                var id = 0
+                
+                for ((name, idx, channels) in preparedGroups) {
+                    // TVListModel init calls _position.value which requires Main Thread
+                    val tvListModel = TVListModel(name, idx)
+                    val groupChannels = mutableListOf<TVModel>()
 
-                for ((listIndex, tv) in channels.withIndex()) {
-                     tv.id = id
-                     // Instantiate TVModel here (Main Thread)
-                     val tvModel = TVModel(tv)
-                     tvModel.groupIndex = idx
-                     tvModel.listIndex = listIndex
-                     
-                     groupChannels.add(tvModel)
-                     listModelNew.add(tvModel)
-                     id++
+                    for ((listIndex, tv) in channels.withIndex()) {
+                         tv.id = id
+                         // Instantiate TVModel here (Main Thread)
+                         val tvModel = TVModel(tv)
+                         tvModel.groupIndex = idx
+                         tvModel.listIndex = listIndex
+                         
+                         groupChannels.add(tvModel)
+                         listModelNew.add(tvModel)
+                         id++
+                    }
+
+                    tvListModel.setTVListModel(groupChannels)
+                    groupModel.addTVListModel(tvListModel)
                 }
 
-                tvListModel.setTVListModel(groupChannels)
-                groupModel.addTVListModel(tvListModel)
+                listModel = listModelNew
+
+                // All channels
+                groupModel.getTVListModel(1)?.setTVListModel(listModel)
+
+                Log.i(TAG, "groupModel ${groupModel.size()}")
+                
+                groupModel.setChange()
+                
+                // Fetch EPG if enabled
+                if (SP.epgEnabled) {
+                    Log.i(TAG, "Fetching EPG (refresh)...")
+                    EPGManager.init(ctx)
+                    EPGManager.fetchEPG()
+                    withContext(Dispatchers.Main) {
+                        EPGManager.epgStatus.showToast()
+                        listModel.forEach { it.updateEPG() }
+                    }
+                }
             }
-
-            listModel = listModelNew
-
-            // All channels
-            groupModel.getTVListModel(1)?.setTVListModel(listModel)
-
-            Log.i(TAG, "groupModel ${groupModel.size()}")
-            
-            groupModel.setChange()
         }
     }
 
@@ -475,7 +494,12 @@ object TVList {
             if (removedCount > 0) {
                 list = validList
                 withContext(Dispatchers.Main) {
-                    refreshModels()
+                    refreshModels(MyTVApplication.getInstance())
+                    // Fetch EPG if enabled
+                    if (SP.epgEnabled) {
+                        EPGManager.fetchEPG()
+                        listModel.forEach { it.updateEPG() }
+                    }
                     "$removedCount not working channels removed".showToast(Toast.LENGTH_LONG)
                 }
             } else {

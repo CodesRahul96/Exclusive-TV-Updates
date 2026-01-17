@@ -17,6 +17,11 @@ import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.codesrahul.exclusivetv.databinding.InfoBinding
 import com.codesrahul.exclusivetv.models.TVModel
+import com.codesrahul.exclusivetv.models.EPGProgram
+import com.codesrahul.exclusivetv.models.TVList
+import com.codesrahul.exclusivetv.models.TVListModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 
 class InfoFragment : Fragment() {
@@ -24,7 +29,17 @@ class InfoFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val handler = Handler()
-    private val delay: Long = 3000
+    private val delay: Long = 12000
+
+    private val timeRunnable = object : Runnable {
+        override fun run() {
+            _binding?.let {
+                val sdf = SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault())
+                it.dateTime.text = sdf.format(Date())
+                handler.postDelayed(this, 1000)
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -92,10 +107,57 @@ class InfoFragment : Fragment() {
             }
         }
 
-//        val program = tvViewModel.getProgramOne()
-//        if (program != null) {
-//            binding.infoDesc.text = program.name
-//        }
+        // --- Date and Time ---
+        handler.removeCallbacks(timeRunnable)
+        handler.post(timeRunnable)
+
+        // --- EPG BINDING ---
+        if (SP.epgEnabled) {
+            // Current Program
+            val program: EPGProgram? = tvViewModel.currentProgram.value
+            if (program != null) {
+                binding.programTitle.text = program.title
+                binding.programTitle.visibility = View.VISIBLE
+                
+                val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                val timeRange = "${timeSdf.format(Date(program.start))} - ${timeSdf.format(Date(program.stop))}"
+                binding.programTime.text = timeRange
+                binding.programTime.visibility = View.VISIBLE
+                
+                binding.desc.text = program.description
+                binding.desc.visibility = if (program.description.isNotEmpty()) View.VISIBLE else View.GONE
+            } else {
+                binding.programTitle.visibility = View.GONE
+                binding.programTime.visibility = View.GONE
+                binding.desc.text = "No current program info\nStatus: ${EPGManager.epgStatus}"
+                binding.desc.visibility = View.VISIBLE
+            }
+
+            // Upcoming Program
+            val nextProg: EPGProgram? = tvViewModel.upcomingProgram.value
+            if (nextProg != null) {
+                binding.nextProgramLabel.visibility = View.VISIBLE
+                binding.nextProgramTitle.text = nextProg.title
+                binding.nextProgramTitle.visibility = View.VISIBLE
+                
+                val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                binding.nextProgramTime.text = timeSdf.format(Date(nextProg.start))
+                binding.nextProgramTime.visibility = View.VISIBLE
+            } else {
+                binding.nextProgramLabel.visibility = View.GONE
+                binding.nextProgramTitle.visibility = View.GONE
+                binding.nextProgramTime.visibility = View.GONE
+            }
+        } else {
+            binding.programTitle.visibility = View.GONE
+            binding.programTime.visibility = View.GONE
+            binding.desc.text = tvViewModel.tv.group
+            binding.desc.visibility = View.VISIBLE
+            binding.nextProgramLabel.visibility = View.GONE
+            binding.nextProgramTitle.visibility = View.GONE
+            binding.nextProgramTime.visibility = View.GONE
+        }
+        // -------------------
 
         handler.removeCallbacks(removeRunnable)
         view?.visibility = View.VISIBLE
@@ -114,6 +176,7 @@ class InfoFragment : Fragment() {
 
     private val removeRunnable = Runnable {
         view?.visibility = View.GONE
+        handler.removeCallbacks(timeRunnable)
     }
 
     override fun onDestroyView() {

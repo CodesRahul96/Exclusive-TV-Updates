@@ -16,6 +16,7 @@ import com.codesrahul.exclusivetv.models.TVGroupModel
 import com.codesrahul.exclusivetv.models.TVListModel
 import com.codesrahul.exclusivetv.OrderPreferenceManager
 import com.codesrahul.exclusivetv.RenameDialogFragment
+import com.codesrahul.exclusivetv.MyTVApplication
 import android.widget.Toast
 import android.view.MotionEvent
 import java.util.Collections
@@ -275,7 +276,7 @@ class GroupAdapter(
                 Collections.swap(currentOrder, from - 2, to - 2)
                 OrderPreferenceManager.saveCategoryOrder(currentOrder)
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels()
+                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
             }
                 notifyItemMoved(from, to)
                 return true
@@ -354,7 +355,7 @@ class GroupAdapter(
                 Toast.makeText(context, "Category renamed", Toast.LENGTH_SHORT).show()
                 // Trigger refresh to apply rename
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels()
+                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
             }
                 // Update the adapter
                 update(tvGroupModel)
@@ -376,7 +377,7 @@ class GroupAdapter(
             Collections.swap(currentOrder, index, index - 1)
             OrderPreferenceManager.saveCategoryOrder(currentOrder)
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels()
+                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
             }
             update(tvGroupModel)
             movingPosition = position - 1
@@ -399,7 +400,7 @@ class GroupAdapter(
             Collections.swap(currentOrder, index, index + 1)
             OrderPreferenceManager.saveCategoryOrder(currentOrder)
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels()
+                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
             }
             update(tvGroupModel)
             movingPosition = position + 1

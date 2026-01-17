@@ -223,7 +223,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 Log.i(TAG, "Triggering periodic background refresh")
                 val config = SP.config
                 if (!config.isNullOrEmpty() && config.startsWith("http")) {
-                    TVList.update(config, silent = true)
+                    TVList.update(this@MainActivity, config, silent = true)
                 }
                 lastRefreshTime = System.currentTimeMillis()
                 refreshHandler.postDelayed(this, refreshInterval)
@@ -846,14 +846,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 return true
             }
 
-            KeyEvent.KEYCODE_ENTER -> {
-                showFragment(menuFragment)
-                return true
-            }
-
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                 if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
-                    showFragment(menuFragment)
+                    val tvModel = TVList.getTVModel()
+                    if (tvModel != null) {
+                        infoFragment.show(tvModel)
+                    }
                     return true
                 }
                 return !trackSelectionFragment.isHidden || !menuFragment.isHidden || !settingFragment.isHidden

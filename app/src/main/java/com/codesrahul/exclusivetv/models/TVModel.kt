@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.codesrahul.exclusivetv.SP
+import com.codesrahul.exclusivetv.EPGManager
 
 class TVModel(var tv: TV) : ViewModel() {
     private val _position = MutableLiveData<Int>()
@@ -81,6 +82,24 @@ class TVModel(var tv: TV) : ViewModel() {
         _audioQuality.postValue(q)
     }
 
+    private val _currentProgram = MutableLiveData<EPGProgram?>()
+    val currentProgram: LiveData<EPGProgram?>
+        get() = _currentProgram
+
+    private val _upcomingProgram = MutableLiveData<EPGProgram?>()
+    val upcomingProgram: LiveData<EPGProgram?>
+        get() = _upcomingProgram
+
+    fun updateEPG() {
+        if (SP.epgEnabled) {
+            _currentProgram.postValue(EPGManager.getCurrentProgram(tv.title))
+            _upcomingProgram.postValue(EPGManager.getUpcomingProgram(tv.title))
+        } else {
+            _currentProgram.postValue(null)
+            _upcomingProgram.postValue(null)
+        }
+    }
+
     private val _videoIndex = MutableLiveData<Int>()
     private val videoIndex: LiveData<Int>
         get() = _videoIndex
@@ -91,10 +110,12 @@ class TVModel(var tv: TV) : ViewModel() {
         _like.value = SP.getLike(tv.id)
         _videoUrl.value = getVideoUrl()
         _program.value = mutableListOf()
+        updateEPG()
     }
 
     fun update(t: TV) {
         tv = t
+        updateEPG()
     }
 
     fun nextVideoUrl(): Boolean {
