@@ -486,6 +486,18 @@
             android:textColor="#4DFFFFFF"
             android:layout_gravity="center_horizontal" />
 
+        <TextView
+            android:id="@+id/developer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Developed by CodesRahul"
+            android:textSize="9sp"
+            android:textColor="#80FFD700"
+            android:textStyle="italic"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:fontFamily="sans-serif-light" />
+
     </LinearLayout>
 
 </FrameLayout>
