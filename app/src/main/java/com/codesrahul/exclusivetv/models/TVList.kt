@@ -24,7 +24,7 @@ import java.io.File
 object TVList {
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    const val DEFAULT_CONFIG_URL = "https://exclusivetv-api.vercel.app/"
+    const val DEFAULT_CONFIG_URL = "https://exclusive-tv-app-api.vercel.app/"
     private lateinit var appDirectory: File
     private lateinit var serverUrl: String
     private lateinit var list: List<TV>
@@ -50,16 +50,7 @@ object TVList {
 
         appDirectory = context.filesDir
         
-        // Check for App Update
-        val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
-        if (currentVersion > SP.lastVersion) {
-            Log.i(TAG, "App updated from ${SP.lastVersion} to $currentVersion. Clearing cache.")
-            val cacheFile = File(appDirectory, FILE_NAME)
-            if (cacheFile.exists()) {
-                cacheFile.delete()
-            }
-            SP.lastVersion = currentVersion
-        }
+
 
         CoroutineScope(Dispatchers.IO).launch {
             val file = File(appDirectory, FILE_NAME)
@@ -85,13 +76,17 @@ object TVList {
                 SP.config = DEFAULT_CONFIG_URL
             }
 
-            // Check for App Update
+            // Check for App Update or Stale Config
             val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
-            if (currentVersion != SP.lastVersion) {
-                Log.i(TAG, "App updated. Resetting config to default.")
+            // Force update to new API if different
+            if (SP.config != DEFAULT_CONFIG_URL) {
+                Log.i(TAG, "Config mismatch. Resetting to default.")
                 SP.config = DEFAULT_CONFIG_URL
-                SP.lastVersion = currentVersion
-                File(appDirectory, FILE_NAME).delete() // Clear old cache
+            }
+            // Update last version
+            if (currentVersion != SP.lastVersion) {
+                 SP.lastVersion = currentVersion
+                 File(appDirectory, FILE_NAME).delete() // Clear old cache
             }
 
             if (SP.configAutoLoad && !SP.config.isNullOrEmpty()) {

@@ -11,7 +11,7 @@ class DecryptionTest {
     @Test
     fun testDecryption() {
         println("Starting decryption test...")
-        val url = "https://jio-api-enc.technoholicrahul.workers.dev/"
+        val url = "https://exclusive-tv-app-api.vercel.app/"
         try {
             val encoded = URL(url).readText().trim()
             println("Fetched ${encoded.length} bytes from API")

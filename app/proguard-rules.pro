@@ -21,7 +21,7 @@
 #-renamesourcefileattribute SourceFile
 
 # Keep data models to prevent Gson serialization/deserialization issues
--keep class com.thirutricks.tllplayer.models.** { *; }
+-keep class com.codesrahul.exclusivetv.models.** { *; }
 
 # Keep Gua library classes
 -keep class io.github.lizongying.** { *; }

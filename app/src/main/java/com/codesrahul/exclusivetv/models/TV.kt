@@ -4,8 +4,10 @@ import java.io.Serializable
 import com.google.gson.annotations.SerializedName
 
 data class TV(
-    @SerializedName("id")
+    @SerializedName("internal_id")
     var id: Int = 0,
+    @SerializedName("id")
+    var apiId: String = "",
     @SerializedName("name")
     var name: String = "",
     @SerializedName("title")
