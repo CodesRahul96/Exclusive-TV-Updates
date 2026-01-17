@@ -190,9 +190,13 @@ object TVList {
                                  if (SP.epgEnabled) {
                                      Log.i(TAG, "Fetching EPG...")
                                      EPGManager.init(ctx)
-                                     EPGManager.fetchEPG()
-                                     EPGManager.epgStatus.showToast()
-                                     listModel.forEach { it.updateEPG() }
+                                     CoroutineScope(Dispatchers.IO).launch {
+                                         EPGManager.fetchEPG(force = true)
+                                         withContext(Dispatchers.Main) {
+                                             EPGManager.epgStatus.showToast()
+                                             listModel.forEach { it.updateEPG() }
+                                         }
+                                     }
                                  }
 
                                 // Update progress to 100 (Done)
@@ -446,10 +450,12 @@ object TVList {
                 if (SP.epgEnabled) {
                     Log.i(TAG, "Fetching EPG (refresh)...")
                     EPGManager.init(ctx)
-                    EPGManager.fetchEPG()
-                    withContext(Dispatchers.Main) {
-                        EPGManager.epgStatus.showToast()
-                        listModel.forEach { it.updateEPG() }
+                    CoroutineScope(Dispatchers.IO).launch {
+                        EPGManager.fetchEPG(force = true)
+                        withContext(Dispatchers.Main) {
+                            EPGManager.epgStatus.showToast()
+                            listModel.forEach { it.updateEPG() }
+                        }
                     }
                 }
             }

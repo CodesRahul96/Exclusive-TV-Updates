@@ -16,7 +16,10 @@ import com.codesrahul.exclusivetv.models.EPGProgram
 
 object EPGManager {
     private const val TAG = "EPGManager"
-    private const val EPG_URL = "https://avkb.short.gy/jioepg.xml.gz"
+    private const val DEFAULT_EPG_URL = "https://avkb.short.gy/epg.xml.gz"
+    
+    private val epgUrl: String
+        get() = SP.epg.takeIf { !it.isNullOrEmpty() } ?: DEFAULT_EPG_URL
     
     private var epgData = mutableMapOf<String, MutableList<EPGProgram>>()
     private val normalizedCache = mutableMapOf<String, String>()
@@ -29,7 +32,8 @@ object EPGManager {
     private fun normalizeName(name: String): String {
         return normalizedCache.getOrPut(name) {
             name.lowercase(Locale.ROOT)
-                .replace(Regex("\\b(hd|fhd|uhd|4k)\\b"), "")
+                .replace(Regex("\\(.*?\\)"), "") // Remove content in brackets (e.g. Jio, HD, TS)
+                .replace(Regex("\\b(hd|fhd|uhd|4k|sd|hdr)\\b"), "")
                 .replace(Regex("[^a-z0-9]"), "")
                 .trim()
         }
@@ -51,7 +55,7 @@ object EPGManager {
             
             if (force || !file.exists() || (now - file.lastModified() > 12 * 3600_000L)) {
                 epgStatus = "Downloading..."
-                val request = Request.Builder().url(EPG_URL).build()
+                val request = Request.Builder().url(epgUrl).build()
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
                         val body = response.body() ?: return@use

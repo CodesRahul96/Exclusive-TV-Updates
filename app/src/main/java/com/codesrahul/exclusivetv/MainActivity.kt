@@ -215,6 +215,18 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         updateManager.checkAndUpdate()
         
         startPeriodicRefresh()
+
+        // EPG Update Listener
+        SP.setOnSharedPreferenceChangeListener(object : OnSharedPreferenceChangeListener {
+            override fun onSharedPreferenceChanged(key: String) {
+                if (key == SP.KEY_EPG) {
+                    Log.i(TAG, "EPG setting changed, forcing refresh")
+                    runOnUiThread {
+                        com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
+                    }
+                }
+            }
+        })
     }
 
     private fun startPeriodicRefresh() {
