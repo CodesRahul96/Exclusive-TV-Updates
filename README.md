@@ -2,7 +2,7 @@
 
 A premium IPTV player for Android TV, optimized for a seamless and immersive viewing experience. **Exclusive TV** combines a high-end aesthetic with robust playback capabilities, intelligent content management, and advanced features for power users.
 
-![Exclusive TV](https://img.shields.io/badge/Platform-Android%20TV-green?style=flat-square) ![Version](https://img.shields.io/badge/Version-v1.0.31-blue?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
+![Exclusive TV](https://img.shields.io/badge/Platform-Android%20TV-green?style=flat-square) ![Version](https://img.shields.io/badge/Version-v1.0.33-blue?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
 **Repository:** [CodesRahul96/Exclusive-TV-APP](https://github.com/CodesRahul96/Exclusive-TV-APP)
 
@@ -14,10 +14,11 @@ A premium IPTV player for Android TV, optimized for a seamless and immersive vie
 - **Modern UI Design:** "Midnight Blue & Gold" theme with glassmorphism effects and smooth focus animations
 - **Optimized Navigation:** Half-screen menu layout allows browsing while video continues playing
 - **Smart Auto-Hide:** Intelligent timer management for menus (15s) and settings (30s) with user interaction detection
+- **Touch-Outside-to-Close:** Tap anywhere to close settings or audio selector dialogs
 - **Leanback Optimized:** Tailored for Android TV D-pad navigation with power user shortcuts
 
 ### 🎵 Advanced Playback
-- **Audio Track Selection:** Real-time audio track switching during playback with dedicated UI
+- **Audio Track Selection:** Real-time audio track switching with timed long-press gestures
 - **Multi-Source Support:** Automatic fallback between primary and backup stream sources
 - **Force High Quality:** Option to always select the highest quality stream available
 - **Auto-Retry System:** Recovers from network drops or stream failures (up to 8 retries)
@@ -27,6 +28,7 @@ A premium IPTV player for Android TV, optimized for a seamless and immersive vie
 - **Gua64 Encryption:** Native support for Hexagram-based encryption for secure playlist distribution
 - **DRM Support:** Widevine, PlayReady, and ClearKey DRM schemes
 - **Custom Headers:** Per-channel HTTP headers including User-Agent customization
+- **Root/VPN Detection:** Security checks to prevent unauthorized usage
 
 ### 📊 Content Management
 - **EPG Integration:** Electronic Program Guide with current and upcoming show information
@@ -36,6 +38,8 @@ A premium IPTV player for Android TV, optimized for a seamless and immersive vie
 - **Auto-Sync & Cache:** Intelligent background updates with local caching for offline access
 
 ### ⚙️ Advanced Settings
+- **Dual-Source Updates:** Automatic fallback to secondary repository if primary is unavailable
+- **Update Blocking:** Prevents channel loading when forced update is required
 - **Factory Reset:** Complete data/cache/settings wipe with automatic app restart
 - **Auto-Update:** Configurable automatic playlist updates on startup
 - **Channel Pruning:** Option to remove dead/non-working channels
@@ -46,15 +50,24 @@ A premium IPTV player for Android TV, optimized for a seamless and immersive vie
 
 ## 🎮 Navigation & Shortcuts
 
-| Action | Control (Remote / Mouse) |
+### Remote Control (TV/TV Box)
+| Action | Control |
 | :--- | :--- |
-| **Open Menu** | Press **DPAD_LEFT** or Click the left edge |
-| **Audio Selector** | Short Press **DPAD_RIGHT** (During playback) |
-| **Settings Menu** | Long Press **DPAD_RIGHT** or Double-click |
+| **Open Menu** | Press **DPAD_LEFT** |
+| **Audio Selector** | Long Press **DPAD_RIGHT** (3 seconds) |
+| **Settings Menu** | **MENU** button or Long Press **DPAD_RIGHT** (5 seconds) |
 | **Add to Favorites** | Long Press **SELECT/OK** on a channel |
 | **Channel Up/Down** | **CHANNEL_UP** / **CHANNEL_DOWN** buttons |
 | **Direct Channel** | Number keys (0-9) for quick channel selection |
-| **Volume Control** | Swipe up/down on touchpad or **VOLUME** buttons |
+
+### Mobile Touch Controls
+| Action | Control |
+| :--- | :--- |
+| **Open Menu** | Single tap anywhere |
+| **Audio Selector** | 3-second hold on right half of screen |
+| **Settings Menu** | 5-second hold on right half of screen or double tap |
+| **Close Dialog** | Tap anywhere outside the dialog |
+| **Channel Navigation** | Swipe up/down in center third |
 
 ---
 
@@ -95,16 +108,21 @@ For enhanced security, you can encrypt your playlist using Gua64:
 }
 ```
 
-*Learn more about [Gua64 encryption](https://github.com/CodesRahul96/Exclusive-TV-APP/blob/main/docs/encryption.md).*
-
 ---
 
 ## 🚀 Installation
 
 ### From GitHub Releases (Recommended)
 1. Download the latest APK from [GitHub Releases](https://github.com/CodesRahul96/Exclusive-TV-APP/releases)
-2. Install via ADB: `adb install ExclusiveTV-v1.0.31.apk`
+2. Install via ADB: `adb install ExclusiveTV-v1.0.33.apk`
 3. Or copy to USB drive and install directly on your Android TV
+
+### Dual-Repository Update System
+The app supports automatic updates from two sources:
+- **Primary**: [CodesRahul96/Exclusive-TV-APP](https://github.com/CodesRahul96/Exclusive-TV-APP)
+- **Fallback**: [CodesRahul96/Exclusive-TV-Updates](https://github.com/CodesRahul96/Exclusive-TV-Updates)
+
+This ensures updates work even if the primary repository becomes private.
 
 ### From Source
 ```bash
@@ -115,22 +133,22 @@ cd Exclusive-TV-APP
 
 ---
 
-## 🔧 Recent Improvements (v1.0.31)
+## 🔧 What's New in v1.0.33
 
-### Performance & Stability
-- **DiffUtil Implementation:** Smooth list animations and reduced UI jank
-- **Memory Leak Prevention:** Proper listener lifecycle management in RecyclerView adapters
-- **Multiple Listener Support:** Fixed critical SharedPreferences observer bug
+### Touch & Gesture Controls
+- **Timed Long-Press Gestures:** 3-second hold for audio selector, 5-second hold for settings
+- **Touch-Outside-to-Close:** Tap anywhere to dismiss settings or audio track dialogs
+- **Improved Mobile Experience:** Optimized touch controls for phones and tablets
 
-### User Experience
-- **Enhanced Auto-Hide:** Robust timer management with 30s timeout for settings
-- **Server Status Display:** Fixed "Server: offline" issue in Settings
-- **Factory Reset:** Complete data wipe with automatic app restart
+### Update System Enhancements
+- **Dual-Repository Support:** Automatic fallback to secondary update source
+- **Update Blocking:** Prevents channel loading when forced update is required
+- **Silent Updates:** Background refresh without interrupting playback
 
-### Code Quality
-- **Modernized Lifecycle:** Replaced deprecated `onActivityCreated()` with `onViewCreated()`
-- **Code Cleanup:** Removed 100+ lines of commented-out legacy code
-- **Better Maintainability:** Following modern Android best practices
+### UI/UX Improvements
+- **Updated Messages:** "Channels updated" instead of "Channel imported successfully"
+- **Cleaner Notifications:** Removed "App is up to date" message
+- **Better Feedback:** Update notifications only appear when update is available
 
 ---
 
@@ -148,7 +166,7 @@ cd Exclusive-TV-APP
 - Glide 4.16.0 (Image loading)
 - Gson 2.10.1 (JSON parsing)
 - NanoHTTPD 2.3.1 (Built-in HTTP server)
-- Firebase Crashlytics (Crash reporting)
+- Retrofit 2.9.0 (Network requests)
 
 ---
 
