@@ -75,29 +75,55 @@ android {
 
 fun getVersionCode(): Int {
     return try {
-        val process = Runtime.getRuntime().exec("git describe --tags --always")
-        process.waitFor()
-        val arr = (process.inputStream.bufferedReader().use(BufferedReader::readText).trim()
-            .replace("v", "").replace(".", " ").replace("-", " ") + " 0").split(" ")
-        val versionCode =
-            arr[0].toInt() * 16777216 + arr[1].toInt() * 65536 + arr[2].toInt() * 256 + arr[3].toInt()
+        val versionFile = File(rootProject.projectDir, "version.json")
+        val versionJson = versionFile.readText()
+        val versionCode = versionJson.substringAfter("\"version_code\": ")
+            .substringBefore(",")
+            .trim()
+            .toInt()
+        println("Version Code from version.json: $versionCode")
         versionCode
-    } catch (ignored: Exception) {
-        1
+    } catch (e: Exception) {
+        println("Error reading version.json: ${e.message}")
+        // Fallback to git tags if version.json is not available
+        try {
+            val process = Runtime.getRuntime().exec("git describe --tags --always")
+            process.waitFor()
+            val arr = (process.inputStream.bufferedReader().use(BufferedReader::readText).trim()
+                .replace("v", "").replace(".", " ").replace("-", " ") + " 0").split(" ")
+            val versionCode =
+                arr[0].toInt() * 16777216 + arr[1].toInt() * 65536 + arr[2].toInt() * 256 + arr[3].toInt()
+            println("Version Code from git: $versionCode")
+            versionCode
+        } catch (ignored: Exception) {
+            1
+        }
     }
 }
 
 fun getVersionName(): String {
     return try {
-        val process = Runtime.getRuntime().exec("git describe --tags --always")
-        process.waitFor()
-        val versionName = process.inputStream.bufferedReader().use(BufferedReader::readText).trim()
-            .removePrefix("v")
-        versionName.ifEmpty {
+        val versionFile = File(rootProject.projectDir, "version.json")
+        val versionJson = versionFile.readText()
+        val versionName = versionJson.substringAfter("\"version_name\": \"")
+            .substringBefore("\"")
+            .trim()
+        println("Version Name from version.json: $versionName")
+        versionName
+    } catch (e: Exception) {
+        println("Error reading version.json: ${e.message}")
+        // Fallback to git tags if version.json is not available
+        try {
+            val process = Runtime.getRuntime().exec("git describe --tags --always")
+            process.waitFor()
+            val versionName = process.inputStream.bufferedReader().use(BufferedReader::readText).trim()
+                .removePrefix("v")
+            versionName.ifEmpty {
+                "1.0.0"
+            }
+        } catch (ignored: Exception) {
             "1.0.0"
         }
-    } catch (ignored: Exception) {
-        "1.0.0"
     }
 }
 
