@@ -98,12 +98,19 @@ class UpdateManager(
         val apkFileName = "$apkName-${release.version_name}.apk"
         val downloadManager =
             context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val request =
-            Request(Uri.parse("${ApiClient.DOWNLOAD_HOST}${release.version_name}/$apkName-${release.version_name}.apk"))
-        Log.i(
-            TAG,
-            "url ${Uri.parse("${ApiClient.DOWNLOAD_HOST}${release.version_name}/$apkName-${release.version_name}.apk")}"
-        )
+        
+        // Use the appropriate download host based on which source provided the version info
+        val downloadHost = if (releaseRequest.usedFallback) {
+            ApiClient.DOWNLOAD_HOST_FALLBACK
+        } else {
+            ApiClient.DOWNLOAD_HOST
+        }
+        
+        val downloadUrl = "$downloadHost${release.version_name}/$apkName-${release.version_name}.apk"
+        val request = Request(Uri.parse(downloadUrl))
+        
+        Log.i(TAG, "Download URL: $downloadUrl")
+        Log.i(TAG, "Using ${if (releaseRequest.usedFallback) "FALLBACK" else "PRIMARY"} download source")
         context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.mkdirs()
         Log.i(TAG, "save dir ${Environment.DIRECTORY_DOWNLOADS}")
         request.setDestinationInExternalFilesDir(
