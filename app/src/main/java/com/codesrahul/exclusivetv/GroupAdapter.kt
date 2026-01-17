@@ -21,6 +21,7 @@ import android.widget.Toast
 import android.view.MotionEvent
 import java.util.Collections
 import kotlinx.coroutines.launch
+import androidx.recyclerview.widget.DiffUtil
 
 
 class GroupAdapter(
@@ -249,10 +250,15 @@ class GroupAdapter(
         this.listener = listener
     }
 
-    fun update(tvGroupModel: TVGroupModel) {
-        this.tvGroupModel = tvGroupModel
+    fun update(newTvGroupModel: TVGroupModel) {
         recyclerView.post {
-            notifyDataSetChanged()
+            val oldList = this.tvGroupModel.getTVListModelList()
+            val newList = newTvGroupModel.getTVListModelList()
+            
+            val diffResult = DiffUtil.calculateDiff(TVListModelDiffCallback(oldList, newList))
+            
+            this.tvGroupModel = newTvGroupModel
+            diffResult.dispatchUpdatesTo(this)
         }
     }
 

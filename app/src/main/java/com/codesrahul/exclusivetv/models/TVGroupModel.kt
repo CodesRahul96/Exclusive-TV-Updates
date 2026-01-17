@@ -58,6 +58,10 @@ class TVGroupModel : ViewModel() {
         return _tvGroupModel.value?.get(idx)
     }
 
+    fun getTVListModelList(): List<TVListModel> {
+        return _tvGroupModel.value ?: emptyList()
+    }
+
     init {
         _position.value = SP.positionGroup
     }

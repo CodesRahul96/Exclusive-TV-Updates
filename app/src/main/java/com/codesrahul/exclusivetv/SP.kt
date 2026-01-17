@@ -46,7 +46,7 @@ object SP {
 
     private lateinit var sp: SharedPreferences
 
-    private var listener: OnSharedPreferenceChangeListener? = null
+    private val listeners = java.util.concurrent.CopyOnWriteArrayList<OnSharedPreferenceChangeListener>()
 
     /**
      * The method must be invoked as early as possible(At least before using the keys)
@@ -59,7 +59,17 @@ object SP {
     }
 
     fun setOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener) {
-        this.listener = listener
+        if (!listeners.contains(listener)) {
+            listeners.add(listener)
+        }
+    }
+
+    fun removeOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener) {
+        listeners.remove(listener)
+    }
+
+    private fun notifyListeners(key: String) {
+        listeners.forEach { it.onSharedPreferenceChanged(key) }
     }
 
     var channelReversal: Boolean
@@ -135,7 +145,7 @@ object SP {
         set(value) {
             if (value != this.epgEnabled) {
                 sp.edit().putBoolean(KEY_EPG_ENABLED, value).apply()
-                listener?.onSharedPreferenceChanged(KEY_EPG_ENABLED)
+                notifyListeners(KEY_EPG_ENABLED)
             }
         }
 
@@ -164,7 +174,7 @@ object SP {
         set(value)  {
             if (value != this.epg) {
                 sp.edit().putString(KEY_EPG, value).apply()
-                listener?.onSharedPreferenceChanged(KEY_EPG)
+                notifyListeners(KEY_EPG)
             }
         }
 
@@ -176,5 +186,9 @@ object SP {
 
     fun setAudioTrack(channelKey: String, index: Int) {
         sp.edit().putInt(KEY_AUDIO_TRACK_PREFIX + channelKey, index).apply()
+    }
+
+    fun reset() {
+        sp.edit().clear().apply()
     }
 }

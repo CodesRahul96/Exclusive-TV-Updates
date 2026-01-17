@@ -24,9 +24,9 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     private lateinit var groupAdapter: GroupAdapter
     private lateinit var listAdapter: ListAdapter
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        Log.i(TAG, "onCreate")
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        Log.i(TAG, "onViewCreated")
     }
 
     override fun onCreateView(
@@ -107,7 +107,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     override fun onItemFocusChange(tvListModel: TVListModel, hasFocus: Boolean) {
         if (hasFocus) {
             (binding.list.adapter as ListAdapter).update(tvListModel)
-            (activity as MainActivity).menuActive()
         }
     }
 
@@ -115,9 +114,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     }
 
     override fun onItemFocusChange(tvModel: TVModel, hasFocus: Boolean) {
-        if (hasFocus) {
-            (activity as MainActivity).menuActive()
-        }
     }
 
     override fun onItemClicked(tvModel: TVModel) {
@@ -155,7 +151,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
             }
 
             KeyEvent.KEYCODE_DPAD_LEFT -> {
-//                (activity as MainActivity).hideMenuFragment()
                 return true
             }
         }
@@ -192,13 +187,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         }
         if (!hidden) {
             if (binding.list.isVisible) {
-//                if (binding.group.isVisible) {
-//                    groupAdapter.focusable(true)
-//                    listAdapter.focusable(false)
-//                } else {
-//                    groupAdapter.focusable(false)
-//                    listAdapter.focusable(true)
-//                }
 
                 val currentTvModel = TVList.getTVModel()
                 if (currentTvModel != null) {
@@ -224,15 +212,12 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 }
             }
             if (binding.group.isVisible) {
-//                groupAdapter.focusable(true)
-//                listAdapter.focusable(false)
                 Log.i(
                     TAG,
                     "group on show toPosition ${TVList.groupModel.position.value!!}/${TVList.groupModel.size()}"
                 )
                 groupAdapter.toPosition(TVList.groupModel.position.value!!)
             }
-            (activity as MainActivity).menuActive()
         } else {
             view?.post {
                 if (::groupAdapter.isInitialized) groupAdapter.visible = false

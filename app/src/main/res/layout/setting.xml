@@ -1,395 +1,492 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/setting"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#99000000"
-    android:clipChildren="false"
-    android:clipToPadding="false">
+    android:background="#66000000">
 
-    <ScrollView
+    <LinearLayout
         android:id="@+id/container"
-        android:layout_width="600dp"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_width="400dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="#E60A0E14"
+        android:orientation="vertical"
         android:padding="24dp"
-        android:clipChildren="false"
-        android:clipToPadding="false"
-        android:scrollbars="none"
-        android:focusable="false"
-        android:focusableInTouchMode="false"
-        android:descendantFocusability="afterDescendants">
+        android:elevation="12dp">
 
-        <LinearLayout
-            android:id="@+id/content"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/name"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="@drawable/bg_menu_glass"
-            android:padding="40dp"
-            android:clipChildren="false"
-            android:clipToPadding="false">
+            android:text="@string/app_name"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:layout_marginBottom="4dp" />
 
-            <TextView
-                android:id="@+id/name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/app_name"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="#FFFFFF"
-                android:layout_marginBottom="12dp" />
+        <TextView
+            android:id="@+id/version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textSize="14sp"
+            android:textColor="#80FFFFFF"
+            android:layout_marginBottom="24dp" />
 
-            <TextView
-                android:id="@+id/version"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Version 1.0.0"
-                android:textSize="14sp"
-                android:textColor="#B3FFFFFF"
-                android:layout_marginBottom="18dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="CONFIGURATION"
-                android:textSize="13sp"
-                android:textColor="#00B0FF"
-                android:textStyle="bold"
-                android:visibility="gone"
-                android:layout_marginBottom="12dp" />
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:scrollbars="none">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginBottom="12dp">
-
-                <!-- Row 1: QR and Server Info -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
-
-                    <Button
-                        android:id="@+id/qrcode"
-                        android:layout_width="120dp"
-                        android:layout_height="40dp"
-                        android:text="@string/server"
-                        android:background="@drawable/group_item_bg"
-                        android:textColor="@color/white"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:id="@+id/server"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:layout_height="wrap_content"
-                        android:text=""
-                        android:textColor="#B3FFFFFF"
-                        android:textSize="12sp"
-                        android:layout_marginStart="12dp" />
-                </LinearLayout>
-
-                <!-- Row 2: Input and Confirm -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <EditText
-                        android:id="@+id/config"
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:layout_height="48dp"
-                        android:gravity="center_vertical"
-                        android:hint="@string/channels"
-                        android:textColorHint="#99FFFFFF"
-                        android:textColor="#FFFFFF"
-                        android:background="@drawable/tv_input_bg"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        android:layout_marginEnd="12dp" />
-
-                    <Button
-                        android:id="@+id/confirm_config"
-                        android:layout_width="140dp"
-                        android:layout_height="48dp"
-                        android:text="@string/channels"
-                        android:background="@drawable/tv_button_bg"
-                        android:textColor="#FFFFFF"
-                        android:textSize="14sp" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="24dp">
-
-                <Button
-                    android:id="@+id/confirm_channel"
-                    android:layout_width="140dp"
-                    android:layout_height="48dp"
-                    android:text="@string/channel"
-                    android:background="@drawable/tv_button_bg"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="10dp" />
-
-                <EditText
-                    android:id="@+id/channel"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="12dp"
-                    android:gravity="center_vertical"
-                    android:hint="@string/channel"
-                    android:textColorHint="#99FFFFFF"
-                    android:textColor="#FFFFFF"
-                    android:background="@drawable/tv_input_bg"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="10dp" />
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="PREFERENCES"
-                android:textSize="13sp"
-                android:textColor="#00B0FF"
-                android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
-
-            <Switch
-                android:id="@+id/switch_channel_reversal"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/title_channel_reversal"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="10dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
-
-            <Switch
-                android:id="@+id/switch_channel_num"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/title_channel_num"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="10dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
-
-            <Switch
-                android:id="@+id/switch_time"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/title_time"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="10dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
-
-            <Switch
-                android:id="@+id/switch_watch_last"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/title_watch_last"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="10dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
-
-            <Switch
-                android:id="@+id/switch_force_high_quality"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/title_force_high_quality"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="10dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
-
-            <Switch
-                android:id="@+id/switch_boot_startup"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/title_boot_startup"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="10dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
-
-            <Switch
-                android:id="@+id/switch_config_auto_load"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/title_config_auto_load"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="10dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
- 
-            <Switch
-                android:id="@+id/switch_epg"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="Enable EPG (Electronic Program Guide)"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="10dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
- 
-            <Switch
-                android:id="@+id/switch_channel_check"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="@string/title_channel_check"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:paddingStart="8dp"
-                android:background="@drawable/selector_item_focus"
-                android:layout_marginBottom="20dp"
-                android:focusable="true"
-                android:focusableInTouchMode="true" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ACTIONS"
-                android:textSize="13sp"
-                android:textColor="#00B0FF"
-                android:textStyle="bold"
-                android:layout_marginBottom="12dp" />
-
-            <LinearLayout
+                android:id="@+id/content"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <!-- Configuration Section -->
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:weightSum="2"
-                    android:layout_marginBottom="12dp">
-
-                    <Button
-                        android:id="@+id/clear"
-                        android:layout_width="0dp"
-                        android:layout_height="60dp"
-                        android:layout_weight="1"
-                        android:text="@string/clear"
-                        android:background="@drawable/tv_button_bg"
-                        android:textColor="#FFFFFF"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="12dp" />
-
-                    <Button
-                        android:id="@+id/reset_order"
-                        android:layout_width="0dp"
-                        android:layout_height="60dp"
-                        android:layout_weight="1"
-                        android:text="Reset Order"
-                        android:background="@drawable/tv_button_bg"
-                        android:textColor="#FFFFFF"
-                        android:textSize="14sp"
-                        android:layout_marginStart="12dp" />
-                </LinearLayout>
+                    android:text="SOURCE CONFIGURATION"
+                    android:textSize="12sp"
+                    android:textColor="#00B0FF"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:weightSum="2">
+                    android:orientation="vertical"
+                    android:padding="8dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="16dp">
+
+                    <EditText
+                        android:id="@+id/config"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:hint="Config URL"
+                        android:textColorHint="#4DFFFFFF"
+                        android:textColor="#FFFFFF"
+                        android:background="@drawable/tv_input_bg"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:textSize="14sp"
+                        android:lines="1"
+                        android:inputType="textUri" />
 
                     <Button
-                        android:id="@+id/appreciate"
-                        android:layout_width="0dp"
-                        android:layout_height="60dp"
-                        android:layout_weight="1"
-                        android:text="Check Update"
+                        android:id="@+id/confirm_config"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:text="Apply Configuration"
                         android:background="@drawable/tv_button_bg"
                         android:textColor="#FFFFFF"
-                        android:textSize="14sp"
-                        android:layout_marginEnd="12dp" />
-
-                    <Button
-                        android:id="@+id/exit"
-                        android:layout_width="0dp"
-                        android:layout_height="60dp"
-                        android:layout_weight="1"
-                        android:text="@string/exit"
-                        android:background="@drawable/tv_button_bg"
-                        android:textColor="#FFFFFF"
-                        android:textSize="14sp"
-                        android:layout_marginStart="12dp" />
+                        android:textSize="12sp"
+                        android:layout_marginTop="8dp" />
                 </LinearLayout>
-            </LinearLayout>
 
-            <Button
-                android:id="@+id/close_menu"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Close Settings"
-                android:background="@drawable/tv_button_bg"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:layout_marginTop="12dp" />
+                <!-- Preferences Section -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PREFERENCES"
+                    android:textSize="12sp"
+                    android:textColor="#00B0FF"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
 
+                <!-- Card: Channel Reversal -->
+                <LinearLayout
+                    android:id="@+id/card_channel_reversal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_sort_by_size"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="@string/title_channel_reversal"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_channel_reversal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:visibility="gone">
+                <!-- Card: Channel Numbers -->
+                <LinearLayout
+                    android:id="@+id/card_channel_num"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_info_details"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Show Channel Numbers"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_channel_num"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Card: Display Time -->
+                <LinearLayout
+                    android:id="@+id/card_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_recent_history"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Display Digital Clock"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Card: Watch Last -->
+                <LinearLayout
+                    android:id="@+id/card_watch_last"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_media_play"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Resume Last Channel"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_watch_last"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Card: Force High Quality -->
+                <LinearLayout
+                    android:id="@+id/card_force_high_quality"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_camera"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Force High Quality"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_force_high_quality"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Card: Boot Startup -->
+                <LinearLayout
+                    android:id="@+id/card_boot_startup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_upload"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Automatic Startup"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_boot_startup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Card: Auto Load -->
+                <LinearLayout
+                    android:id="@+id/card_config_auto_load"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_popup_sync"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Auto-update on Startup"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_config_auto_load"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Card: Channel Check -->
+                <LinearLayout
+                    android:id="@+id/card_channel_check"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_view"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Prune Dead Channels"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_channel_check"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Card: EPG -->
+                <LinearLayout
+                    android:id="@+id/card_epg"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_agenda"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Enable EPG Logic"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_epg"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OFF"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <!-- Actions Section -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SYSTEM ACTIONS"
+                    android:textSize="12sp"
+                    android:textColor="#00B0FF"
+                    android:textStyle="bold"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="12dp" />
+
+                <Button
+                    android:id="@+id/clear"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Factory Reset"
+                    android:background="@drawable/tv_button_bg"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="8dp" />
 
                 <Button
                     android:id="@+id/check_version"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/check_version" />
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Check for Updates"
+                    android:background="@drawable/tv_button_bg"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="8dp" />
 
-                <TextView
-                    android:id="@+id/version_name"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
+                <Button
+                    android:id="@+id/close_menu"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Close Drawer"
+                    android:background="@drawable/tv_button_bg"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="24dp" />
+
             </LinearLayout>
+        </ScrollView>
+        
+        <TextView
+            android:id="@+id/server"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Server: offline"
+            android:textSize="10sp"
+            android:textColor="#4DFFFFFF"
+            android:layout_gravity="center_horizontal" />
 
-        </LinearLayout>
-    </ScrollView>
+        <TextView
+            android:id="@+id/versionName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="v1.0.0"
+            android:textSize="10sp"
+            android:textColor="#4DFFFFFF"
+            android:layout_gravity="center_horizontal" />
+
+    </LinearLayout>
 
 </FrameLayout>
+

@@ -31,6 +31,7 @@ import android.widget.Toast
 import android.view.MotionEvent
 import java.util.Collections
 import kotlinx.coroutines.launch
+import androidx.recyclerview.widget.DiffUtil
 
 
 class ListAdapter(
@@ -86,10 +87,15 @@ class ListAdapter(
         }
     }
 
-    fun update(tvListModel: TVListModel) {
+    fun update(newTvListModel: TVListModel) {
         recyclerView.post {
-            this.tvListModel = tvListModel
-            notifyDataSetChanged()
+            val oldList = this.tvListModel.getTVModelList()
+            val newList = newTvListModel.getTVModelList()
+            
+            val diffResult = DiffUtil.calculateDiff(TVModelDiffCallback(oldList, newList))
+            
+            this.tvListModel = newTvListModel
+            diffResult.dispatchUpdatesTo(this)
         }
     }
 
@@ -133,13 +139,12 @@ class ListAdapter(
 
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
         val tvModel = tvListModel.getTVModel(position)!!
-        val view = viewHolder.itemView
+        
+        viewHolder.bind(tvModel, movingPosition, position)
 
+        val view = viewHolder.itemView
         view.isFocusable = true
         view.isFocusableInTouchMode = true
-//        view.alpha = 0.8F
-
-        viewHolder.like(tvModel.like.value as Boolean)
 
         viewHolder.binding.heart.setOnClickListener {
             tvModel.setLike(!(tvModel.like.value as Boolean))
@@ -253,12 +258,19 @@ class ListAdapter(
 
         viewHolder.setArrows(movingPosition == position)
         
-        viewHolder.binding.arrowUp.setOnClickListener {
-            moveChannelUp(position)
-        }
         viewHolder.binding.arrowDown.setOnClickListener {
             moveChannelDown(position)
         }
+    }
+
+    override fun onViewAttachedToWindow(holder: ViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        holder.attachListeners()
+    }
+
+    override fun onViewDetachedFromWindow(holder: ViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        holder.detachListeners()
     }
 
     override fun getItemCount() = tvListModel.size()
@@ -266,8 +278,31 @@ class ListAdapter(
     class ViewHolder(private val context: Context, val binding: ListItemBinding) :
         RecyclerView.ViewHolder(binding.root), OnSharedPreferenceChangeListener {
 
-        init {
+        private var currentTvModel: TVModel? = null
+
+        fun bind(tvModel: TVModel, movingPosition: Int, position: Int) {
+            currentTvModel = tvModel
+            
+            bindTitle(tvModel.tv.title)
+            
+            // Bind EPG description
+            if (SP.epgEnabled) {
+                bindDescription(tvModel.currentProgram.value?.title)
+            } else {
+                bindDescription(null)
+            }
+
+            bindImage(tvModel.tv.logo, tvModel.tv.id)
+            setArrows(movingPosition == position)
+            like(tvModel.like.value as Boolean)
+        }
+
+        fun attachListeners() {
             SP.setOnSharedPreferenceChangeListener(this)
+        }
+
+        fun detachListeners() {
+            SP.removeOnSharedPreferenceChangeListener(this)
         }
 
         fun bindTitle(text: String) {

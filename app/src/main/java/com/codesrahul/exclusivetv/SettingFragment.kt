@@ -2,22 +2,22 @@ package com.codesrahul.exclusivetv
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.util.Log
-import android.util.TypedValue
 import android.view.*
+import android.view.animation.AnimationUtils
+import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.codesrahul.exclusivetv.databinding.SettingBinding
 import com.codesrahul.exclusivetv.models.TVList
 import com.codesrahul.exclusivetv.ui.TvUiUtils
-import com.codesrahul.exclusivetv.OrderPreferenceManager
-import com.codesrahul.exclusivetv.R
-import android.widget.Toast
 
 class SettingFragment : Fragment() {
 
@@ -33,242 +33,118 @@ class SettingFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
         _binding = SettingBinding.inflate(inflater, container, false)
-
         tvUiUtils = TvUiUtils(requireContext())
-        tvUiUtils?.initSounds(R.raw.focus, R.raw.click)  // SOUND FEEDBACK
+        tvUiUtils?.initSounds(R.raw.focus, R.raw.click)
 
         setupUI()
         setupListeners()
-        setupFocusAnimations()  // ⭐ ADD TIVIMATE STYLE FOCUS EFFECTS
+        setupFocusAnimations()
 
         updateManager = UpdateManager(requireContext(), com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
         (activity as MainActivity).ready(TAG)
+        
         return binding.root
     }
 
-    // ------------------------------------------------------------
-    //  TIVIMATE STYLE UI SETUP
-    // ------------------------------------------------------------
     private fun setupUI() {
-
-        val ctx = requireContext()
-
         binding.name.text = getString(R.string.app_name)
-        // binding.version.text = "https://github.com/CodesRahul96/Exclusive-TV-APP"
-        binding.version.visibility = View.GONE
-
-        binding.switchChannelReversal.isChecked = SP.channelReversal
-        binding.switchChannelNum.isChecked = SP.channelNum
-        binding.switchTime.isChecked = SP.time
-        binding.switchBootStartup.isChecked = SP.bootStartup
-        binding.switchConfigAutoLoad.isChecked = SP.configAutoLoad
-        binding.switchChannelCheck.isChecked = SP.channelCheck
-        binding.switchWatchLast.isChecked = SP.watchLast
-        binding.switchForceHighQuality.isChecked = SP.forceHighQuality
-        binding.switchEpg.isChecked = SP.epgEnabled
+        
+        syncStatusUI()
 
         val currentConfig = SP.config ?: ""
-        if (currentConfig == TVList.DEFAULT_CONFIG_URL) {
-            binding.config.text = Editable.Factory.getInstance().newEditable("")
-        } else {
-            binding.config.text = Editable.Factory.getInstance().newEditable(currentConfig)
-        }
-        binding.channel.text = Editable.Factory.getInstance().newEditable(SP.channel.toString())
+        binding.config.text = Editable.Factory.getInstance().newEditable(
+            if (currentConfig == TVList.DEFAULT_CONFIG_URL) "" else currentConfig
+        )
 
-        scaleForTV()
-
-//        binding.content.apply {
-//            isFocusable = true
-//            isFocusableInTouchMode = true
-//            requestFocus()
-//        }
-
-        // Focus on first switch for better navigation
-        binding.switchChannelReversal.apply {
+        binding.config.apply {
             isFocusable = true
             isFocusableInTouchMode = true
             requestFocus()
         }
     }
-    
 
+    private fun syncStatusUI() {
+        binding.statusChannelReversal.text = if (SP.channelReversal) "ON" else "OFF"
+        binding.statusChannelNum.text = if (SP.channelNum) "ON" else "OFF"
+        binding.statusTime.text = if (SP.time) "ON" else "OFF"
+        binding.statusWatchLast.text = if (SP.watchLast) "ON" else "OFF"
+        binding.statusForceHighQuality.text = if (SP.forceHighQuality) "ON" else "OFF"
+        binding.statusBootStartup.text = if (SP.bootStartup) "ON" else "OFF"
+        binding.statusConfigAutoLoad.text = if (SP.configAutoLoad) "ON" else "OFF"
+        binding.statusChannelCheck.text = if (SP.channelCheck) "ON" else "OFF"
+        binding.statusEpg.text = if (SP.epgEnabled) "ON" else "OFF"
 
-    // ------------------------------------------------------------
-    //  TIVIMATE FOCUS ANIMATION (SCALE + SHADOW)
-    // ------------------------------------------------------------
+        // Set text colors based on state
+        val activeColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
+        val inactiveColor = Color.parseColor("#80FFFFFF")
+
+        val statusViews = listOf(
+            binding.statusChannelReversal, binding.statusChannelNum, binding.statusTime,
+            binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
+            binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg
+        )
+
+        statusViews.forEach { v ->
+            v.setTextColor(if (v.text == "ON") activeColor else inactiveColor)
+        }
+    }
+
     private fun setupFocusAnimations() {
-
         val focusViews = listOf(
-            binding.switchChannelReversal,
-            binding.switchChannelNum,
-            binding.switchTime,
-            binding.switchBootStartup,
-            binding.switchConfigAutoLoad,
-            binding.switchChannelCheck,
-            binding.switchWatchLast,
-            binding.switchForceHighQuality,
-            binding.switchEpg,
+            binding.config,
             binding.confirmConfig,
-            binding.confirmChannel,
+            binding.cardChannelReversal,
+            binding.cardChannelNum,
+            binding.cardTime,
+            binding.cardWatchLast,
+            binding.cardForceHighQuality,
+            binding.cardBootStartup,
+            binding.cardConfigAutoLoad,
+            binding.cardChannelCheck,
+            binding.cardEpg,
             binding.clear,
-            binding.resetOrder,
-            binding.appreciate,
-            binding.exit,
+            binding.checkVersion,
             binding.closeMenu
         )
 
         focusViews.forEach { v ->
-
             v.setOnFocusChangeListener { view, hasFocus ->
                 if (hasFocus) {
-                    view.animate().scaleX(1.05f).scaleY(1.05f)
-                        .setDuration(120).start()
-                    view.elevation = 20f
+                    view.animate().scaleX(1.02f).scaleY(1.02f).setDuration(150).start()
+                    if (view !is android.widget.EditText) {
+                        tvUiUtils?.playFocusSound()
+                    }
                 } else {
-                    view.animate().scaleX(1f).scaleY(1f)
-                        .setDuration(120).start()
-                    view.elevation = 0f
+                    view.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
                 }
             }
-
-            // REMOVE any sound or click override
-            v.setOnTouchListener(null)
         }
     }
 
-
-    // ------------------------------------------------------------
-    //  BASIC TV SCALING
-    // ------------------------------------------------------------
-    private fun scaleForTV() {
-        val scale = 1.12f
-
-        binding.content.apply {
-            scaleX = scale
-            scaleY = scale
-        }
-
-        val views = listOf(
-            binding.switchChannelReversal, binding.switchChannelNum,
-            binding.switchTime, binding.switchBootStartup,
-            binding.switchConfigAutoLoad, binding.switchChannelCheck,
-            binding.switchWatchLast, binding.switchForceHighQuality,
-            binding.switchEpg
-        )
-
-        views.forEach { v ->
-            try {
-                v.setTextSize(TypedValue.COMPLEX_UNIT_PX, v.textSize * scale)
-            } catch (_: Exception) { }
-        }
-    }
-
-    // ------------------------------------------------------------
-    //  LISTENERS (UNCUT)
-    // ------------------------------------------------------------
     private fun setupListeners() {
-
-        binding.switchChannelReversal.setOnCheckedChangeListener { _, b ->
-            SP.channelReversal = b
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.switchChannelNum.setOnCheckedChangeListener { _, b ->
-            SP.channelNum = b
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.switchTime.setOnCheckedChangeListener { _, b ->
-            SP.time = b
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.switchBootStartup.setOnCheckedChangeListener { _, b ->
-            SP.bootStartup = b
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.switchConfigAutoLoad.setOnCheckedChangeListener { _, b ->
-            SP.configAutoLoad = b
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.switchChannelCheck.setOnCheckedChangeListener { _, b ->
-            SP.channelCheck = b
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.switchWatchLast.setOnCheckedChangeListener { _, b ->
-            SP.watchLast = b
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.switchForceHighQuality.setOnCheckedChangeListener { _, b ->
-            SP.forceHighQuality = b
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.switchEpg.setOnCheckedChangeListener { _, b ->
-            SP.epgEnabled = b
-            (activity as MainActivity).settingActive()
-            // Trigger refresh if enabled
-            if (b) {
-                TVList.update(requireContext(), SP.config ?: TVList.DEFAULT_CONFIG_URL, silent = true)
-            } else {
-                TVList.listModel.forEach { it.updateEPG() }
-            }
-        }
-
-        binding.qrcode.setOnClickListener {
-            val imageModalFragment = ModalFragment()
-            val size = Utils.dpToPx(200)
-            val img = QrCodeUtil().createQRCodeBitmap(binding.server.text.toString(), size, size)
-            
-            if (img == null) {
-                android.widget.Toast.makeText(requireContext(), "No content to generate QR Code", android.widget.Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            
-            val args = Bundle()
-            args.putParcelable("bitmap", img);
-            imageModalFragment.arguments = args
-
-            imageModalFragment.show(requireFragmentManager(), ModalFragment.TAG)
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.checkVersion.setOnClickListener {
-            requestInstallPermissions()
-            (activity as MainActivity).settingActive()
-        }
-
-        val savedConfig = SP.config ?: ""
-        if (savedConfig == TVList.DEFAULT_CONFIG_URL) {
-            binding.config.text = Editable.Factory.getInstance().newEditable("")
-        } else {
-            binding.config.text = Editable.Factory.getInstance().newEditable(savedConfig)
-        }
-
+        // Card Toggles
+        binding.cardChannelReversal.setOnClickListener { toggleSetting("channelReversal") }
+        binding.cardChannelNum.setOnClickListener { toggleSetting("channelNum") }
+        binding.cardTime.setOnClickListener { toggleSetting("time") }
+        binding.cardWatchLast.setOnClickListener { toggleSetting("watchLast") }
+        binding.cardForceHighQuality.setOnClickListener { toggleSetting("forceHighQuality") }
+        binding.cardBootStartup.setOnClickListener { toggleSetting("bootStartup") }
+        binding.cardConfigAutoLoad.setOnClickListener { toggleSetting("configAutoLoad") }
+        binding.cardChannelCheck.setOnClickListener { toggleSetting("channelCheck") }
+        binding.cardEpg.setOnClickListener { toggleSetting("epgEnabled") }
 
         binding.confirmConfig.setOnClickListener {
             tvUiUtils?.playClickSound()
-
             val text = binding.config.text.toString().trim()
             if (text.isEmpty()) {
                 SP.config = TVList.DEFAULT_CONFIG_URL
-                // Re-fetch to clear current list if necessary, or just show success
-                TVList.update(TVList.DEFAULT_CONFIG_URL)
-                "Configuration reset to default".showToast()
+                TVList.update(requireContext(), TVList.DEFAULT_CONFIG_URL)
+                Toast.makeText(requireContext(), "Configuration reset", Toast.LENGTH_SHORT).show()
             } else {
                 val url = Utils.formatUrl(text)
                 uri = Uri.parse(url)
-
-                if (uri.scheme.isNullOrEmpty()) {
-                    uri = uri.buildUpon().scheme("http").build()
-                }
-
+                if (uri.scheme.isNullOrEmpty()) uri = uri.buildUpon().scheme("http").build()
                 if (uri.isAbsolute) {
                     if (uri.scheme == "file") requestReadPermissions()
                     else TVList.parseUri(uri)
@@ -276,87 +152,104 @@ class SettingFragment : Fragment() {
                     binding.config.error = "Invalid address"
                 }
             }
-
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.confirmChannel.setOnClickListener {
-            tvUiUtils?.playClickSound()
-
-            val num = binding.channel.text.toString().toIntOrNull()
-            if (num != null && num > 0 && num <= TVList.listModel.size) SP.channel = num
-            else binding.channel.error = "Invalid channel"
-
-            (activity as MainActivity).settingActive()
         }
 
         binding.clear.setOnClickListener {
-            //tvUiUtils?.playClickSound()
-
-            SP.config = TVList.DEFAULT_CONFIG_URL
-            SP.channel = 0
-            SP.position = 0
-
-            binding.config.text = Editable.Factory.getInstance().newEditable("")
-            binding.channel.text = Editable.Factory.getInstance().newEditable("")
-
-            requireContext().deleteFile(TVList.FILE_NAME)
-            SP.deleteLike()
-        }
-
-        binding.resetOrder.setOnClickListener {
             tvUiUtils?.playClickSound()
             
-            android.app.AlertDialog.Builder(requireContext())
-                .setTitle("Reset Order & Renames")
-                .setMessage("This will reset all category and channel order and rename settings. Continue?")
-                .setPositiveButton("Reset") { _, _ ->
-                    OrderPreferenceManager.resetAll()
-                    Toast.makeText(requireContext(), "Order and renames reset. Please refresh the channel list.", Toast.LENGTH_LONG).show()
+            android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Factory Reset")
+                .setMessage("This will delete ALL data, including favorites, custom URLs, and cached channels. The app will restart. Continue?")
+                .setPositiveButton("Reset Everything") { _, _ ->
+                    performFullReset()
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
-            
-            (activity as MainActivity).settingActive()
         }
 
-        binding.appreciate.setOnClickListener {
+        binding.checkVersion.setOnClickListener {
             tvUiUtils?.playClickSound()
             requestInstallPermissions()
-            (activity as MainActivity).settingActive()
-        }
-
-        binding.exit.setOnClickListener {
-            //tvUiUtils?.playClickSound()
-            requireActivity().finishAffinity()
         }
 
         binding.closeMenu.setOnClickListener {
-            //tvUiUtils?.playClickSound()
             hideSelf()
         }
     }
 
-    // ------------------------------------------------------------
-    //  PERMISSIONS
-    // ------------------------------------------------------------
-    private fun requestReadPermissions() {
-        val ctx = requireContext()
-        val list = mutableListOf<String>()
+    private fun toggleSetting(key: String) {
+        tvUiUtils?.playClickSound()
+        when (key) {
+            "channelReversal" -> SP.channelReversal = !SP.channelReversal
+            "channelNum" -> SP.channelNum = !SP.channelNum
+            "time" -> SP.time = !SP.time
+            "watchLast" -> SP.watchLast = !SP.watchLast
+            "forceHighQuality" -> SP.forceHighQuality = !SP.forceHighQuality
+            "bootStartup" -> SP.bootStartup = !SP.bootStartup
+            "configAutoLoad" -> SP.configAutoLoad = !SP.configAutoLoad
+            "channelCheck" -> SP.channelCheck = !SP.channelCheck
+            "epgEnabled" -> {
+                SP.epgEnabled = !SP.epgEnabled
+                if (SP.epgEnabled) {
+                    TVList.update(requireContext(), SP.config ?: TVList.DEFAULT_CONFIG_URL, silent = true)
+                } else {
+                    TVList.listModel.forEach { it.updateEPG() }
+                }
+            }
+        }
+        syncStatusUI()
+    }
 
+    private fun performFullReset() {
+        try {
+            // 1. Clear all Preference Managers
+            SP.reset()
+            OrderPreferenceManager.resetAll()
+
+            // 2. Delete all local files (channels.txt, etc)
+            deleteRecursive(requireContext().filesDir)
+            
+            // 3. Delete cache (epg_cache.xml.gz, etc)
+            deleteRecursive(requireContext().cacheDir)
+
+            Toast.makeText(requireContext(), "Factory Reset Complete. Restarting...", Toast.LENGTH_LONG).show()
+
+            // 4. Force Restart App
+            binding.root.postDelayed({
+                requireActivity().finishAffinity()
+                val intent = requireActivity().packageManager.getLaunchIntentForPackage(requireActivity().packageName)
+                startActivity(intent)
+            }, 1000)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Reset failed", e)
+            Toast.makeText(requireContext(), "Reset failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun deleteRecursive(fileOrDirectory: java.io.File?) {
+        if (fileOrDirectory == null || !fileOrDirectory.exists()) return
+        
+        if (fileOrDirectory.isDirectory) {
+            fileOrDirectory.listFiles()?.forEach { child ->
+                deleteRecursive(child)
+            }
+        }
+        fileOrDirectory.delete()
+    }
+
+    private fun requestReadPermissions() {
+        val list = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_EXTERNAL_STORAGE)
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
             != PackageManager.PERMISSION_GRANTED
         ) {
             list.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
-
         if (list.isEmpty()) {
             TVList.parseUri(uri)
         } else {
-            ActivityCompat.requestPermissions(
-                requireActivity(), list.toTypedArray(), PERMISSION_READ
-            )
+            ActivityCompat.requestPermissions(requireActivity(), list.toTypedArray(), PERMISSION_READ)
         }
     }
 
@@ -369,7 +262,9 @@ class SettingFragment : Fragment() {
     }
 
     private fun hideSelf() {
+        // Add slide-out animation logic or just hide
         requireActivity().supportFragmentManager.beginTransaction()
+            .setCustomAnimations(0, R.anim.slide_out_right)
             .hide(this)
             .commit()
         (activity as MainActivity).showTime()
@@ -378,90 +273,32 @@ class SettingFragment : Fragment() {
     override fun onHiddenChanged(hidden: Boolean) {
         super.onHiddenChanged(hidden)
         if (!hidden) {
-            val current = SP.config ?: ""
-            if (current == TVList.DEFAULT_CONFIG_URL) {
-                binding.config.text = Editable.Factory.getInstance().newEditable("")
-            } else {
-                binding.config.text = Editable.Factory.getInstance().newEditable(current)
-            }
+            binding.container.startAnimation(AnimationUtils.loadAnimation(requireContext(), R.anim.slide_in_right))
+            setupUI()
         }
     }
 
     private fun requestInstallPermissions() {
-        val context = requireContext()
         val permissionsList: MutableList<String> = mutableListOf()
-
-        // Check for "Request Install Packages" permission
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-//            !context.packageManager.canRequestPackageInstalls()
-//        ) {
-//            permissionsList.add(Manifest.permission.REQUEST_INSTALL_PACKAGES)
-//        }
-
-        // Check for "Read External Storage" permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED
         ) {
             permissionsList.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
-
-        // Optional: Handle scoped storage for Android 13 and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.READ_MEDIA_IMAGES
-                ) != PackageManager.PERMISSION_GRANTED
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_MEDIA_IMAGES)
+                != PackageManager.PERMISSION_GRANTED
             ) {
                 permissionsList.add(Manifest.permission.READ_MEDIA_IMAGES)
             }
-        } else {
-            // Check for "Write External Storage" permission (deprecated after Android 10)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsList.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
         }
-
-        // Request permissions if the list is not empty
         if (permissionsList.isNotEmpty()) {
-            try {
-                ActivityCompat.requestPermissions(
-                    requireActivity(),
-                    permissionsList.toTypedArray(),
-                    PERMISSIONS_REQUEST_CODE
-                )
-            } catch (e: IllegalStateException) {
-                Log.e(TAG, "Fragment is not attached to an activity: ${e.message}")
-            }
+            ActivityCompat.requestPermissions(requireActivity(), permissionsList.toTypedArray(), PERMISSIONS_REQUEST_CODE)
         } else {
-            // All permissions are granted; proceed with the update manager
             updateManager.checkAndUpdate()
         }
     }
-
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        results: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, results)
-
-        if (requestCode == PERMISSION_READ &&
-            results.isNotEmpty() &&
-            results[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            TVList.parseUri(uri)
-        }
-    }
-
 
     override fun onDestroyView() {
         super.onDestroyView()
@@ -472,6 +309,5 @@ class SettingFragment : Fragment() {
         const val TAG = "SettingFragment"
         const val PERMISSION_READ = 30
         const val PERMISSIONS_REQUEST_CODE = 1
-        const val PERMISSION_READ_EXTERNAL_STORAGE_REQUEST_CODE = 2
     }
 }

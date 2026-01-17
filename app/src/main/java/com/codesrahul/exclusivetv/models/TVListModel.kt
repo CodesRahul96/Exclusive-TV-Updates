@@ -13,6 +13,10 @@ class TVListModel(private val name: String, private val index: Int) : ViewModel(
         return index
     }
 
+    fun getTVModelList(): List<TVModel> {
+        return _tvListModel.value ?: emptyList()
+    }
+
     private val _tvListModel = MutableLiveData<List<TVModel>>()
     val tvListModel: LiveData<List<TVModel>>
         get() = _tvListModel

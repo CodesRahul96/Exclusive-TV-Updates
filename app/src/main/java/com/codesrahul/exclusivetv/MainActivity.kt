@@ -31,12 +31,7 @@ import com.codesrahul.exclusivetv.RootCheckUtil
 
 class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
-    private var ok = 0
     private var webFragment = WebFragment()
-   // private var webFragment = VLCFragment()
-    //private var webFragment = GSYVideoPlayerFragment()
-
-    //private var webFragment = WebFragment()
     private var errorFragment = ErrorFragment()
     private var loadingFragment = LoadingFragment()
     private var infoFragment = InfoFragment()
@@ -52,9 +47,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
 
     private val handler = Handler(Looper.myLooper()!!)
-    private val delayHideMenu = 10 * 1000L
-    private val delayHideSetting = 10 * 1000L
-    private val delayHideTrackSelection = 10 * 1000L
+    private val delayHideMenu = 15 * 1000L
+    private val delayHideSetting = 30 * 1000L
+    private val delayHideTrackSelection = 30 * 1000L
 
     private var doubleBackToExitPressedOnce = false
 
@@ -372,7 +367,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     fun setServer(server: String) {
-       // settingFragment.setServer(server)
+        settingFragment.setServer(server)
+        settingFragment.setVersionName(appVersionName)
     }
 
     private fun playChannel(tvModel: TVModel) {
@@ -566,6 +562,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         supportFragmentManager.beginTransaction()
             .show(fragment)
             .commitNow()
+
+        when (fragment) {
+            menuFragment -> menuActive()
+            settingFragment -> settingActive()
+            trackSelectionFragment -> trackSelectionActive()
+        }
     }
 
     private fun hideFragment(fragment: Fragment) {
@@ -616,6 +618,23 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 supportFragmentManager.beginTransaction().hide(trackSelectionFragment).commitNow()
             }
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Reset ALL auto-hide timers on ANY key event before dispatching it to views
+        if (!menuFragment.isHidden) menuActive()
+        if (!settingFragment.isHidden) settingActive()
+        if (!trackSelectionFragment.isHidden) trackSelectionActive()
+        
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        // Reset ALL auto-hide timers on ANY touch event
+        if (!menuFragment.isHidden) menuActive()
+        if (!settingFragment.isHidden) settingActive()
+        if (!trackSelectionFragment.isHidden) trackSelectionActive()
+        return super.dispatchTouchEvent(ev)
     }
 
     fun showTime() {
@@ -692,11 +711,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (!menuFragment.isHidden) {
             return
         }
-
-        supportFragmentManager.beginTransaction()
-            .show(settingFragment)
-            .commit()
-        settingActive()
+        showFragment(settingFragment)
     }
 
     fun hideMenuFragment() {
@@ -773,11 +788,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     fun onKey(keyCode: Int, event: KeyEvent?): Boolean {
-        // Reset auto-close timers on user interaction
-        if (!menuFragment.isHidden) menuActive()
-        if (!settingFragment.isHidden) settingActive()
-        if (!trackSelectionFragment.isHidden) trackSelectionActive()
-
         Log.d(TAG, "onKey keyCode $keyCode, repeat ${event?.repeatCount}")
         when (keyCode) {
             KeyEvent.KEYCODE_0 -> {
@@ -1000,15 +1010,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     override fun onForceUpdate() {
         Log.i(TAG, "Force update detected. Blocking app usage.")
         // Stop playback
+        // Stop playback
         webFragment.stop()
-        
-        // Hide other fragments except loading/error maybe? 
-        // Actually, just stopping playback is good, the dialog blocks input.
-        // We can also try to hide the menu or ensure the dialog is top-most.
-        
-        // Clear channel list to prevent background play if somehow dismissed?
-        // TVList.listModel = listOf() 
-        // TVList.groupModel.clear()
         
         Toast.makeText(this, "Update Required", Toast.LENGTH_LONG).show()
     }
