@@ -43,6 +43,7 @@ object SP {
     private const val KEY_LAST_VERSION = "last_version"
     private const val KEY_LAST_CHANNEL_URL = "last_channel_url"
     const val KEY_EPG_ENABLED = "epg_enabled"
+    const val KEY_SHOW_DATE_IN_INFO = "show_date_in_info" // Added key
     
     // Watermark settings
     private const val KEY_WATERMARK_ENABLED = "watermark_enabled"
@@ -159,6 +160,10 @@ object SP {
                 notifyListeners(KEY_EPG_ENABLED)
             }
         }
+
+    var showDateInInfo: Boolean
+        get() = sp.getBoolean(KEY_SHOW_DATE_IN_INFO, true) // Default: true
+        set(value) = sp.edit().putBoolean(KEY_SHOW_DATE_IN_INFO, value).apply()
 
     fun getLike(id: Int): Boolean {
         val stringSet = sp.getStringSet(KEY_LIKE, emptySet())

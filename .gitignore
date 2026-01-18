@@ -18,6 +18,9 @@ files
 keystore.properties
 *.jks
 *.apk
+*.apks
 
 # Exclude testing folder
 testing/
+testing
+Testing

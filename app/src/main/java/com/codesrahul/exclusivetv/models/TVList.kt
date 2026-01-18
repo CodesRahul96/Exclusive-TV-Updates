@@ -21,7 +21,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
 import java.io.File
+import com.codesrahul.exclusivetv.models.JioTVChannel
 
 object TVList {
     private const val TAG = "TVList"
@@ -167,15 +169,16 @@ object TVList {
 
     fun update(ctx: Context, serverUrl: String, silent: Boolean = false) {
         CoroutineScope(Dispatchers.IO).launch {
-            isUpdating = true
-            withContext(Dispatchers.Main) {
-                if (size() == 0 && !silent) {
-                     _importProgress.value = 5
-                } else if (!silent) {
-                     _importProgress.value = 0
-                }
-            }
             try {
+                isUpdating = true
+                withContext(Dispatchers.Main) {
+                    if (size() == 0 && !silent) {
+                         _importProgress.value = 5
+                    } else if (!silent) {
+                         _importProgress.value = 0
+                    }
+                }
+                
                 // Use HttpURLConnection as fallback
                 val targetUrl = serverUrl
                 
@@ -206,7 +209,12 @@ object TVList {
                     Log.i(TAG, "Body length: ${str.length}")
 
                     // Process JSON in background
-                    val success = str2List(str)
+                    val success = try {
+                        str2List(str)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Critical error in str2List", e)
+                        false
+                    }
 
                     withContext(Dispatchers.Main) {
                         try {
@@ -318,45 +326,187 @@ object TVList {
     }
 
     suspend fun str2List(str: String): Boolean = withContext(Dispatchers.Default) {
-        var string = str.trim()
-        val g = Gua()
-        if (g.verify(string)) {
-            Log.i(TAG, "Content verified with Gua")
-            string = g.decode(string)
-        } else {
-             Log.i(TAG, "Content verification failed or not encrypted")
-        }
-        
-        if (string.isBlank()) {
-            Log.e(TAG, "Decrypted string is empty")
-            return@withContext false
-        }
-        
-        Log.i(TAG, "Decrypted content preview: ${string.take(100)}")
-
-        // Try to find the start of the JSON array
-        val startIndex = string.indexOf('[')
-        if (startIndex != -1) {
-             string = string.substring(startIndex)
-             try {
-                val type = object : com.google.gson.reflect.TypeToken<List<TV>>() {}.type
-                // Use lenient Gson to handle malformed JSON
-                list = com.google.gson.GsonBuilder().setLenient().create().fromJson(string, type)
-                Log.i(TAG, "Import Channel ${list.size}")
-            } catch (e: Exception) {
-                Log.e(TAG, "parse error $string")
-                Log.i(TAG, e.message, e)
+        try {
+            val parsed = parseUniversal(str)
+            if (parsed.isNotEmpty()) {
+                list = parsed
+            } else {
+                Log.e(TAG, "No channels found in data")
                 return@withContext false
             }
-        } else {
-            Log.e(TAG, "No JSON array start found")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in str2List", e)
             return@withContext false
+        }
+
+        // Expand Nested Playlists (Recursive Import)
+        try {
+            list = expandNestedPlaylists(list)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error expanding playlists", e)
         }
 
         refreshModels(MyTVApplication.getInstance())
         return@withContext true
     }
 
+    private fun parseUniversal(content: String): List<TV> {
+        var string = content.trim()
+        val g = Gua()
+        if (g.verify(string)) {
+            Log.i(TAG, "Content verified with Gua")
+            string = g.decode(string)
+        }
+        
+        if (string.isBlank()) return emptyList()
+        val decryptedContent = string
+
+        // 1. PLS Playlist
+        if (decryptedContent.contains("[playlist]", ignoreCase = true)) {
+             val plsList = PlsParser.parse(decryptedContent)
+             if (plsList.isNotEmpty()) return plsList
+        }
+
+        // 2. M3U / M3U8 Playlist (Check first if explicit M3U header, or fall through)
+        // We check M3U *before* generic JSON if it looks strongly like M3U, but *after* JSON if ambiguous?
+        // Actually, JSON starts with { or [, M3U with #. Easy distinction.
+        
+        val startIndex = string.indexOfFirst { it == '[' || it == '{' }
+        val isJsonCandidate = startIndex != -1 && !string.trim().startsWith("#")
+
+        if (isJsonCandidate) {
+             try {
+                val jsonString = string.substring(startIndex)
+                val gson = com.google.gson.GsonBuilder().setLenient().create()
+                
+                // A. Try Standard TV List
+                try {
+                    val type = object : com.google.gson.reflect.TypeToken<List<TV>>() {}.type
+                    val parsedList = gson.fromJson<List<TV>>(jsonString, type)
+                    if (!parsedList.isNullOrEmpty() && !parsedList[0].uris.isNullOrEmpty()) {
+                        Log.i(TAG, "Parsed Standard JSON: ${parsedList.size}")
+                        return parsedList
+                    }
+                } catch (e: Exception) { /* Continue */ }
+
+                // B. Try JioTV JSON
+                try {
+                    val jioType = object : com.google.gson.reflect.TypeToken<List<JioTVChannel>>() {}.type
+                    val jioList = gson.fromJson<List<JioTVChannel>>(jsonString, jioType)
+                    if (!jioList.isNullOrEmpty() && !jioList[0].mpdUrl.isNullOrEmpty()) {
+                        Log.i(TAG, "Parsed JioTV JSON: ${jioList.size}")
+                        return jioList.map { jio ->
+                            TV(
+                                apiId = jio.id ?: "",
+                                name = jio.name ?: "",
+                                logo = jio.logo ?: "",
+                                group = jio.group ?: "",
+                                uris = if (jio.mpdUrl != null) listOf(jio.mpdUrl) else emptyList(),
+                                drmLicenseUrl = jio.licenseUrl,
+                                type = if (jio.type == "dash") Type.STREAM else Type.WEB,
+                                headers = mutableMapOf<String, String>().apply {
+                                    jio.headers?.let { putAll(it) }
+                                    jio.userAgent?.let { put("User-Agent", it) }
+                                },
+                                child = emptyList()
+                            )
+                        }
+                    }
+                } catch (e: Exception) { /* Continue */ }
+
+                // C. Try Generic Heuristic JSON (Xtream Codes / Other)
+                val genericList = GenericJsonParser.parse(jsonString)
+                if (genericList.isNotEmpty()) {
+                    Log.i(TAG, "Parsed Generic JSON: ${genericList.size}")
+                    return genericList
+                }
+
+            } catch (e: Exception) {
+                Log.e(TAG, "JSON parsing failed", e)
+            }
+        }
+
+        // 3. Fallback to M3U
+        // Check for common M3U indicators
+        if (decryptedContent.contains("#EXTINF") || decryptedContent.contains("#EXTM3U") || 
+            decryptedContent.contains("EXTHTTP") || decryptedContent.contains("#KODIPROP")) {
+            try {
+                val m3uList = M3UParser.parse(decryptedContent)
+                if (m3uList.isNotEmpty()) {
+                    Log.i(TAG, "Parsed M3U: ${m3uList.size}")
+                    return m3uList
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "M3U parse error", e)
+            }
+        }
+
+        return emptyList()
+    }
+
+    private suspend fun expandNestedPlaylists(originalList: List<TV>): List<TV> = withContext(Dispatchers.IO) {
+        val client = unsafeClient
+        
+        // 1. Map each item to a Deferred result (or immediate value)
+        val deferredResults = originalList.map { tv ->
+            val url = tv.uris.firstOrNull() ?: ""
+            
+            // Broader check for playlists
+            val isPlaylistCandidate = url.contains(".m3u", ignoreCase = true) || 
+                                      url.contains(".php", ignoreCase = true) ||
+                                      url.contains(".txt", ignoreCase = true) ||
+                                      url.contains("type=m3u", ignoreCase = true)
+            
+            // Exclude explicit stream types/extensions
+            val isStream = url.contains(".m3u8", ignoreCase = true) || 
+                           url.contains(".mpd", ignoreCase = true)
+
+            // If it's a candidate, fetch asynchronously
+            if (isPlaylistCandidate && !isStream) {
+                // Return a Deferred<List<TV>>? No, allow mixed types.
+                // We use async to fetch.
+                async {
+                    Log.i(TAG, "Checking nested content: ${tv.name}")
+                    try {
+                        val request = Request.Builder().url(url).get().build()
+                         
+                        // Execute blocking call inside IO async block
+                        client.newCall(request).execute().use { response ->
+                            val content = response.body()?.string()
+                            if (response.isSuccessful && !content.isNullOrBlank()) {
+                                // Use UNIVERSAL parser
+                                val subChannels = parseUniversal(content)
+                                if (subChannels.isNotEmpty()) {
+                                    Log.i(TAG, "Expanded ${tv.name}: ${subChannels.size} channels")
+                                    subChannels.forEach { child ->
+                                        if (child.group.isBlank()) child.group = tv.group
+                                        val mergedHeaders = mutableMapOf<String, String>()
+                                        tv.headers?.let { mergedHeaders.putAll(it) }
+                                        child.headers?.let { mergedHeaders.putAll(it) }
+                                        child.headers = mergedHeaders
+                                    }
+                                    subChannels
+                                } else {
+                                    listOf(tv) // Keep original if empty/parsing failed
+                                }
+                            } else {
+                                listOf(tv)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error fetching nested playlist ${tv.name}", e)
+                        listOf(tv)
+                    }
+                }
+            } else {
+                // If not a candidate, wrap in immediate result
+                async { listOf(tv) }
+            }
+        }
+
+        // 2. Await all results and flatten
+        deferredResults.map { it.await() }.flatten()
+    }
 
     fun refreshModels(ctx: Context) {
         CoroutineScope(Dispatchers.IO).launch {

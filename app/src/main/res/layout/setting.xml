@@ -208,6 +208,42 @@
                         android:textSize="12sp" />
                 </LinearLayout>
 
+                <!-- Card: Show Date in Info -->
+                <LinearLayout
+                    android:id="@+id/card_show_date_in_info"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:background="@drawable/bg_settings_card"
+                    android:layout_marginBottom="8dp"
+                    android:focusable="true"
+                    android:gravity="center_vertical">
+                    
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_today"
+                        android:tint="#FFFFFF" />
+                        
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="Show Date in Info Card"
+                        android:textColor="#FFFFFF"
+                        android:layout_marginStart="12dp"
+                        android:textSize="14sp" />
+                        
+                    <TextView
+                        android:id="@+id/status_show_date_in_info"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ON"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
                 <!-- Card: Watch Last -->
                 <LinearLayout
                     android:id="@+id/card_watch_last"

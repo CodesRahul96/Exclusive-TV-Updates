@@ -4,7 +4,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:padding="16dp"
-    android:background="@drawable/list_item_bg"
+    android:background="@drawable/selector_item_focus"
     android:focusable="true"
     android:clickable="true"
     android:gravity="center_vertical">

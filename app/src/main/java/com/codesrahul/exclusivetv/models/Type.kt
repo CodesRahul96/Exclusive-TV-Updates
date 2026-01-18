@@ -7,4 +7,6 @@ enum class Type {
     WEB,
     @SerializedName("HLS")
     HLS,
+    @SerializedName("STREAM")
+    STREAM,
 }

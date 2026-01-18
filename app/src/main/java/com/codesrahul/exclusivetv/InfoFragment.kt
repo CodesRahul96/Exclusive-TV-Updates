@@ -117,7 +117,7 @@ class InfoFragment : Fragment() {
         }
 
         // --- Date and Time ---
-        if (SP.epgEnabled) {
+        if (SP.showDateInInfo) {
             binding.dateTime.visibility = View.VISIBLE
             handler.removeCallbacks(timeRunnable)
             handler.post(timeRunnable)

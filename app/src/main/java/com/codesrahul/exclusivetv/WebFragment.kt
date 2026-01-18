@@ -43,6 +43,7 @@ import android.util.Base64
 import java.nio.charset.StandardCharsets
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -740,7 +741,12 @@ class WebFragment : Fragment() {
         savedAudioTrackToApply = SP.getAudioTrack(url)
         Log.i(TAG, "Saved audio track to apply: $savedAudioTrackToApply")
 
-        if (url.endsWith(".m3u8", ignoreCase = true) || url.endsWith(".ts", ignoreCase = true) ||
+        // Check if explicit type forces Player, or if URL detected as stream
+        val isStreamType = tvModel.tv.type == com.codesrahul.exclusivetv.models.Type.STREAM || 
+                           tvModel.tv.type == com.codesrahul.exclusivetv.models.Type.HLS
+                           
+        if (isStreamType || 
+            url.endsWith(".m3u8", ignoreCase = true) || url.endsWith(".ts", ignoreCase = true) ||
             url.endsWith(".mpd", ignoreCase = true) ||
             url.startsWith("rtmp://") || url.startsWith("rtsp://") || url.contains("?|")) {
             
@@ -799,11 +805,29 @@ class WebFragment : Fragment() {
 
         currentVideoUrl = url
         var videoUrl = url
-        // ... (DRM parsing logic remains same) ...
         var drmConfig: DrmConfig? = null
         val requestHeaders = mutableMapOf<String, String>()
         var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
+        // 1. Load from TV Model (Priority)
+        val currentTv = tvModel?.tv
+        if (currentTv != null) {
+            // Headers
+            currentTv.headers?.let { requestHeaders.putAll(it) }
+            
+            // User-Agent override
+            requestHeaders["User-Agent"]?.let { 
+                userAgent = it 
+                requestHeaders.remove("User-Agent") // Remove from generic headers to avoid duplicate/conflict if set via setter
+            }
+
+            // DRM
+            if (!currentTv.drmScheme.isNullOrEmpty()) {
+                drmConfig = DrmConfig(currentTv.drmScheme!!, currentTv.drmLicenseUrl ?: "")
+            }
+        }
+
+        // 2. Legacy/URL-based Overrides (Backward Compatibility & Specific overrides)
         val regex = "(?i)(\\?\\|)|(\\?%7C)".toRegex()
         val matchResult = regex.find(url)
 
@@ -821,35 +845,14 @@ class WebFragment : Fragment() {
 
                     when (key.lowercase()) {
                         "drmscheme" -> {
-                            if (value.lowercase() == "clearkey") {
-                                // Will parse license later or store it now
-                            }
-                        }
-                        "drmlicense" -> {
-                             // Check if it's currently set to clearkey logic above, simplified here:
+                             // URL override? Maybe. Let's allow it.
+                             val license = params.find { it.startsWith("drmLicense", ignoreCase = true) }?.split("=", limit=2)?.getOrNull(1) ?: ""
+                             drmConfig = DrmConfig(value, license)
                         }
                         "user-agent" -> userAgent = value
-                        "cookie" -> requestHeaders["Cookie"] = value
-                        "referer" -> requestHeaders["Referer"] = value
-                        "origin" -> requestHeaders["Origin"] = value
-                        "x-forwarded-for" -> requestHeaders["X-Forwarded-For"] = value
+                        else -> requestHeaders[key] = value // Add other params as headers
                     }
                 }
-            }
-            
-            val queryParams = params.associate {
-                val parts = it.split("=", limit = 2)
-                if (parts.size == 2) parts[0].trim() to parts[1].trim() else "" to ""
-            }
-            
-            val schemeKey = queryParams.keys.find { it.equals("drmScheme", ignoreCase = true) }
-            val licenseKey = queryParams.keys.find { it.equals("drmLicense", ignoreCase = true) }
-
-            if (schemeKey != null && queryParams[schemeKey]?.lowercase() == "clearkey") {
-                 val drmLicense = queryParams[licenseKey]
-                 if (drmLicense != null) {
-                     drmConfig = DrmConfig("clearkey", drmLicense)
-                 }
             }
         }
 
@@ -867,12 +870,36 @@ class WebFragment : Fragment() {
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext())
             .setDataSourceFactory(httpDataSourceFactory)
 
-        if (drmConfig != null && drmConfig.scheme == "clearkey") {
-            Log.d(TAG, "Configuring ClearKey DRM with license: ${drmConfig.license}")
-            val drmCallback = LocalMediaDrmCallback(createClearKeyJson(drmConfig.license).toByteArray())
-            val drmSessionManager = DefaultDrmSessionManager.Builder()
-                .setUuidAndExoMediaDrmProvider(C.CLEARKEY_UUID, FrameworkMediaDrm.DEFAULT_PROVIDER)
-                .build(drmCallback)
+        // DRM Configuration
+        if (drmConfig != null) {
+            val schemeUuid = when (drmConfig.scheme.lowercase()) {
+                "widevine" -> C.WIDEVINE_UUID
+                "playready" -> C.PLAYREADY_UUID
+                "clearkey" -> C.CLEARKEY_UUID
+                else -> C.WIDEVINE_UUID // Default
+            }
+
+            val drmSessionManager = if (schemeUuid == C.CLEARKEY_UUID && !drmConfig.license.startsWith("http")) {
+                // Local ClearKey (Identity/JSON)
+                Log.d(TAG, "Configuring Local ClearKey DRM")
+                val drmCallback = LocalMediaDrmCallback(createClearKeyJson(drmConfig.license).toByteArray())
+                DefaultDrmSessionManager.Builder()
+                    .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                    .build(drmCallback)
+            } else {
+                // Remote License (Widevine/PlayReady or Remote ClearKey)
+                Log.d(TAG, "Configuring Remote DRM: ${drmConfig.scheme} @ ${drmConfig.license}")
+                val drmCallback = HttpMediaDrmCallback(drmConfig.license, DefaultHttpDataSource.Factory())
+                
+                // Pass headers to license request if needed (e.g. Auth tokens)
+                for ((k, v) in requestHeaders) {
+                    drmCallback.setKeyRequestProperty(k, v)
+                }
+                
+                DefaultDrmSessionManager.Builder()
+                    .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                    .build(drmCallback)
+            }
             
             mediaSourceFactory.setDrmSessionManagerProvider { drmSessionManager }
         }

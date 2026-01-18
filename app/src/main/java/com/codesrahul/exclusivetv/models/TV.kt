@@ -26,8 +26,18 @@ data class TV(
     var group: String = "",
     @SerializedName("type")
     var type: Type = Type.WEB,
+    @SerializedName("drm_scheme")
+    var drmScheme: String? = null,
+    @SerializedName("drm_license_url")
+    var drmLicenseUrl: String? = null,
     @SerializedName("child")
     var child: List<TV>,
+    @SerializedName("catchup_type")
+    var catchupType: String? = null,
+    @SerializedName("catchup_days")
+    var catchupDays: String? = null,
+    @SerializedName("catchup_source")
+    var catchupSource: String? = null,
 ) : Serializable {
 
     override fun toString(): String {

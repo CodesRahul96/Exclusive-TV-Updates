@@ -67,6 +67,7 @@ class SettingFragment : Fragment() {
     private fun syncStatusUI() {
         binding.statusChannelReversal.text = if (SP.channelReversal) "ON" else "OFF"
         binding.statusChannelNum.text = if (SP.channelNum) "ON" else "OFF"
+        binding.statusShowDateInInfo.text = if (SP.showDateInInfo) "ON" else "OFF" // Sync status
         binding.statusTime.text = if (SP.time) "ON" else "OFF"
         binding.statusWatchLast.text = if (SP.watchLast) "ON" else "OFF"
         binding.statusForceHighQuality.text = if (SP.forceHighQuality) "ON" else "OFF"
@@ -82,6 +83,7 @@ class SettingFragment : Fragment() {
 
         val statusViews = listOf(
             binding.statusChannelReversal, binding.statusChannelNum, binding.statusTime,
+            binding.statusShowDateInInfo,
             binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
             binding.statusWatermark, binding.statusBufferMode
@@ -101,6 +103,7 @@ class SettingFragment : Fragment() {
             binding.confirmConfig,
             binding.cardChannelReversal,
             binding.cardChannelNum,
+            binding.cardShowDateInInfo,
             binding.cardTime,
             binding.cardWatchLast,
             binding.cardForceHighQuality,
@@ -134,6 +137,7 @@ class SettingFragment : Fragment() {
         // Card Toggles
         binding.cardChannelReversal.setOnClickListener { toggleSetting("channelReversal") }
         binding.cardChannelNum.setOnClickListener { toggleSetting("channelNum") }
+        binding.cardShowDateInInfo.setOnClickListener { toggleSetting("showDateInInfo") }
         binding.cardTime.setOnClickListener { toggleSetting("time") }
         binding.cardWatchLast.setOnClickListener { toggleSetting("watchLast") }
         binding.cardForceHighQuality.setOnClickListener { toggleSetting("forceHighQuality") }
@@ -192,6 +196,7 @@ class SettingFragment : Fragment() {
         when (key) {
             "channelReversal" -> SP.channelReversal = !SP.channelReversal
             "channelNum" -> SP.channelNum = !SP.channelNum
+            "showDateInInfo" -> SP.showDateInInfo = !SP.showDateInInfo
             "time" -> SP.time = !SP.time
             "watchLast" -> SP.watchLast = !SP.watchLast
             "forceHighQuality" -> SP.forceHighQuality = !SP.forceHighQuality
