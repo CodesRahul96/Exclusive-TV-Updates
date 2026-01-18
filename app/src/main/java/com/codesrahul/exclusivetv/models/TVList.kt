@@ -46,7 +46,7 @@ object TVList {
     fun findChannelByName(query: String): TVModel? {
         val q = query.lowercase().trim()
         // 1. Exact match (title)
-        listModel.find { it.tv.title.lowercase() == q }?.let { return it }
+        listModel.find { it.tv.title.equals(q, ignoreCase = true) }?.let { return it }
         
         // 2. Contains match (title)
         listModel.find { it.tv.title.lowercase().contains(q) }?.let { return it }
@@ -574,11 +574,11 @@ object TVList {
     }
 
     fun getTVModel(): TVModel? {
-        return getTVModel(position.value!!)
+        return _position.value?.let { getTVModel(it) }
     }
 
     fun getTVModel(idx: Int): TVModel? {
-        if (idx >= size()) {
+        if (idx < 0 || idx >= listModel.size) {
             return null
         }
         return listModel[idx]

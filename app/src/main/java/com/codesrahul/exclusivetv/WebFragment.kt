@@ -116,6 +116,10 @@ class WebFragment : Fragment() {
         }
 
         (activity as MainActivity).ready(TAG)
+        
+        // Force ExoPlayer Fill Mode
+        playerView.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+        
         return binding.root
     }
 
@@ -265,6 +269,17 @@ class WebFragment : Fragment() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                
+                // DATA-DRIVEN: Force Fill Aspect Ratio via CSS Injection
+                val fillCss = """
+                    javascript:(function() {
+                        var style = document.createElement('style');
+                        style.innerHTML = 'video, iframe, canvas, div.video-container { object-fit: fill !important; width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; z-index: 99999 !important; } body, html { overflow: hidden !important; margin: 0 !important; padding: 0 !important; }';
+                        document.head.appendChild(style);
+                    })()
+                """.trimIndent()
+                webView.loadUrl(fillCss)
+
                 val uri = Uri.parse(url)
                 Log.e(TAG, "uri ${uri.host}")
                 when (uri.host) {
@@ -733,7 +748,12 @@ class WebFragment : Fragment() {
             playerView.visibility = View.VISIBLE
             webView.loadUrl("about:blank") // Stop webview
             
-            initializePlayer(url)
+            try {
+                initializePlayer(url)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize player for $url", e)
+                tvModel.setErrInfo("Player Init Failed")
+            }
             return
         }
 
@@ -758,9 +778,17 @@ class WebFragment : Fragment() {
         webView.loadUrl(url)
     }
 
-
-
     private fun initializePlayer(url: String) {
+        try {
+            doInitializePlayer(url)
+        } catch (e: Exception) {
+            Log.e(TAG, "Fatal error during initializePlayer", e)
+            tvModel?.setErrInfo("Playback Error")
+            releasePlayer()
+        }
+    }
+
+    private fun doInitializePlayer(url: String) {
         // Always release the previous player to ensure we can configure DRM correctly for the new content
         releasePlayer()
 

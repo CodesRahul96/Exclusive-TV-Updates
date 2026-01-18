@@ -342,7 +342,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // 1. Observe Group Changes (Initial Load or Update)
         TVList.groupModel.change.observe(this) { _ ->
             Log.i(TAG, "groupModel changed")
-            if (TVList.groupModel.tvGroupModel.value != null) {
+            val currentGroup = TVList.groupModel.tvGroupModel.value
+            if (currentGroup != null) {
                 val currentPlayingUrl = webFragment.getCurrentUrl() ?: ""
                 val pos = TVList.position.value ?: -1
                 
@@ -350,15 +351,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     // Initial playback on load
                     val targetPos = if (SP.watchLast) com.codesrahul.exclusivetv.models.TVList.restorePosition() else if (SP.channel > 0) SP.channel - 1 else 0
                     if (com.codesrahul.exclusivetv.models.TVList.setPosition(targetPos)) {
-                        "Playing channel".showToast()
+                        // Note: setPosition triggers the position observer which handles playback
                     }
                 } else if (currentPlayingUrl.isNotEmpty()) {
                     // This was a silent background refresh
                     // Find the new index of the current URL
-                    val newIndex = com.codesrahul.exclusivetv.models.TVList.restorePosition() // Now uses lastChannelUrl which we updated in setPosition
+                    val newIndex = com.codesrahul.exclusivetv.models.TVList.restorePosition() 
                     if (newIndex != -1 && newIndex != pos) {
                         Log.i(TAG, "Updating index for current channel from $pos to $newIndex")
-                        // Use a silent internal set if possible, but setPosition with old URL check is fine
                         com.codesrahul.exclusivetv.models.TVList.setPosition(newIndex)
                     }
                 } else {
@@ -372,10 +372,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         // 2. Observe Position Changes (Navigation)
         TVList.position.observe(this) { pos ->
+            if (pos == null) return@observe
             Log.i(TAG, "Position changed to $pos")
             val model = TVList.getTVModel(pos)
             if (model != null) {
-                // IMPORTANT: Only trigger payChannel if it's NOT already playing this URL
+                // IMPORTANT: Only trigger playChannel if it's NOT already playing this URL
                 val currentUrl = webFragment.getCurrentUrl() ?: ""
                 val targetUrl = model.tv.uris.firstOrNull() ?: ""
                 
@@ -452,9 +453,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         tvModel.errInfo.removeObservers(this)
         tvModel.ready.removeObservers(this)
         
+        val currentPos = TVList.position.value ?: -1
+        
         // Observe Error Info
         tvModel.errInfo.observe(this) { info: String? ->
-            if (info != null && tvModel.tv.id == TVList.position.value) {
+            if (info != null && tvModel.tv.id == currentPos) {
                 if (info == "" || info == "web ok") {
                     Log.i(TAG, "${tvModel.tv.title} Playing")
                     hideFragment(loadingFragment)
@@ -479,8 +482,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         // Auto-hide loader after timeout backup
         handler.removeCallbacksAndMessages("loader_timeout")
-        handler.postAtTime({
-            if (tvModel.tv.id == TVList.position.value) {
+        handler.postAtTime({ 
+             if (tvModel.tv.id == TVList.position.value) {
                 hideFragment(loadingFragment)
             }
         }, "loader_timeout", SystemClock.uptimeMillis() + 6000)
