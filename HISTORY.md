@@ -1,5 +1,22 @@
 # Exclusive TV - Version History
 
+## v1.0.38 (2026-01-18) - Performance & UI Overhaul
+
+### ⚡ Performance & Reliability
+- **Zero-Lag Channel Guide**: Optimized list updates with background DiffUtil
+- **Atomic Delivery**: Prevented race conditions in guide population
+
+### ✨ Professional UI Overhaul
+- **Accent Red Theme**: Replaced yellow with modern semi-transparent red
+- **Glassy Player Components**: Premium glassy cards for clock and info panel
+- **Reduced Card Borders**: Sleek, borderless look for the player clock
+
+### 🌟 User Experience
+- **Smart Auto-Close**: Reduced info card timeout to 5s
+- **Manual Toggle**: Select button now toggles info card visibility
+
+---
+
 ## v1.0.31 (2026-01-17) - Performance & Stability Update
 
 ### 🚀 New Features

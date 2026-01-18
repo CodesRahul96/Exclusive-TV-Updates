@@ -1,23 +1,19 @@
-# Exclusive TV v1.0.35
+# Exclusive TV v1.0.38
 
-## 🌟 New Features
+## ⚡ Performance & Reliability
+- **Zero-Lag Channel Guide**: Completely optimized the channel list with background processing and atomic updates. Navigating through 1000+ channels is now silky smooth.
+- **Deep Stability**: Fixed potential race conditions and intermittent guide population issues for a rock-solid experience.
 
-### 🎙️ Voice Search
-- **Search with your Voice**: Use the microphone button on your Fire TV / Android TV remote to search for channels.
-- **Instant Play**: Say a channel name (e.g., "Star Plus") and it plays instantly if found.
+## ✨ Professional UI Overhaul
+- **Modern Aesthetic**: Replaced the yellow theme with a premium **Accent Red** focus system and high-contrast white text for better legibility.
+- **Glassmorphism Player**: 
+    - **Sleek Clock**: A clean, borderless glassy card in the top-left.
+    - **Premium Cards**: Transparent glassy overlays for channel numbers and info panels.
+    - **Refined Transparency**: Optimized background opacity (30%) for a non-intrusive, high-end feel.
 
-### 📺 TV Input Source Integration
-- **Open with TV Button**: Exclusive TV now appears as a "Live TV Source" on Fire TV.
-- **Setup**: Go to *Settings > Live TV > Sync Sources*, select "Exclusive TV". Then use the **TV Icon button** on your remote to launch the app!
-
-### 📶 Customizable Buffer Settings
-- **New Setting**: Adjust playback buffering in *Settings*.
-- **Max Stability**: Increases buffer size (up to 60s) for smoother playback on slow connections.
-- **Low Latency**: Reduces buffer size (5s) for faster channel zapping on good connections.
-
-## 🛠️ Improvements
-- **EPG Fixes**: Improved channel matching algorithm. HD/SD channels now show correct programs.
-- **Performance**: Optimized load times.
+## 🌟 User Experience
+- **Smarter Info Card**: Reduced auto-close timer to 5s.
+- **Center Button Toggle**: Use the **Select/Center button** on your remote to instantly show or hide the info card.
 
 ## 📥 Download
-- Download `ExclusiveTV-v1.0.35.apk` below.
+- Download `ExclusiveTV-v1.0.38.apk` below.
