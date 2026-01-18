@@ -24,8 +24,7 @@ A premium IPTV player for Android TV, optimized for a seamless and immersive vie
 - **Auto-Retry System:** Recovers from network drops or stream failures (up to 8 retries)
 - **WakeLock Integration:** Prevents device sleep during long viewing sessions
 
-### 🔐 Security & Encryption
-- **Gua64 Encryption:** Native support for Hexagram-based encryption for secure playlist distribution
+### 🔐 Security & Privacy
 - **DRM Support:** Widevine, PlayReady, and ClearKey DRM schemes
 - **Custom Headers:** Per-channel HTTP headers including User-Agent customization
 - **Root/VPN Detection:** Security checks to prevent unauthorized usage
@@ -96,16 +95,6 @@ Exclusive TV uses a hybrid storage model to ensure content is always available:
     "drm_license_url": "https://license.example.com/widevine"
   }
 ]
-```
-
-### Gua64 Encrypted Format
-
-For enhanced security, you can encrypt your playlist using Gua64:
-
-```json
-{
-  "data": "your_gua64_encrypted_string_here"
-}
 ```
 
 ---
