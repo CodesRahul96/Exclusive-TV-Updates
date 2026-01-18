@@ -1,4 +1,4 @@
-# Exclusive TV v1.0.35
+# Exclusive TV v1.0.36
 
 ## 🌟 New Features
 
