@@ -11,24 +11,27 @@
         android:layout_height="match_parent"
         >
 
-        <TextView
-            android:id="@+id/time"
+        <FrameLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="start|top"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:layout_marginStart="16dp"
-            android:textColor="@color/accent_gold"
-            android:textSize="32sp"
-            android:fontFamily="sans-serif-black"
-            android:shadowColor="#80000000"
-            android:shadowDx="0"
-            android:shadowDy="4"
-            android:shadowRadius="12"
-            tools:text="12:00"/>
+            android:background="@drawable/bg_clock_glass"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="8dp"
+            android:elevation="8dp">
 
-        <!-- Optional: Channel number if needed here, but usually handled by ChannelFragment -->
-        <!-- Keeping it simple as per redesign -->
+            <TextView
+                android:id="@+id/time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/white"
+                android:textSize="22sp"
+                android:fontFamily="sans-serif-black"
+                android:includeFontPadding="false"
+                tools:text="12:00"/>
+        </FrameLayout>
         
     </FrameLayout>
 </LinearLayout>

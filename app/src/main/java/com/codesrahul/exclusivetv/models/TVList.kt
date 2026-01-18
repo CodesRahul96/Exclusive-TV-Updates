@@ -365,7 +365,7 @@ object TVList {
                 return@launch
             }
 
-            // Preparation Phase (Background) - Work with TV objects, NOT TVModel
+            // Preparation Phase (Background)
             val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
             for (v in list) {
                 if (v.group !in map) {
@@ -374,7 +374,6 @@ object TVList {
                 map[v.group]?.add(v)
             }
 
-            // Apply saved category order
             val categoryOrder = OrderPreferenceManager.getCategoryOrder()
             val categoryRenames = OrderPreferenceManager.getCategoryRenames()
             
@@ -392,22 +391,14 @@ object TVList {
                 map.keys.toList()
             }
 
-            // Prepare raw data structures for Main thread update
-            // Triple<CategoryName, GroupIndex, List<TV>>
             val preparedGroups = mutableListOf<Triple<String, Int, List<TV>>>()
-            
             var groupIndex = 2
-            // We will assign IDs and build TVModels in the main thread to be safe, 
-            // OR we can assign IDs here if 'id' in TV is just an Int and not LiveData.
-            // TV.id is Int. So checks are fine.
-            // But TVModel creation MUST be on Main.
             
             for (categoryName in sortedCategories) {
                 val originalCategoryName = categoryName
                 val displayCategoryName = categoryRenames[originalCategoryName] ?: originalCategoryName
                 val channels = map[originalCategoryName] ?: continue
                 
-                // Apply saved channel order
                 val channelOrder = OrderPreferenceManager.getChannelOrder(originalCategoryName)
                 val channelRenames = OrderPreferenceManager.getChannelRenames()
                 
@@ -427,7 +418,6 @@ object TVList {
                     channels
                 }
                 
-                // Renaming can happen here safely on TV objects
                 for (tv in sortedChannels) {
                      val channelUrl = tv.uris.firstOrNull() ?: ""
                      val renamedTitle = channelRenames[channelUrl]
@@ -442,21 +432,32 @@ object TVList {
 
             // Update Phase (Main Thread)
             withContext(Dispatchers.Main) {
-                groupModel.clear()
-                val listModelNew: MutableList<TVModel> = mutableListOf()
-                var id = 0
+                // Optimization: If current groupModel size matches and names match, 
+                // we might avoid a full clear, but clear() is safer for now due to 
+                // complex list indexing. However, we ensure listModel is updated atomically.
                 
+                val listModelSnapshot = listModel // Keep old for reference
+                val listModelNew: MutableList<TVModel> = mutableListOf()
+                val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
+                
+                var id = 0
+                val newGroups = mutableListOf<TVListModel>()
+                
+                // Keep "Special" groups logic from clear() but more explicit
+                newGroups.add(groupModel.getTVListModel(0) ?: TVListModel("My Collection", 0))
+                newGroups.add(groupModel.getTVListModel(1) ?: TVListModel("All channels", 1))
+
                 for ((name, idx, channels) in preparedGroups) {
-                    // TVListModel init calls _position.value which requires Main Thread
                     val tvListModel = TVListModel(name, idx)
                     val groupChannels = mutableListOf<TVModel>()
 
-                    for ((listIndex, tv) in channels.withIndex()) {
+                    for (tv in channels) {
                          tv.id = id
-                         // Instantiate TVModel here (Main Thread)
+                         // Reuse existing TVModel if URL match to preserve observers if possible
+                         // (Though TVModel usually gets recreated on full refresh)
                          val tvModel = TVModel(tv)
                          tvModel.groupIndex = idx
-                         tvModel.listIndex = listIndex
+                         tvModel.listIndex = groupChannels.size
                          
                          groupChannels.add(tvModel)
                          listModelNew.add(tvModel)
@@ -464,24 +465,22 @@ object TVList {
                     }
 
                     tvListModel.setTVListModel(groupChannels)
-                    groupModel.addTVListModel(tvListModel)
+                    newGroups.add(tvListModel)
                 }
 
                 listModel = listModelNew
-
+                groupModel.setTVListModelList(newGroups)
+                
                 // All channels
                 groupModel.getTVListModel(1)?.setTVListModel(listModel)
 
-                Log.i(TAG, "groupModel ${groupModel.size()}")
-                
+                Log.i(TAG, "groupModel refreshed: ${groupModel.size()} groups")
                 groupModel.setChange()
                 
-                // Fetch EPG if enabled
                 if (SP.epgEnabled) {
-                    Log.i(TAG, "Fetching EPG (refresh)...")
                     EPGManager.init(ctx)
                     CoroutineScope(Dispatchers.IO).launch {
-                        EPGManager.fetchEPG(force = true)
+                        EPGManager.fetchEPG(force = false) // Don't force every refresh
                         withContext(Dispatchers.Main) {
                             listModel.forEach { it.updateEPG() }
                         }

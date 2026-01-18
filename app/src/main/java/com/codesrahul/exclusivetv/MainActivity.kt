@@ -488,6 +488,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     private fun setupCollectionObservers() {
         TVList.listModel.forEach { tvModel ->
+            tvModel.like.removeObservers(this)
             tvModel.like.observe(this) { liked ->
                 if (liked != null) {
                     if (liked) {
@@ -1008,9 +1009,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                 if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
-                    val tvModel = TVList.getTVModel()
-                    if (tvModel != null) {
-                        infoFragment.show(tvModel)
+                    if (infoFragment.isShowing()) {
+                        infoFragment.dismiss()
+                    } else {
+                        val tvModel = TVList.getTVModel()
+                        if (tvModel != null) {
+                            infoFragment.show(tvModel)
+                        }
                     }
                     return true
                 }

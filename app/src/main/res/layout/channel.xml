@@ -24,25 +24,29 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_menu_glass"
-                android:padding="16dp"
+                android:paddingHorizontal="24dp"
+                android:paddingVertical="12dp"
                 android:minWidth="100dp"
                 android:gravity="center"
                 android:text="1"
-                android:textColor="@color/accent_gold"
-                android:textSize="60sp"
+                android:textColor="@color/white"
+                android:textSize="54sp"
                 android:includeFontPadding="false"
                 tools:text="99"
                 android:textStyle="bold"
                 android:fontFamily="sans-serif-black"
-                android:elevation="10dp" />
+                android:elevation="12dp" />
             <TextView
                 android:id="@+id/time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="end|bottom"
-                android:textColor="@color/white"
-                android:textStyle="bold"
-                android:textSize="32sp"
+                android:layout_below="@id/content"
+                android:layout_alignEnd="@id/content"
+                android:layout_marginTop="8dp"
+                android:textColor="#B3FFFFFF"
+                android:textStyle="normal"
+                android:textSize="24sp"
+                android:fontFamily="sans-serif-medium"
                 tools:text="12:34" />
         </RelativeLayout>
     </FrameLayout>

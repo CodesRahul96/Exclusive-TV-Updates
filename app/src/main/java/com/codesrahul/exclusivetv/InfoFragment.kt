@@ -29,7 +29,16 @@ class InfoFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val handler = Handler()
-    private val delay: Long = 12000
+    private val delay: Long = 5000
+
+    fun isShowing(): Boolean {
+        return view?.visibility == View.VISIBLE
+    }
+
+    fun dismiss() {
+        handler.removeCallbacks(removeRunnable)
+        removeRunnable.run()
+    }
 
     private val timeRunnable = object : Runnable {
         override fun run() {

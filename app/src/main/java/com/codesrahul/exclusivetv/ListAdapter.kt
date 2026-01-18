@@ -93,14 +93,16 @@ class ListAdapter(
     }
 
     fun update(newTvListModel: TVListModel) {
-        recyclerView.post {
-            val oldList = this.tvListModel.getTVModelList()
+        val oldList = tvListModel.getTVModelList()
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
             val newList = newTvListModel.getTVModelList()
             
             val diffResult = DiffUtil.calculateDiff(TVModelDiffCallback(oldList, newList))
             
-            this.tvListModel = newTvListModel
-            diffResult.dispatchUpdatesTo(this)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                tvListModel = newTvListModel
+                diffResult.dispatchUpdatesTo(this@ListAdapter)
+            }
         }
     }
 
@@ -284,13 +286,32 @@ class ListAdapter(
         RecyclerView.ViewHolder(binding.root), OnSharedPreferenceChangeListener {
 
         private var currentTvModel: TVModel? = null
+        private var isAttached = false
+
+        private val epgObserver = androidx.lifecycle.Observer<com.codesrahul.exclusivetv.models.EPGProgram?> { program ->
+            if (SP.epgEnabled) {
+                bindDescription(program?.title)
+            } else {
+                bindDescription(null)
+            }
+        }
 
         fun bind(tvModel: TVModel, movingPosition: Int, position: Int) {
+            // Unsubscribe from old model
+            if (isAttached) {
+                currentTvModel?.currentProgram?.removeObserver(epgObserver)
+            }
+            
             currentTvModel = tvModel
+            
+            // Subscribe to new model if attached
+            if (isAttached) {
+                currentTvModel?.currentProgram?.observeForever(epgObserver)
+            }
             
             bindTitle(tvModel.tv.title)
             
-            // Bind EPG description
+            // Initial EPG bind
             if (SP.epgEnabled) {
                 bindDescription(tvModel.currentProgram.value?.title)
             } else {
@@ -307,11 +328,15 @@ class ListAdapter(
         }
 
         fun attachListeners() {
+            isAttached = true
             SP.setOnSharedPreferenceChangeListener(this)
+            currentTvModel?.currentProgram?.observeForever(epgObserver)
         }
 
         fun detachListeners() {
+            isAttached = false
             SP.removeOnSharedPreferenceChangeListener(this)
+            currentTvModel?.currentProgram?.removeObserver(epgObserver)
         }
 
         fun bindTitle(text: String) {
@@ -358,13 +383,10 @@ class ListAdapter(
         }
 
         fun focus(hasFocus: Boolean) {
-            val colorFocused = ContextCompat.getColor(context, R.color.accent_red)
             val colorWhite = ContextCompat.getColor(context, R.color.white)
             val colorTitleBlur = ContextCompat.getColor(context, R.color.title_blur)
             val colorDescriptionBlur = ContextCompat.getColor(context, R.color.description_blur)
-
-            // Text color change
-            binding.title.setTextColor(if (hasFocus) colorFocused else colorTitleBlur)
+            binding.title.setTextColor(if (hasFocus) colorWhite else colorTitleBlur)
             binding.description.setTextColor(if (hasFocus) colorWhite else colorDescriptionBlur)
 
             // Cancel any ongoing animations to avoid clashing

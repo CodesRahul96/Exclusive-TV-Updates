@@ -24,9 +24,9 @@
     <color name="accent_red_light">#FF6B60</color>
 
     <!-- State Colors -->
-    <color name="color_focus">#FFD700</color>
-    <color name="color_focus_alpha">#33FFD700</color>
-    <color name="color_selected">#FFD700</color>
+    <color name="color_focus">#FF3B30</color>
+    <color name="color_focus_alpha">#66FF3B30</color>
+    <color name="color_selected">#FF3B30</color>
     <color name="color_unselected">#B0B0B0</color>
     
     <!-- Text Colors -->
@@ -42,11 +42,11 @@
 
     <!-- Legacy Compatibility (overwritten or kept if needed) -->
     <color name="search_opaque">#ffaa3f</color>
-    <color name="text_focus">#FFD700</color>
+    <color name="text_focus">#FFFFFF</color>
     <color name="title_blur">#B0B0B0</color>
     <color name="blur">#E60F1520</color>
-    <color name="description_blur">#707070</color>
-    <color name="focus">#FFD700</color>
-    <color name="ripple_color">#1FFFD700</color>
+    <color name="description_blur">#B0B0B0</color>
+    <color name="focus">#FF3B30</color>
+    <color name="ripple_color">#26FF3B30</color>
 
 </resources>
