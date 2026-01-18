@@ -1,4 +1,7 @@
-# Exclusive TV v1.0.36
+# Exclusive TV v1.0.37
+
+## 🚀 Hotfix
+- **Fire TV Sync Fix**: Fixed an issue where the app would not appear in "Sync Sources" settings on some Fire TV devices.
 
 ## 🌟 New Features
 
