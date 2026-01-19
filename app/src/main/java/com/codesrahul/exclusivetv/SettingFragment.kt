@@ -392,10 +392,12 @@ class SettingFragment : Fragment() {
                 }
                 OrderPreferenceManager.saveHiddenCategories(currentHidden)
                 
-                // Refresh list in background
+                OrderPreferenceManager.saveHiddenCategories(currentHidden)
+                // Don't update instantly to avoid Recycler Crash
+            }
+            .setPositiveButton("Done") { _, _ ->
                 TVList.update(requireContext(), silent = true)
             }
-            .setPositiveButton("Done", null)
             .setNeutralButton("Reset All") { _, _ ->
                 OrderPreferenceManager.saveHiddenCategories(emptySet())
                 TVList.update(requireContext(), silent = true)
