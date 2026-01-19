@@ -14,7 +14,9 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:padding="8dp"
-        android:background="#0DFFFFFF">
+        android:focusable="true"
+        android:clickable="true"
+        android:background="@drawable/selector_item_focus">
         
         <ImageView
             android:id="@+id/channel_logo"
