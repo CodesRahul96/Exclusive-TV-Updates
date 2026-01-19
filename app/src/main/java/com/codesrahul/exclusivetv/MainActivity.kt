@@ -799,11 +799,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     fun showEpgGrid() {
         hideMenuFragment()
         hideSettingFragment()
+        hideFragment(webFragment) // Prevent focus escape
         showFragment(epgGridFragment)
     }
 
     private fun hideEpgGrid() {
         hideFragment(epgGridFragment)
+        showFragment(webFragment) // Restore content
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
