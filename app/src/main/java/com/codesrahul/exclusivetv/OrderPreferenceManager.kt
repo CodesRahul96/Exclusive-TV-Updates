@@ -14,6 +14,7 @@ object OrderPreferenceManager {
     private const val KEY_CHANNEL_ORDER_PREFIX = "channel_order_"
     private const val KEY_CATEGORY_RENAME = "category_rename"
     private const val KEY_CHANNEL_RENAME = "channel_rename"
+    private const val KEY_HIDDEN_CATEGORIES = "hidden_categories"
 
     private lateinit var prefs: SharedPreferences
     private val gson = Gson()
@@ -76,6 +77,19 @@ object OrderPreferenceManager {
 
     fun getCategoryDisplayName(originalName: String): String {
         return getCategoryRenames()[originalName] ?: originalName
+    }
+
+    // Category Visibility Management
+    fun saveHiddenCategories(hiddenNames: Set<String>) {
+        prefs.edit().putStringSet(KEY_HIDDEN_CATEGORIES, hiddenNames).apply()
+    }
+
+    fun getHiddenCategories(): Set<String> {
+        return prefs.getStringSet(KEY_HIDDEN_CATEGORIES, emptySet()) ?: emptySet()
+    }
+
+    fun isCategoryHidden(name: String): Boolean {
+        return getHiddenCategories().contains(name)
     }
 
     // Channel Rename Management (by URL as key)

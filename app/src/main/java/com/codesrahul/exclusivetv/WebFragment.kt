@@ -863,7 +863,9 @@ class WebFragment : Fragment() {
         // These channels often fail if "bad" headers (like API Cookies or mobile UAs) are sent.
         // We enforce the Desktop Chrome UA which is known to work (same as Source Config default).
         val nameLower = currentTv?.name?.lowercase() ?: ""
-        if (nameLower.contains("sony") || nameLower.contains("liv")) {
+        val titleLower = currentTv?.title?.lowercase() ?: ""
+        if (nameLower.contains("sony") || nameLower.contains("liv") || 
+            titleLower.contains("sony") || titleLower.contains("liv")) {
              Log.i(TAG, "Enforcing clean headers for Sony/LIV channel")
              userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
              requestHeaders.remove("Cookie")

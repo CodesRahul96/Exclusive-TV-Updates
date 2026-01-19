@@ -47,11 +47,11 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- Configuration Section -->
+                <!-- Content Management Section -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="SOURCE CONFIGURATION"
+                    android:text="CONTENT MANAGEMENT"
                     android:textSize="12sp"
                     android:textColor="#00B0FF"
                     android:textStyle="bold"
@@ -94,6 +94,16 @@
                         android:layout_width="match_parent"
                         android:layout_height="44dp"
                         android:text="Manage Sources"
+                        android:background="@drawable/tv_button_bg_secondary"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:layout_marginTop="8dp" />
+
+                    <Button
+                        android:id="@+id/manage_categories"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:text="Manage Categories &amp; Order"
                         android:background="@drawable/tv_button_bg_secondary"
                         android:textColor="#FFFFFF"
                         android:textSize="12sp"

@@ -199,6 +199,18 @@ object EPGManager {
         return programs.find { it.start > now }
     }
 
+    fun getProgramsForChannel(channelName: String, channelApiId: String = ""): List<EPGProgram> {
+        // Try ID match first
+        if (channelApiId.isNotEmpty()) {
+            val progsById = epgDataById[channelApiId]
+            if (progsById != null) return progsById
+        }
+        
+        // Fallback to Name match
+        val normalized = normalizeName(channelName)
+        return epgData[normalized] ?: emptyList()
+    }
+
     private fun parseDate(dateStr: String?): Long? {
         if (dateStr == null) return null
         val clean = dateStr.trim()

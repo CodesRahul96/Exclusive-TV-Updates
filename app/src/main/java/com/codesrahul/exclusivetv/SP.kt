@@ -59,6 +59,9 @@ object SP {
     // Multiple playlist URLs
     private const val KEY_PLAYLIST_URLS = "playlist_urls"
 
+    private const val KEY_HIDDEN_GROUPS = "hidden_groups"
+    private const val KEY_GROUP_ORDER = "group_order"
+
     // Buffer settings
     private const val KEY_BUFFER_MODE = "buffer_mode"
 
@@ -153,6 +156,24 @@ object SP {
         if (current.remove(url)) {
              playlistUrls = current
         }
+    }
+
+    var hiddenGroups: Set<String>
+        get() = sp.getStringSet(KEY_HIDDEN_GROUPS, emptySet()) ?: emptySet()
+        set(value) = sp.edit().putStringSet(KEY_HIDDEN_GROUPS, value).apply()
+
+    var groupOrder: String?
+        get() = sp.getString(KEY_GROUP_ORDER, "")
+        set(value) = sp.edit().putString(KEY_GROUP_ORDER, value).apply()
+    
+    fun toggleGroupVisibility(groupName: String) {
+        val current = hiddenGroups.toMutableSet()
+        if (current.contains(groupName)) {
+            current.remove(groupName)
+        } else {
+            current.add(groupName)
+        }
+        hiddenGroups = current
     }
     
     // ... (rest of the file)

@@ -14,6 +14,7 @@ class CategoryOptionsDialogFragment : DialogFragment() {
     interface CategoryOptionsListener {
         fun onMoveSelected()
         fun onRenameSelected()
+        fun onHideSelected()
         fun onCancelSelected()
     }
 
@@ -46,6 +47,7 @@ class CategoryOptionsDialogFragment : DialogFragment() {
         val titleText = view.findViewById<android.widget.TextView>(R.id.dialog_title)
         val btnMove = view.findViewById<Button>(R.id.btn_move)
         val btnRename = view.findViewById<Button>(R.id.btn_rename)
+        val btnHide = view.findViewById<Button>(R.id.btn_hide)
         val btnCancel = view.findViewById<Button>(R.id.btn_cancel)
 
         titleText.text = "Category Options: $categoryName"
@@ -57,6 +59,11 @@ class CategoryOptionsDialogFragment : DialogFragment() {
 
         btnRename.setOnClickListener {
             listener?.onRenameSelected()
+            dismiss()
+        }
+
+        btnHide.setOnClickListener {
+            listener?.onHideSelected()
             dismiss()
         }
 

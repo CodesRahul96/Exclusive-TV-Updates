@@ -116,6 +116,7 @@ class SettingFragment : Fragment() {
             binding.cardWatermark,
             binding.cardBufferMode,
             binding.cardAudioLanguage,
+            binding.manageCategories,
             binding.clear,
             binding.checkVersion,
             binding.closeMenu
@@ -172,6 +173,11 @@ class SettingFragment : Fragment() {
         binding.managePlaylists.setOnClickListener {
              tvUiUtils?.playClickSound()
              showManagePlaylistsDialog()
+        }
+
+        binding.manageCategories.setOnClickListener {
+             tvUiUtils?.playClickSound()
+             showManageCategoriesDialog()
         }
 
         binding.clear.setOnClickListener {
@@ -347,6 +353,54 @@ class SettingFragment : Fragment() {
                 showRemoveSourceDialog(selectedUrl)
             }
             .setPositiveButton("Close", null)
+            .show()
+    }
+
+    private fun showManageCategoriesDialog() {
+        // Get all groups from the model
+        val mainActivity = activity as? MainActivity ?: return
+        val allGroups = com.codesrahul.exclusivetv.models.TVList.groupModel.getTVListModelList()
+        if (allGroups.isEmpty()) {
+            Toast.makeText(requireContext(), "No categories loaded", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // We filter out "My Collection" and "All channels" as they should always be visible
+        val categoryPairs = allGroups.filter { it.getIndex() > 1 }.map { 
+            val originalName = it.getName()
+            val displayName = OrderPreferenceManager.getCategoryDisplayName(originalName)
+            Triple(originalName, displayName, !OrderPreferenceManager.isCategoryHidden(originalName))
+        }
+
+        if (categoryPairs.isEmpty()) {
+             Toast.makeText(requireContext(), "No custom categories found", Toast.LENGTH_SHORT).show()
+             return
+        }
+
+        val displayNames = categoryPairs.map { it.second }.toTypedArray()
+        val checkedItems = categoryPairs.map { it.third }.toBooleanArray()
+
+        android.app.AlertDialog.Builder(requireContext(), android.app.AlertDialog.THEME_HOLO_DARK)
+            .setTitle("Manage Category Visibility")
+            .setMultiChoiceItems(displayNames, checkedItems) { _, which: Int, isChecked: Boolean ->
+                val originalName = categoryPairs[which].first
+                val currentHidden = OrderPreferenceManager.getHiddenCategories().toMutableSet()
+                if (isChecked) {
+                    currentHidden.remove(originalName)
+                } else {
+                    currentHidden.add(originalName)
+                }
+                OrderPreferenceManager.saveHiddenCategories(currentHidden)
+                
+                // Refresh list in background
+                TVList.update(requireContext(), silent = true)
+            }
+            .setPositiveButton("Done", null)
+            .setNeutralButton("Reset All") { _, _ ->
+                OrderPreferenceManager.saveHiddenCategories(emptySet())
+                TVList.update(requireContext(), silent = true)
+                Toast.makeText(requireContext(), "All categories restored", Toast.LENGTH_SHORT).show()
+            }
             .show()
     }
 

@@ -49,6 +49,20 @@
         android:layout_marginBottom="8dp" />
 
     <Button
+        android:id="@+id/btn_hide"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/selector_item_focus"
+        android:text="Hide Category"
+        android:textAllCaps="false"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:padding="12dp"
+        android:layout_marginBottom="8dp" />
+
+    <Button
         android:id="@+id/btn_cancel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

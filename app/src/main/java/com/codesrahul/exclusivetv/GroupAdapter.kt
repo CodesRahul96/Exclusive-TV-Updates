@@ -313,6 +313,17 @@ class GroupAdapter(
                 showRenameDialog(originalName)
             }
 
+            override fun onHideSelected() {
+                val currentHidden = OrderPreferenceManager.getHiddenCategories().toMutableSet()
+                currentHidden.add(originalName)
+                OrderPreferenceManager.saveHiddenCategories(currentHidden)
+                
+                Toast.makeText(context, "Hidden $displayName", Toast.LENGTH_SHORT).show()
+                
+                // Trigger refresh
+                com.codesrahul.exclusivetv.models.TVList.update(context, silent = true)
+            }
+
             override fun onCancelSelected() {
                 // Do nothing
             }

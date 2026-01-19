@@ -74,6 +74,9 @@ class MyTVApplication : MultiDexApplication() {
 
         // Initialize OrderPreferenceManager
         OrderPreferenceManager.init(this)
+        
+        // Initialize SP (SharedPreferences) - Critical fix for startup crash
+        SP.init(this)
     }
 
     fun getDisplayMetrics(): DisplayMetrics {

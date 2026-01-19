@@ -66,8 +66,8 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         listAdapter.setItemListener(this)
         listAdapter.attachItemTouchHelper()
 
-        binding.menu.setOnClickListener {
-            hideSelf()
+        binding.btnGridGuide.setOnClickListener {
+            (activity as? MainActivity)?.showEpgGrid()
         }
 
         return binding.root
@@ -165,6 +165,9 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 return true
+            }
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                if (binding.btnGridGuide.hasFocus()) return true // Top reached
             }
         }
         return false

@@ -44,6 +44,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var settingFragment = SettingFragment()
     private var importProgressFragment = ImportProgressFragment()
     private var trackSelectionFragment = TrackSelectionFragment()
+    private var epgGridFragment = EpgGridFragment()
 
     private lateinit var updateManager: UpdateManager
     
@@ -173,6 +174,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .add(R.id.main_browse_fragment, loadingFragment)
                 .add(R.id.main_browse_fragment, timeFragment)
                 .add(R.id.main_browse_fragment, infoFragment)
+                .add(R.id.main_browse_fragment, epgGridFragment)
                 .add(R.id.main_browse_fragment, channelFragment)
                 .add(R.id.main_browse_fragment, menuFragment)
                 .add(R.id.main_browse_fragment, settingFragment)
@@ -182,6 +184,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .hide(settingFragment)
                 .hide(importProgressFragment)
                 .hide(trackSelectionFragment)
+                .hide(epgGridFragment)
                 .hide(errorFragment)
                 .show(loadingFragment)
                 .hide(timeFragment)
@@ -773,7 +776,34 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
              }
         }
         
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_GUIDE, KeyEvent.KEYCODE_G -> {
+                    toggleEpgGrid()
+                    return true
+                }
+            }
+        }
+        
         return super.dispatchKeyEvent(event)
+    }
+
+    private fun toggleEpgGrid() {
+        if (epgGridFragment.isHidden) {
+            showEpgGrid()
+        } else {
+            hideEpgGrid()
+        }
+    }
+
+    fun showEpgGrid() {
+        hideMenuFragment()
+        hideSettingFragment()
+        showFragment(epgGridFragment)
+    }
+
+    private fun hideEpgGrid() {
+        hideFragment(epgGridFragment)
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
@@ -833,6 +863,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         if (!settingFragment.isHidden) {
             hideSettingFragment()
+            return
+        }
+
+        if (!epgGridFragment.isHidden) {
+            hideEpgGrid()
             return
         }
 

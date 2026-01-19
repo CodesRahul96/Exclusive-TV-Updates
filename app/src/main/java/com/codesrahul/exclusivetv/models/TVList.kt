@@ -290,7 +290,7 @@ object TVList {
                              EPGManager.init(ctx)
                              CoroutineScope(Dispatchers.IO).launch {
                                  withContext(Dispatchers.Main) { _importStatus.value = "Updating Guide..." } 
-                                 EPGManager.fetchEPG(force = true)
+                                 EPGManager.fetchEPG(force = false)
                                  withContext(Dispatchers.Main) {
                                      listModel.forEach { it.updateEPG() }
                                  }
@@ -613,9 +613,13 @@ object TVList {
             val preparedGroups = mutableListOf<Triple<String, Int, List<TV>>>()
             var groupIndex = 2
             
+            val hiddenCategories = OrderPreferenceManager.getHiddenCategories()
+            
             for (categoryName in sortedCategories) {
+                if (categoryName in hiddenCategories) continue // Skip hidden groups
+
                 val originalCategoryName = categoryName
-                val displayCategoryName = categoryRenames[originalCategoryName] ?: originalCategoryName
+                val displayCategoryName = OrderPreferenceManager.getCategoryDisplayName(originalCategoryName)
                 val channels = map[originalCategoryName] ?: continue
                 
                 val channelOrder = OrderPreferenceManager.getChannelOrder(originalCategoryName)
@@ -674,7 +678,7 @@ object TVList {
                          tv.id = id
                          // Reuse existing TVModel if URL match to preserve observers if possible
                          // (Though TVModel usually gets recreated on full refresh)
-                         val tvModel = TVModel(tv)
+                         val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
                          tvModel.groupIndex = idx
                          tvModel.listIndex = groupChannels.size
                          
