@@ -1,0 +1,90 @@
+
+> Configure project :app
+Version Code from version.json: 16786944
+Version Name from version.json: v1.0.38
+Building with VersionCode: 16786944, VersionName: v1.0.38
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:injectCrashlyticsMappingFileIdDebug UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:compileDebugKotlin
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/ConfirmationFragment.kt:60:17 Variable 'focusListener' is never used
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/ConfirmationFragment.kt:60:75 Name shadowed: view
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:126:40 'FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:127:40 'FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:156:13 'setter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:157:22 'SYSTEM_UI_FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:158:30 'SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:159:30 'SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:160:30 'SYSTEM_UI_FLAG_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:161:30 'SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:162:30 'SYSTEM_UI_FLAG_IMMERSIVE: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:403:22 Variable 'current' is never used
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:480:42 No cast needed
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:510:45 'getter for defaultDisplay: Display!' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:510:60 'getter for width: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:592:47 'getter for defaultDisplay: Display!' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:592:62 'getter for width: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:593:50 'getter for defaultDisplay: Display!' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:593:65 'getter for width: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:613:73 'getter for defaultDisplay: Display!' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:613:88 'getter for height: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/SettingFragment.kt:336:31 Parameter 'dialog' is never used, could be renamed to _
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/models/M3UParser.kt:64:13 Variable 'isM3U' is assigned but never accessed
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/models/M3UParser.kt:72:21 The value 'true' assigned to 'var isM3U: Boolean defined in com.codesrahul.exclusivetv.models.M3UParser.parse' is never used
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/models/TVList.kt:591:21 Variable 'oldIdToModel' is never used
+e: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/SimpleServer.kt:102:37 Type mismatch: inferred type is Uri! but Context was expected
+e: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/SimpleServer.kt:102:37 No value passed for parameter 'uri'
+
+> Task :app:compileDebugKotlin FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 6s
+33 actionable tasks: 1 executed, 32 up-to-date

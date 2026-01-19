@@ -74,9 +74,9 @@ class ListAdapter(
 
         binding.description.textSize = application.px2PxFont(binding.description.textSize)
         
-        // Scale channel number for TV
-        binding.channelNumber.layoutParams.width = application.px2Px(binding.channelNumber.layoutParams.width)
-        binding.channelNumber.layoutParams.height = application.px2Px(binding.channelNumber.layoutParams.height)
+        // Scale channel number for TV - REMOVED manual scaling to support WRAP_CONTENT and auto-sizing
+        // binding.channelNumber.layoutParams.width = application.px2Px(binding.channelNumber.layoutParams.width)
+        // binding.channelNumber.layoutParams.height = application.px2Px(binding.channelNumber.layoutParams.height)
         binding.channelNumber.textSize = application.px2PxFont(binding.channelNumber.textSize)
 
         return ViewHolder(context, binding)

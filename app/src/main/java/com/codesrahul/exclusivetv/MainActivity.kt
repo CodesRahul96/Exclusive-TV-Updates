@@ -327,7 +327,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 Log.i(TAG, "Triggering resume refresh")
                 val config = SP.config
                 if (!config.isNullOrEmpty() && config.startsWith("http")) {
-                    TVList.update(config, silent = true)
+                    TVList.update(this, config, silent = true)
                     lastRefreshTime = now
                 }
             }
@@ -755,6 +755,23 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (!menuFragment.isHidden) menuActive()
         if (!settingFragment.isHidden) settingActive()
         if (!trackSelectionFragment.isHidden) trackSelectionActive()
+        
+        // Intercept Select/Enter for Info Card when in Playback Mode (No menus visible)
+        if (event.action == KeyEvent.ACTION_DOWN && 
+           (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER)) {
+             
+             if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+                 if (infoFragment.isShowing()) {
+                     infoFragment.dismiss()
+                 } else {
+                     val tvModel = TVList.getTVModel()
+                     if (tvModel != null) {
+                         infoFragment.show(tvModel)
+                     }
+                 }
+                 return true // Consumed
+             }
+        }
         
         return super.dispatchKeyEvent(event)
     }

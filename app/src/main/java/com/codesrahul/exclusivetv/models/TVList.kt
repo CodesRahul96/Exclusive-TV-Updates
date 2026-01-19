@@ -147,8 +147,9 @@ object TVList {
             okhttp3.OkHttpClient.Builder()
                 .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
                 .hostnameVerifier { _, _ -> true }
-                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                .connectionPool(okhttp3.ConnectionPool(5, 5, java.util.concurrent.TimeUnit.MINUTES))
                 .addInterceptor { chain ->
                     val original = chain.request()
                     val request = original.newBuilder()
@@ -163,14 +164,19 @@ object TVList {
         }
     }
 
-    fun update(serverUrl: String, silent: Boolean = false) {
-        update(MyTVApplication.getInstance(), serverUrl, silent)
-    }
-
-    fun update(ctx: Context, serverUrl: String, silent: Boolean = false) {
+    fun update(ctx: Context, silent: Boolean = false) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 isUpdating = true
+                
+                // Get all URLs to fetch
+                val urls = SP.playlistUrls.toMutableSet()
+                // Ensure at least one URL exists (default)
+                if (urls.isEmpty()) {
+                    urls.add(DEFAULT_CONFIG_URL)
+                    SP.addPlaylistUrl(DEFAULT_CONFIG_URL)
+                }
+
                 withContext(Dispatchers.Main) {
                     if (size() == 0 && !silent) {
                          _importProgress.value = 5
@@ -179,175 +185,153 @@ object TVList {
                     }
                 }
                 
-                // Use HttpURLConnection as fallback
-                val targetUrl = serverUrl
+                val client = unsafeClient
+                val allChannels = mutableListOf<TV>()
+                var successCount = 0
                 
-                val urlObj = java.net.URL(targetUrl)
-                val conn = urlObj.openConnection() as java.net.HttpURLConnection
-                conn.requestMethod = "GET"
-                conn.connectTimeout = 30000
-                conn.readTimeout = 30000
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                conn.setRequestProperty("version_code", com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE.toString())
-                
-                val responseCode = conn.responseCode
-                
-                if (responseCode == 200) {
-                    // Update progress to 60 (Server responded)
-                    if (!silent) {
-                        withContext(Dispatchers.Main) {
-                            _importProgress.value = 60
-                        }
-                    }
-
-                    val file = File(ctx.filesDir, FILE_NAME)
-                    if (!file.exists()) {
-                        file.createNewFile()
-                    }
-
-                    val str = conn.inputStream.bufferedReader().use { it.readText() }
-                    Log.i(TAG, "Body length: ${str.length}")
-
-                    // Process JSON in background
-                    val success = try {
-                        str2List(str)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Critical error in str2List", e)
-                        false
-                    }
-
-                    withContext(Dispatchers.Main) {
+                // Fetch all playlists concurrently
+                val deferredResults = urls.map { url ->
+                    async {
                         try {
-                             if (success) {
-                                file.writeText(str)
-                                SP.config = serverUrl
-                                if (!silent) "Channels updated".showToast()
-                                
-                                 // checkChannelsInBackground()
-                                 
-                                 // Fetch EPG if enabled
-                                 if (SP.epgEnabled) {
-                                     Log.i(TAG, "Fetching EPG...")
-                                     EPGManager.init(ctx)
-                                     CoroutineScope(Dispatchers.IO).launch {
-                                         EPGManager.fetchEPG(force = true)
-                                         withContext(Dispatchers.Main) {
-                                             listModel.forEach { it.updateEPG() }
-                                         }
-                                     }
-                                 }
-
-                                // Update progress to 100 (Done)
-                                if (!silent) {
-                                    _importProgress.value = 100
-                                }
-                            } else {
-                                if (!silent) {
-                                    "Channel import error: Invalid content".showToast()
-                                    _importProgress.value = 0 // Reset/Fail
-                                }
-                            }
+                           Log.i(TAG, "Fetching playlist: $url")
+                           val request = Request.Builder().url(url).get().build()
+                           
+                           client.newCall(request).execute().use { response ->
+                               if (response.isSuccessful) {
+                                   val str = response.body()?.string() ?: ""
+                                   if (str.isNotBlank()) {
+                                       parseUniversal(str)
+                                   } else {
+                                       emptyList<TV>()
+                                   }
+                               } else {
+                                   Log.e(TAG, "Failed to fetch $url: ${response.code()}")
+                                   emptyList<TV>()
+                               }
+                           }
                         } catch (e: Exception) {
-                             Log.e(TAG, "Parsing error", e)
-                             if (!silent) {
-                                 "Channel import error: ${e.message}".showToast()
-                                 _importProgress.value = 0 // Reset/Fail
+                           Log.e(TAG, "Error fetching $url", e)
+                           emptyList<TV>()
+                        }
+                    }
+                }
+                
+                // Await all
+                val results = deferredResults.map { it.await() }
+                results.forEach { 
+                    if (it.isNotEmpty()) {
+                        allChannels.addAll(it)
+                        successCount++
+                    }
+                }
+                
+                if (successCount > 0) {
+                     // Save merged list
+                     // We need to serialize this list to JSON to save it to channels.txt 
+                     // OR just save the raw content? No, raw content of multiple files is hard.
+                     // We should save the List<TV> as JSON to channels.txt.
+                     
+                     val gson = com.google.gson.Gson()
+                     val jsonStr = gson.toJson(allChannels)
+                     
+                     val file = File(ctx.filesDir, FILE_NAME)
+                     file.writeText(jsonStr) // Save formatted JSON
+                     
+                     // Update memory
+                     list = allChannels
+                     
+                     withContext(Dispatchers.Main) {
+                         refreshModels(MyTVApplication.getInstance())
+                         if (!silent) "Channels updated from $successCount sources".showToast()
+                         _importProgress.value = 100
+                         
+                         if (SP.epgEnabled) {
+                             EPGManager.init(ctx)
+                             CoroutineScope(Dispatchers.IO).launch {
+                                 EPGManager.fetchEPG(force = true)
+                                 withContext(Dispatchers.Main) {
+                                     listModel.forEach { it.updateEPG() }
+                                 }
                              }
-                        }
-                    }
+                         }
+                     }
                 } else {
-                    Log.e("", "request status $responseCode")
-                    if (!silent) {
-                        withContext(Dispatchers.Main) {
-                            "Channel status error: $responseCode".showToast()
-                        }
-                    }
-                }
-            } catch (e: JsonSyntaxException) {
-                Log.e("JSON Parse Error", e.toString())
-                if (!silent) {
                     withContext(Dispatchers.Main) {
-                        "Channel format error".showToast()
+                        if (!silent) "Failed to update channels".showToast()
+                        _importProgress.value = 0
                     }
                 }
-            } catch (e: NullPointerException) {
-                Log.e("Null Pointer Error", e.toString())
-                if (!silent) {
-                    withContext(Dispatchers.Main) {
-                        "Unable to read channel".showToast()
-                    }
-                }
+                
             } catch (e: Exception) {
-                Log.e("", "request error $e")
-                if (!silent) {
-                    withContext(Dispatchers.Main) {
-                        "Channel request error: ${e.message}".showToast()
-                    }
+                Log.e(TAG, "Update failed", e)
+                withContext(Dispatchers.Main) {
+                     if (!silent) "Update error: ${e.message}".showToast()
+                     _importProgress.value = 0
                 }
             } finally {
                 isUpdating = false
             }
         }
     }
-
-    fun parseUri(uri: Uri) {
-        if (uri.scheme == "file") {
-            val file = uri.toFile()
-            Log.i(TAG, "file $file")
-            val str = if (file.exists()) {
-                Log.i(TAG, "read $file")
-                file.readText()
-            } else {
-                "File does not exist".showToast(Toast.LENGTH_LONG)
-                return
-            }
-
-            try {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val success = str2List(str)
-                    withContext(Dispatchers.Main) {
-                        if (success) {
-                            SP.config = uri.toString()
-                            "Channels updated".showToast(Toast.LENGTH_LONG)
-                            // checkChannelsInBackground()
-                        } else {
-                            "Channel import failed".showToast(Toast.LENGTH_LONG)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("", "error $e")
-                file.deleteOnExit()
-                "Failed to read channel".showToast(Toast.LENGTH_LONG)
-            }
-        } else {
-            update(MyTVApplication.getInstance(), uri.toString())
-        }
-    }
-
-    suspend fun str2List(str: String): Boolean = withContext(Dispatchers.Default) {
+    
+    // Helper that returns List<TV> instead of setting global 'list'
+    private suspend fun parseContentHelper(str: String): List<TV> = withContext(Dispatchers.Default) {
         try {
             val parsed = parseUniversal(str)
             if (parsed.isNotEmpty()) {
-                list = parsed
+                expandNestedPlaylists(parsed)
             } else {
-                Log.e(TAG, "No channels found in data")
-                return@withContext false
+                emptyList()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error in str2List", e)
-            return@withContext false
+            Log.e(TAG, "Error in parseContentHelper", e)
+            emptyList()
         }
+    }
 
-        // Expand Nested Playlists (Recursive Import)
+    // Kept for backward compatibility/single file logic if needed, but updated to use helper
+    suspend fun str2List(str: String): Boolean {
+         val result = parseContentHelper(str)
+         if (result.isNotEmpty()) {
+             list = result
+             refreshModels(MyTVApplication.getInstance())
+             return true
+         }
+         return false
+    }
+    
+    // Helper to call update with single URL (legacy support)
+    fun update(ctx: Context, serverUrl: String, silent: Boolean = false) {
+        // If specific URL passed, add it to list and update all?
+        // Or just update that one?
+        // Let's assume we add it to our list if valid
+        if (serverUrl.isNotEmpty()) {
+            SP.addPlaylistUrl(serverUrl)
+        }
+        update(ctx, silent)
+    }
+
+    fun parseUri(context: Context, uri: Uri) {
         try {
-            list = expandNestedPlaylists(list)
+            val content = context.contentResolver.openInputStream(uri)?.use { 
+                it.bufferedReader().readText() 
+            }
+            
+            if (!content.isNullOrBlank()) {
+                val parsed = parseUniversal(content)
+                if (parsed.isNotEmpty()) {
+                    list = parsed
+                    SP.addPlaylistUrl(uri.toString()) // Optional: Save URI? Maybe not readable later.
+                    refreshModels(context)
+                    Toast.makeText(context, "Loaded ${parsed.size} channels from file", Toast.LENGTH_SHORT).show()
+                } else {
+                     Toast.makeText(context, "No channels found in file", Toast.LENGTH_SHORT).show()
+                }
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Error expanding playlists", e)
+            Log.e(TAG, "Error parsing ParseUri", e)
+            Toast.makeText(context, "Error reading file", Toast.LENGTH_SHORT).show()
         }
-
-        refreshModels(MyTVApplication.getInstance())
-        return@withContext true
     }
 
     private fun parseUniversal(content: String): List<TV> {
@@ -367,14 +351,37 @@ object TVList {
              if (plsList.isNotEmpty()) return plsList
         }
 
-        // 2. M3U / M3U8 Playlist (Check first if explicit M3U header, or fall through)
-        // We check M3U *before* generic JSON if it looks strongly like M3U, but *after* JSON if ambiguous?
-        // Actually, JSON starts with { or [, M3U with #. Easy distinction.
-        
-        val startIndex = string.indexOfFirst { it == '[' || it == '{' }
-        val isJsonCandidate = startIndex != -1 && !string.trim().startsWith("#")
+        // 2. M3U / M3U8 / Kodi Playlist
+        if (decryptedContent.contains("#EXTINF") || decryptedContent.contains("#EXTM3U") || 
+            decryptedContent.contains("EXTHTTP") || decryptedContent.contains("#KODIPROP")) {
+            
+            // Prefer KodiParser if KODIPROP present
+            if (decryptedContent.contains("#KODIPROP")) {
+                try {
+                    val kodiList = KodiParser.parse(decryptedContent)
+                    if (kodiList.isNotEmpty()) {
+                        Log.i(TAG, "Parsed Kodi M3U: ${kodiList.size}")
+                        return kodiList
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Kodi parse error", e)
+                }
+            }
 
-        if (isJsonCandidate) {
+            try {
+                val m3uList = M3UParser.parse(decryptedContent)
+                if (m3uList.isNotEmpty()) {
+                    Log.i(TAG, "Parsed M3U: ${m3uList.size}")
+                    return m3uList
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "M3U parse error", e)
+            }
+        }
+        
+        // 3. JSON Detection (If not M3U)
+        val startIndex = string.indexOfFirst { it == '[' || it == '{' }
+        if (startIndex != -1) {
              try {
                 val jsonString = string.substring(startIndex)
                 val gson = com.google.gson.GsonBuilder().setLenient().create()
@@ -395,7 +402,8 @@ object TVList {
                     val jioList = gson.fromJson<List<JioTVChannel>>(jsonString, jioType)
                     if (!jioList.isNullOrEmpty() && !jioList[0].mpdUrl.isNullOrEmpty()) {
                         Log.i(TAG, "Parsed JioTV JSON: ${jioList.size}")
-                        return jioList.map { jio ->
+                        // ... (Jio mapping logic same as before)
+                         return jioList.map { jio ->
                             TV(
                                 apiId = jio.id ?: "",
                                 name = jio.name ?: "",
@@ -414,30 +422,23 @@ object TVList {
                     }
                 } catch (e: Exception) { /* Continue */ }
 
-                // C. Try Generic Heuristic JSON (Xtream Codes / Other)
-                val genericList = GenericJsonParser.parse(jsonString)
+                // C. Generic
+                 val genericList = GenericJsonParser.parse(jsonString)
                 if (genericList.isNotEmpty()) {
-                    Log.i(TAG, "Parsed Generic JSON: ${genericList.size}")
-                    return genericList
+                     return genericList
                 }
 
-            } catch (e: Exception) {
-                Log.e(TAG, "JSON parsing failed", e)
-            }
+             } catch (e: Exception) {
+                 Log.e(TAG, "JSON parsing failed", e)
+             }
         }
 
-        // 3. Fallback to M3U
-        // Check for common M3U indicators
-        if (decryptedContent.contains("#EXTINF") || decryptedContent.contains("#EXTM3U") || 
-            decryptedContent.contains("EXTHTTP") || decryptedContent.contains("#KODIPROP")) {
-            try {
-                val m3uList = M3UParser.parse(decryptedContent)
-                if (m3uList.isNotEmpty()) {
-                    Log.i(TAG, "Parsed M3U: ${m3uList.size}")
-                    return m3uList
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "M3U parse error", e)
+        // 4. Fallback: Try Simple List Parser (for raw URL lists)
+        // Only try if content has http links and wasn't parsed by others
+        if (string.contains("http://") || string.contains("https://")) {
+            val simpleList = SimpleListParser.parse(string)
+            if (simpleList.isNotEmpty()) {
+                return simpleList
             }
         }
 
@@ -446,29 +447,37 @@ object TVList {
 
     private suspend fun expandNestedPlaylists(originalList: List<TV>): List<TV> = withContext(Dispatchers.IO) {
         val client = unsafeClient
+        // Limit concurrency to avoid overwhelming servers (max 5 parallel fetches)
+        val semaphore = kotlinx.coroutines.sync.Semaphore(5)
         
         // 1. Map each item to a Deferred result (or immediate value)
         val deferredResults = originalList.map { tv ->
             val url = tv.uris.firstOrNull() ?: ""
             
             // Broader check for playlists
-            val isPlaylistCandidate = url.contains(".m3u", ignoreCase = true) || 
-                                      url.contains(".php", ignoreCase = true) ||
-                                      url.contains(".txt", ignoreCase = true) ||
-                                      url.contains("type=m3u", ignoreCase = true)
-            
-            // Exclude explicit stream types/extensions
+            // If it's NOT a clearly identified stream extension, treat it as a potential playlist
+            // specially if coming from a dynamic API
             val isStream = url.contains(".m3u8", ignoreCase = true) || 
-                           url.contains(".mpd", ignoreCase = true)
+                           url.contains(".mpd", ignoreCase = true) ||
+                           url.contains(".ts", ignoreCase = true)
 
+            // If it has children already, it's a group, don't expand
+            if (tv.child.isNotEmpty()) {
+                 async { listOf(tv) }
+            }
             // If it's a candidate, fetch asynchronously
-            if (isPlaylistCandidate && !isStream) {
-                // Return a Deferred<List<TV>>? No, allow mixed types.
-                // We use async to fetch.
+            else if (!isStream && url.startsWith("http")) {
                 async {
-                    Log.i(TAG, "Checking nested content: ${tv.name}")
+                    semaphore.acquire()
                     try {
-                        val request = Request.Builder().url(url).get().build()
+                        Log.i(TAG, "Checking nested content: ${tv.name}")
+                        val requestBuilder = Request.Builder().url(url).get()
+                        
+                        // FIX: Do NOT propagate parent headers to the nested playlist fetch.
+                        // We want to fetch the M3U using the standard client (Chrome UA), just like Source Config.
+                        // Propagating API headers to a GitHub/External URL is incorrect.
+                        
+                        val request = requestBuilder.build()
                          
                         // Execute blocking call inside IO async block
                         client.newCall(request).execute().use { response ->
@@ -480,10 +489,13 @@ object TVList {
                                     Log.i(TAG, "Expanded ${tv.name}: ${subChannels.size} channels")
                                     subChannels.forEach { child ->
                                         if (child.group.isBlank()) child.group = tv.group
-                                        val mergedHeaders = mutableMapOf<String, String>()
-                                        tv.headers?.let { mergedHeaders.putAll(it) }
-                                        child.headers?.let { mergedHeaders.putAll(it) }
-                                        child.headers = mergedHeaders
+                                        
+                                        // FIX: Do NOT propagate ANY headers from the playlist container to the items.
+                                        // The container's credentials (for fetching the M3U) are generally NOT valid for the streams.
+                                        // This matches "Source Config" behavior where streams use default (Chrome) UA.
+                                        
+                                        // If child has headers (from M3U), keep them. Otherwise null.
+                                        // child.headers is already set by the parser.
                                     }
                                     subChannels
                                 } else {
@@ -496,6 +508,8 @@ object TVList {
                     } catch (e: Exception) {
                         Log.e(TAG, "Error fetching nested playlist ${tv.name}", e)
                         listOf(tv)
+                    } finally {
+                        semaphore.release()
                     }
                 }
             } else {
@@ -735,25 +749,32 @@ object TVList {
     }
 
     fun setPosition(position: Int): Boolean {
-        Log.i(TAG, "setPosition $position/${size()}")
         if (position < 0 || position >= size()) {
+            Log.w(TAG, "setPosition invalid: $position (size: ${size()})")
             return false
         }
 
+        // 1. Get Model FIRST to ensure validity
+        val tvModel = getTVModel(position) ?: return false
+        
+        // 2. Update LiveData (Trigger Observers)
         if (_position.value != position) {
-            _position.value = position
+             // Main Thread safety check for LiveData
+             if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                 _position.value = position
+             } else {
+                 _position.postValue(position)
+             }
         }
 
-        val tvModel = getTVModel(position) ?: return false
-
+        // 3. Update State & Persistence
         groupModel.setPosition(tvModel.groupIndex)
-
         SP.positionGroup = tvModel.groupIndex
         SP.position = position
         
-        // Save stable identifier (URL)
         if (tvModel.tv.uris.isNotEmpty()) {
             SP.lastChannelUrl = tvModel.tv.uris[0]
+            SP.lastChannelName = tvModel.tv.name
         }
         
         return true
@@ -765,10 +786,21 @@ object TVList {
 
     fun restorePosition(): Int {
         val savedUrl = SP.lastChannelUrl
+        val savedName = SP.lastChannelName
         val savedPos = SP.position
         
         if (savedUrl.isNotEmpty()) {
-            // Find index by URL
+            // Priority 1: Strict Match (URL + Name)
+            if (savedName.isNotEmpty()) {
+                 val strictIndex = listModel.indexOfFirst { 
+                     it.tv.uris.isNotEmpty() && it.tv.uris[0] == savedUrl && it.tv.name == savedName
+                 }
+                 if (strictIndex != -1) {
+                     return strictIndex
+                 }
+            }
+
+            // Priority 2: URL Match
             val index = listModel.indexOfFirst { 
                 it.tv.uris.isNotEmpty() && it.tv.uris[0] == savedUrl 
             }

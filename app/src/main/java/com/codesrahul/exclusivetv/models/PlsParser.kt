@@ -45,8 +45,7 @@ object PlsParser {
             // Convert to TV list
             entries.values.forEachIndexed { i, entry ->
                 if (entry.url.isNotEmpty()) {
-                    val type = if (entry.url.contains(".m3u8") || entry.url.contains(".mpd") || entry.url.contains(".ts") || entry.url.contains(".php")) 
-                        Type.STREAM else Type.WEB
+                val type = Type.STREAM
 
                     list.add(TV(
                         id = i,

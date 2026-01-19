@@ -42,6 +42,7 @@ object SP {
     private const val KEY_FORCE_HIGH_QUALITY = "force_high_quality"
     private const val KEY_LAST_VERSION = "last_version"
     private const val KEY_LAST_CHANNEL_URL = "last_channel_url"
+    private const val KEY_LAST_CHANNEL_NAME = "last_channel_name"
     const val KEY_EPG_ENABLED = "epg_enabled"
     const val KEY_SHOW_DATE_IN_INFO = "show_date_in_info" // Added key
     
@@ -54,29 +55,14 @@ object SP {
 
     private val listeners = java.util.concurrent.CopyOnWriteArrayList<OnSharedPreferenceChangeListener>()
 
-    /**
-     * The method must be invoked as early as possible(At least before using the keys)
-     */
-    fun init(context: Context) {
-        sp = context.getSharedPreferences(
-            context.resources.getString(R.string.app_name),
-            Context.MODE_PRIVATE
-        )
-    }
 
-    fun setOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener) {
-        if (!listeners.contains(listener)) {
-            listeners.add(listener)
-        }
-    }
+    // Multiple playlist URLs
+    private const val KEY_PLAYLIST_URLS = "playlist_urls"
 
-    fun removeOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener) {
-        listeners.remove(listener)
-    }
+    // Buffer settings
+    private const val KEY_BUFFER_MODE = "buffer_mode"
 
-    private fun notifyListeners(key: String) {
-        listeners.forEach { it.onSharedPreferenceChanged(key) }
-    }
+    // ... (existing constants)
 
     var channelReversal: Boolean
         get() = sp.getBoolean(KEY_CHANNEL_REVERSAL, false)
@@ -102,12 +88,6 @@ object SP {
         get() = sp.getInt(KEY_POSITION_GROUP, 0)
         set(value) = sp.edit().putInt(KEY_POSITION_GROUP, value).apply()
 
-    private const val KEY_BUFFER_MODE = "buffer_mode" // 0=Default, 1=Stable (Max), 2=Fast (Low)
-
-    var bufferMode: Int
-        get() = sp.getInt(KEY_BUFFER_MODE, 0)
-        set(value) = sp.edit().putInt(KEY_BUFFER_MODE, value).apply()
-
     var positionSub: Int
         get() = sp.getInt(KEY_POSITION_SUB, 0)
         set(value) = sp.edit().putInt(KEY_POSITION_SUB, value).apply()
@@ -116,9 +96,66 @@ object SP {
         get() = sp.getBoolean(KEY_REPEAT_INFO, true)
         set(value) = sp.edit().putBoolean(KEY_REPEAT_INFO, value).apply()
 
+    var bufferMode: Int
+        get() = sp.getInt(KEY_BUFFER_MODE, 0) // 0: Default, 1: Low, 2: High
+        set(value) = sp.edit().putInt(KEY_BUFFER_MODE, value).apply()
+
+    /**
+     * The method must be invoked as early as possible(At least before using the keys)
+     */
+    fun init(context: Context) {
+        sp = context.getSharedPreferences(
+            context.resources.getString(R.string.app_name),
+            Context.MODE_PRIVATE
+        )
+        
+        // Migration: If config exists but playlistUrls is empty, move config to playlistUrls
+        if (config?.isNotEmpty() == true && playlistUrls.isEmpty()) {
+            addPlaylistUrl(config!!)
+            // We keep config for now as "current/last active" or just backward compatibility
+        }
+    }
+
+    fun setOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener) {
+        if (!listeners.contains(listener)) {
+            listeners.add(listener)
+        }
+    }
+
+    fun removeOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener) {
+        listeners.remove(listener)
+    }
+
+    private fun notifyListeners(key: String) {
+        listeners.forEach { it.onSharedPreferenceChanged(key) }
+    }
+
+    // ... (existing methods)
+
+    // Deprecated: verify usages and migrate to playlistUrls
     var config: String?
         get() = sp.getString(KEY_CONFIG, "")
         set(value) = sp.edit().putString(KEY_CONFIG, value).apply()
+
+    var playlistUrls: Set<String>
+        get() = sp.getStringSet(KEY_PLAYLIST_URLS, emptySet()) ?: emptySet()
+        set(value) = sp.edit().putStringSet(KEY_PLAYLIST_URLS, value).apply()
+
+    fun addPlaylistUrl(url: String) {
+        val current = playlistUrls.toMutableSet()
+        if (current.add(url)) {
+             playlistUrls = current
+        }
+    }
+
+    fun removePlaylistUrl(url: String) {
+        val current = playlistUrls.toMutableSet()
+        if (current.remove(url)) {
+             playlistUrls = current
+        }
+    }
+    
+    // ... (rest of the file)
 
     var configAutoLoad: Boolean
         get() = sp.getBoolean(KEY_CONFIG_AUTO_LOAD, true)
@@ -148,9 +185,17 @@ object SP {
         get() = sp.getInt(KEY_LAST_VERSION, 0)
         set(value) = sp.edit().putInt(KEY_LAST_VERSION, value).apply()
 
+    var defaultAudioLanguage: String
+        get() = sp.getString("default_audio_language", "") ?: ""
+        set(value) = sp.edit().putString("default_audio_language", value).apply()
+
     var lastChannelUrl: String
         get() = sp.getString(KEY_LAST_CHANNEL_URL, "") ?: ""
         set(value) = sp.edit().putString(KEY_LAST_CHANNEL_URL, value).apply()
+
+    var lastChannelName: String
+        get() = sp.getString(KEY_LAST_CHANNEL_NAME, "") ?: ""
+        set(value) = sp.edit().putString(KEY_LAST_CHANNEL_NAME, value).apply()
 
     var epgEnabled: Boolean
         get() = sp.getBoolean(KEY_EPG_ENABLED, false)

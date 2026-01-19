@@ -99,7 +99,7 @@ class SimpleServer(private val context: Context, port: Int) : NanoHTTPD(port) {
                 val uri = Uri.parse(url)
                 Log.i(TAG, "uri $uri")
                 handler.post {
-                    TVList.parseUri(uri)
+                    TVList.parseUri(context, uri)
                 }
             }
         } catch (e: IOException) {

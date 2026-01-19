@@ -65,6 +65,7 @@ class InfoFragment : Fragment() {
     }
 
     fun show(tvViewModel: TVModel) {
+        binding.channelNumber.text = String.format("%03d", tvViewModel.tv.id + 1)
         binding.title.text = tvViewModel.tv.title
 
         when (tvViewModel.tv.title) {

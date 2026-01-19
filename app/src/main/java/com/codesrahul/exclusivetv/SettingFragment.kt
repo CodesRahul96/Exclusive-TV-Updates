@@ -52,11 +52,6 @@ class SettingFragment : Fragment() {
         
         syncStatusUI()
 
-        val currentConfig = SP.config ?: ""
-        binding.config.text = Editable.Factory.getInstance().newEditable(
-            if (currentConfig == TVList.DEFAULT_CONFIG_URL) "" else currentConfig
-        )
-
         binding.config.apply {
             isFocusable = true
             isFocusableInTouchMode = true
@@ -95,6 +90,12 @@ class SettingFragment : Fragment() {
 
         val bufferModes = arrayOf("Default", "Max Stability", "Low Latency") // 0, 1, 2
         binding.statusBufferMode.text = bufferModes.getOrElse(SP.bufferMode) { "Default" }
+
+        val langCode = SP.defaultAudioLanguage
+        binding.statusAudioLanguage.text = if (langCode.isEmpty()) "Default" else {
+            java.util.Locale(langCode).displayLanguage
+        }
+        binding.statusAudioLanguage.setTextColor(if (langCode.isNotEmpty()) activeColor else inactiveColor)
     }
 
     private fun setupFocusAnimations() {
@@ -114,6 +115,7 @@ class SettingFragment : Fragment() {
             binding.cardEpg,
             binding.cardWatermark,
             binding.cardBufferMode,
+            binding.cardAudioLanguage,
             binding.clear,
             binding.checkVersion,
             binding.closeMenu
@@ -147,25 +149,29 @@ class SettingFragment : Fragment() {
         binding.cardEpg.setOnClickListener { toggleSetting("epgEnabled") }
         binding.cardWatermark.setOnClickListener { toggleSetting("watermark") }
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
+        binding.cardAudioLanguage.setOnClickListener { setupAudioLanguageDialog() }
 
         binding.confirmConfig.setOnClickListener {
             tvUiUtils?.playClickSound()
             val text = binding.config.text.toString().trim()
             if (text.isEmpty()) {
-                SP.config = TVList.DEFAULT_CONFIG_URL
-                TVList.update(requireContext(), TVList.DEFAULT_CONFIG_URL)
-                Toast.makeText(requireContext(), "Configuration reset", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Please enter a URL", Toast.LENGTH_SHORT).show()
             } else {
                 val url = Utils.formatUrl(text)
-                uri = Uri.parse(url)
-                if (uri.scheme.isNullOrEmpty()) uri = uri.buildUpon().scheme("http").build()
-                if (uri.isAbsolute) {
-                    if (uri.scheme == "file") requestReadPermissions()
-                    else TVList.parseUri(uri)
-                } else {
-                    binding.config.error = "Invalid address"
-                }
+                // Add to multi-playlist source
+                SP.addPlaylistUrl(url)
+                
+                // Trigger update
+                TVList.update(requireContext(), silent = false) // Fetch all
+                
+                binding.config.text = null // Clear input
+                Toast.makeText(requireContext(), "Source added", Toast.LENGTH_SHORT).show()
             }
+        }
+        
+        binding.managePlaylists.setOnClickListener {
+             tvUiUtils?.playClickSound()
+             showManagePlaylistsDialog()
         }
 
         binding.clear.setOnClickListener {
@@ -273,7 +279,7 @@ class SettingFragment : Fragment() {
             list.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
         if (list.isEmpty()) {
-            TVList.parseUri(uri)
+            TVList.parseUri(requireContext(), uri)
         } else {
             ActivityCompat.requestPermissions(requireActivity(), list.toTypedArray(), PERMISSION_READ)
         }
@@ -326,9 +332,80 @@ class SettingFragment : Fragment() {
         }
     }
 
+    private fun showManagePlaylistsDialog() {
+        // Filter out main API URL to keep it hidden/private
+        val urls = SP.playlistUrls.filter { it != TVList.DEFAULT_CONFIG_URL }.toTypedArray()
+        if (urls.isEmpty()) {
+            Toast.makeText(requireContext(), "No sources added", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Manage Sources (Tap to Remove)")
+            .setItems(urls) { dialog, which ->
+                val selectedUrl = urls[which]
+                showRemoveSourceDialog(selectedUrl)
+            }
+            .setPositiveButton("Close", null)
+            .show()
+    }
+
+    private fun showRemoveSourceDialog(url: String) {
+        android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Remove Source?")
+            .setMessage(url)
+            .setPositiveButton("Remove") { _, _ ->
+                SP.removePlaylistUrl(url)
+                Toast.makeText(requireContext(), "Source removed", Toast.LENGTH_SHORT).show()
+                // Refresh list
+                TVList.update(requireContext(), silent = false)
+            }
+            .setNegativeButton("Cancel") { _, _ -> showManagePlaylistsDialog() } // Re-show list
+            .show()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setupAudioLanguageDialog() {
+        // Map of Display Name -> ISO 639-2/3 Code
+        val languages = mapOf(
+            "Default (None)" to "",
+            "Hindi" to "hin",
+            "English" to "eng",
+            "Tamil" to "tam",
+            "Telugu" to "tel",
+            "Malayalam" to "mal",
+            "Kannada" to "kan",
+            "Bengali" to "ben",
+            "Marathi" to "mar",
+            "Punjabi" to "pan",
+            "Gujarati" to "guj"
+        )
+        val languageNames = languages.keys.toTypedArray()
+        val languageCodes = languages.values.toTypedArray()
+
+        val currentCode = SP.defaultAudioLanguage
+        var checkedItem = languageCodes.indexOfFirst { it == currentCode }
+        if (checkedItem == -1) checkedItem = 0 // Default
+
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Select Default Audio Language")
+            .setSingleChoiceItems(languageNames, checkedItem) { dialog, which ->
+                val selectedCode = languageCodes[which]
+                SP.defaultAudioLanguage = selectedCode
+                syncStatusUI()
+                
+                // Show confirmation
+                val display = if (selectedCode.isEmpty()) "Default" else java.util.Locale(selectedCode).displayLanguage
+                Toast.makeText(context, "Audio Language set to: $display", Toast.LENGTH_SHORT).show()
+                
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     companion object {

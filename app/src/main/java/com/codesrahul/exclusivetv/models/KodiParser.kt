@@ -4,8 +4,8 @@ import android.util.Log
 import java.io.BufferedReader
 import java.io.StringReader
 
-object M3UParser {
-    private const val TAG = "M3UParser"
+object KodiParser {
+    private const val TAG = "KodiParser"
     // Compile Regex once for performance
     private val PROP_REGEX = Regex("([a-zA-Z0-9\\-_]+)=(?:\"([^\"]*)\"|([^, ]+))")
 
@@ -63,22 +63,19 @@ object M3UParser {
             }
         }
 
-        var isM3U = false
-
         while (reader.readLine().also { line = it } != null) {
             try {
                 val trimmedLine = line?.trim() ?: continue
                 if (trimmedLine.isEmpty()) continue
-    
+
                 if (trimmedLine.startsWith("#EXTM3U")) {
-                    isM3U = true
                     continue
                 }
-    
-                if (trimmedLine.startsWith("#EXTINF:")) {
+
+                else if (trimmedLine.startsWith("#EXTINF:")) {
                     // Should save previous channel if exists
                     saveAndReset()
-    
+
                     // Extract Name (everything after the last comma)
                     val lastCommaIndex = trimmedLine.lastIndexOf(',')
                     if (lastCommaIndex != -1) {
@@ -86,7 +83,7 @@ object M3UParser {
                     } else {
                         currentName = "Channel ${channelCount + 1}"
                     }
-    
+
                     // Extract Properties
                     val propertiesPart = if (lastCommaIndex != -1) trimmedLine.substring(0, lastCommaIndex) else trimmedLine
                     
@@ -118,29 +115,31 @@ object M3UParser {
                             "license-type", "license_type", "drm-scheme" -> currentDrmScheme = value
                         }
                     }
-    
+
                 } else if (trimmedLine.startsWith("#EXTHTTP:") || trimmedLine.startsWith("# EXTHTTP:")) {
-                      // Flush previous if URIs exist (meaning this tag belongs to a NEW block)
-                      saveAndReset()
-                      
-                      // Parse JSON headers
-                      val jsonStr = trimmedLine.substringAfter("HTTP:").trim()
-                      try {
-                          val jsonObject = org.json.JSONObject(jsonStr)
-                          val keys = jsonObject.keys()
-                          while (keys.hasNext()) {
-                              val key = keys.next()
-                              val value = jsonObject.getString(key)
-                              currentHeaders[key] = value
-                          }
-                      } catch (e: Exception) {
-                          Log.e(TAG, "Failed to parse EXTHTTP JSON: $jsonStr", e)
-                      }
-    
-                } else if (trimmedLine.startsWith("#KODIPROP:")) {
-                    // If we have URIs, this KODIPROP belongs to the NEXT channel, so save current
+                    // Flush previous if URIs exist (meaning this tag belongs to a NEW block)
                     saveAndReset()
-    
+                    
+                    // Parse JSON headers
+                    val jsonStr = trimmedLine.substringAfter("HTTP:").trim()
+                    try {
+                        val jsonObject = org.json.JSONObject(jsonStr)
+                        val keys = jsonObject.keys()
+                        while (keys.hasNext()) {
+                            val key = keys.next()
+                            val value = jsonObject.getString(key)
+                            currentHeaders[key] = value
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to parse EXTHTTP JSON: $jsonStr", e)
+                    }
+
+                } else if (trimmedLine.startsWith("#KODIPROP:")) {
+                    // Property applies to the FOLLOWING channel (don't reset yet unless URIs exist)
+                    if (currentUris.isNotEmpty()) {
+                        saveAndReset()
+                    }
+
                     // #KODIPROP:inputstream.adaptive.license_type=...
                     val parts = trimmedLine.substringAfter("#KODIPROP:").split("=", limit = 2)
                     if (parts.size == 2) {
@@ -159,12 +158,14 @@ object M3UParser {
                             "inputstream.adaptive.license_key" -> {
                                 currentDrmLicense = value.split("|")[0] 
                             }
+                            "inputstream.adaptive.manifest_type" -> {
+                                // e.g. "mpd", "hls", "ism" - implies STREAM type
+                            }
                         }
                     }
                 } else if (trimmedLine.startsWith("#EXTVLCOPT:")) {
-                    // Same logic: If URIs present, this belongs to NEXT channel
-                    saveAndReset()
-    
+                    if (currentUris.isNotEmpty()) saveAndReset()
+
                     val parts = trimmedLine.substringAfter("#EXTVLCOPT:").split("=", limit = 2)
                     if (parts.size == 2) {
                         val key = parts[0].trim()
@@ -211,7 +212,7 @@ object M3UParser {
         // Add last channel
         saveAndReset()
 
-        Log.i(TAG, "Parsed ${channels.size} channels from M3U")
+        Log.i(TAG, "Parsed ${channels.size} channels from Kodi M3U")
         return channels
     }
 
@@ -229,7 +230,7 @@ object M3UParser {
         catchupDays: String?,
         catchupSource: String?
     ): TV {
-        // M3U entries are almost exclusively streams or nested playlists. Default to STREAM.
+        // Force stream type if DRM is present or extension matches, otherwise default to STREAM for M3U entries
         val type = Type.STREAM
         
         return TV(

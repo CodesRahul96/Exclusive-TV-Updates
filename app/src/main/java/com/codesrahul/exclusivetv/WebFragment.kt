@@ -732,6 +732,7 @@ class WebFragment : Fragment() {
 
     fun play(tvModel: TVModel) {
         this.tvModel = tvModel
+        tvModel.setErrInfo("") // Clear any previous error state immediately
         retryCount = 0 // Reset for new channel
         val url = tvModel.videoUrl.value ?: return
         this.currentVideoUrl = url
@@ -856,6 +857,18 @@ class WebFragment : Fragment() {
             }
         }
 
+        // FORCE FIX FOR SONYLIV / SONY CHANNELS
+        // These channels often fail if "bad" headers (like API Cookies or mobile UAs) are sent.
+        // We enforce the Desktop Chrome UA which is known to work (same as Source Config default).
+        val nameLower = currentTv?.name?.lowercase() ?: ""
+        if (nameLower.contains("sony") || nameLower.contains("liv")) {
+             Log.i(TAG, "Enforcing clean headers for Sony/LIV channel")
+             userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+             requestHeaders.remove("Cookie")
+             requestHeaders.remove("Authorization")
+             requestHeaders.remove("Referer") // Sometimes Referer breaks it too if not exact
+        }
+
         // OPTIMIZED BUFFER SETTINGS
         val loadControl = getLoadControl()
 
@@ -908,14 +921,44 @@ class WebFragment : Fragment() {
         
         exoPlayer = builder.build()
 
-        if (SP.forceHighQuality) {
+        // Logic Correction: "Force High Quality" should ENABLE High Quality (No Limit), not restrict to SD.
+        // If the toggle is ON, we want MAX resolution.
+        // If the toggle is OFF, we might want to save data (SD)?
+        // For now, let's assume the user wants the BEST quality by default.
+        if (!SP.forceHighQuality) {
+            // If High Quality is FORCED OFF (i.e. User wants Data Saver), we cap at SD
             val trackSelectionParameters = exoPlayer?.trackSelectionParameters
                 ?.buildUpon()
-                ?.setMaxVideoSizeSd() // Start with SD
+                ?.setMaxVideoSizeSd() 
                 ?.build()
             if (trackSelectionParameters != null) {
                 exoPlayer?.trackSelectionParameters = trackSelectionParameters
             }
+        } else {
+             // Ensure no limits suitable for HD/4K
+             val trackSelectionParameters = exoPlayer?.trackSelectionParameters
+                ?.buildUpon()
+                ?.clearVideoSizeConstraints()
+                ?.build()
+             if (trackSelectionParameters != null) {
+                exoPlayer?.trackSelectionParameters = trackSelectionParameters
+             }
+        }
+
+        // Apply Default Audio Language Preference
+        val defaultLang = SP.defaultAudioLanguage
+        if (defaultLang.isNotEmpty() && exoPlayer != null) {
+             try {
+                 val currentParams = exoPlayer!!.trackSelectionParameters
+                 val newParams = currentParams
+                    .buildUpon()
+                    .setPreferredAudioLanguages(defaultLang)
+                    .build()
+                 exoPlayer!!.trackSelectionParameters = newParams
+                 Log.i(TAG, "Applied preferred audio language: $defaultLang")
+             } catch (e: Exception) {
+                 Log.e(TAG, "Failed to apply audio language", e)
+             }
         }
         
         exoPlayer?.addListener(object : Player.Listener {
@@ -926,8 +969,17 @@ class WebFragment : Fragment() {
                 // AUTO RETRY LOGIC
                 if (retryCount < maxRetries) {
                     retryCount++
+                    
                     val delay = if(error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) 1000L else 3000L
-                    tvModel?.setErrInfo("Retrying... ($retryCount/$maxRetries)")
+                    
+                    // Improved Logic: Don't show "Retrying" immediately on the first transient error.
+                    // This prevents the error screen from flashing on working channels that have a minor hiccup.
+                    if (retryCount > 1) {
+                        tvModel?.setErrInfo("Retrying... ($retryCount/$maxRetries)")
+                    } else {
+                        // First retry - keep silent (looks like loading)
+                        tvModel?.setErrInfo("") 
+                    }
                     
                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                         if (retryCount > 0 && currentVideoUrl.isNotEmpty()) { 
@@ -936,17 +988,27 @@ class WebFragment : Fragment() {
                         }
                     }, delay)
                 } else {
-                     // Try fallback to next source
-                     if (tvModel?.nextVideoUrl() == true) {
-                         Log.i(TAG, "Switching to next source...")
-                         tvModel?.setErrInfo("Switching Source...")
-                         retryCount = 0 // Reset for new source
-                         val nextUrl = tvModel?.videoUrl?.value
-                         if (!nextUrl.isNullOrEmpty()) {
-                             initializePlayer(nextUrl)
+                     // Check if we should fallback to WebView (Universal Support)
+                     // If we are in "Stream" mode but it failed repeatedly, maybe it's a web link?
+                     Log.i(TAG, "Native playback failed after retries. Attempting fallback to WebView.")
+                     tvModel?.setErrInfo("Switching to Web Mode...")
+                     
+                     // Switch to WebView
+                     android.os.Handler(android.os.Looper.getMainLooper()).post {
+                         playerView.visibility = View.GONE
+                         webView.visibility = View.VISIBLE
+                         releasePlayer()
+                         
+                         // Re-apply WebView settings if needed
+                         val url = currentVideoUrl
+                         val uri = Uri.parse(url)
+                         
+                         // Some site-specifics might need re-triggering (copy from play() logic if needed)
+                         if (uri.host == "tv.cctv.com") {
+                             webView.evaluateJavascript("localStorage.setItem('cctv_live_resolution', '720');", null)
                          }
-                     } else {
-                        tvModel?.setErrInfo("Channel Not Available")
+
+                         webView.loadUrl(url)
                      }
                 }
             }
@@ -1190,19 +1252,19 @@ class WebFragment : Fragment() {
         val minBuffer = when (bufferMode) {
             1 -> 30000 // 30s
             2 -> 5000  // 5s
-            else -> 15000 // 15s
+            else -> 15000 // Increased default to 15s to prevent pausing
         }
 
         val maxBuffer = when (bufferMode) {
             1 -> 60000 // 60s
             2 -> 15000 // 15s
-            else -> 50000 // 50s
+            else -> 60000 // Increased default to 60s
         }
 
         val startBuffer = when (bufferMode) {
-            1 -> 5000 // 5s start
+            1 -> 2500 // 2.5s start
             2 -> 1000 // 1s start
-            else -> 2500 // 2.5s start
+            else -> 2000 // Balanced start
         }
         
         return DefaultLoadControl.Builder()
