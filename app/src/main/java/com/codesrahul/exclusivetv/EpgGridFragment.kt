@@ -114,6 +114,7 @@ class EpgGridFragment : Fragment() {
             val logo = view.findViewById<android.widget.ImageView>(R.id.channel_logo)
             val rowScroll = view.findViewById<HorizontalScrollView>(R.id.row_scroll)
             val programContainer = view.findViewById<ViewGroup>(R.id.program_container)
+            val channelInfo = view.findViewById<View>(R.id.channel_info_container)
             var currentChannelUrl: String? = null
         }
 
@@ -131,6 +132,11 @@ class EpgGridFragment : Fragment() {
                 .placeholder(R.drawable.bg_glass)
                 .into(holder.logo)
             
+            // Click header to play
+            holder.channelInfo.setOnClickListener {
+                 (activity as? MainActivity)?.playChannel(channel)
+            }
+
             val channelUrl = channel.tv.uris.firstOrNull()
             // Sync initial scroll
             holder.rowScroll.post {
@@ -172,15 +178,24 @@ class EpgGridFragment : Fragment() {
                 val durationMins = (prog.stop - prog.start) / 60000
                 val startOffsetMins = (prog.start - guideStart) / 60000
                 
-                val width = (durationMins * PIXELS_PER_MINUTE).toInt()
-                val leftMargin = (startOffsetMins * PIXELS_PER_MINUTE).toInt()
+                // Ensure reasonable width
+                val finalWidth = if (durationMins < 5) 5 * PIXELS_PER_MINUTE else (durationMins * PIXELS_PER_MINUTE).toInt()
                 
-                val lp = android.widget.RelativeLayout.LayoutParams(width, ViewGroup.LayoutParams.MATCH_PARENT)
-                lp.marginStart = leftMargin
+                // Use RelativeLayout.LayoutParams if container is RelativeLayout?
+                // Wait, item_epg_row.xml has:
+                // <RelativeLayout android:id="@+id/program_container" ... />
+                // So YES, use RelativeLayout.LayoutParams
+                
+                val lp = android.widget.RelativeLayout.LayoutParams(finalWidth, ViewGroup.LayoutParams.MATCH_PARENT)
+                lp.marginStart = (startOffsetMins * PIXELS_PER_MINUTE).toInt()
                 view.layoutParams = lp
                 
+                // Interaction:
+                // 1. Focus -> Show Info
+                // 2. Click -> Play Channel AND Show Info (or just play)
+                
                 view.setOnClickListener {
-                     showFocusInfo(prog)
+                     (activity as? MainActivity)?.playChannel(channel)
                 }
                 
                 view.setOnFocusChangeListener { _, hasFocus ->

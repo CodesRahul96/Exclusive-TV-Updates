@@ -445,7 +445,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         settingFragment.setVersionName(appVersionName)
     }
 
-    private fun playChannel(tvModel: TVModel) {
+    fun playChannel(tvModel: TVModel) {
         Log.i(TAG, "playChannel ${tvModel.tv.title}")
         
         // Hide error and show loader

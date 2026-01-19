@@ -9,6 +9,7 @@
 
     <!-- Channel Info -->
     <LinearLayout
+        android:id="@+id/channel_info_container"
         android:layout_width="200dp"
         android:layout_height="match_parent"
         android:orientation="horizontal"
