@@ -28,10 +28,18 @@ object M3UParser {
         var channelCount = 0
 
         val currentUris = mutableListOf<String>()
+        val globalHeaders = mutableMapOf<String, String>()
 
         // Helper to save current channel
         fun saveAndReset() {
             if (currentUris.isNotEmpty()) {
+                // Merge global headers with current headers (current takes precedence)
+                val finalHeaders = if (globalHeaders.isNotEmpty()) {
+                    val merged = globalHeaders.toMutableMap()
+                    merged.putAll(currentHeaders)
+                    merged
+                } else currentHeaders
+
                 channels.add(
                     createTV(
                         channelCount++,
@@ -40,7 +48,7 @@ object M3UParser {
                         currentLogo,
                         currentGroup,
                         currentUris,
-                        currentHeaders,
+                        finalHeaders,
                         currentDrmScheme,
                         currentDrmLicense,
                         currentCatchupType,
@@ -72,6 +80,19 @@ object M3UParser {
     
                 if (trimmedLine.startsWith("#EXTM3U")) {
                     isM3U = true
+                    // Extract global properties from #EXTM3U tag
+                    val matches = PROP_REGEX.findAll(trimmedLine)
+                    for (match in matches) {
+                        val key = match.groupValues[1].lowercase()
+                        val value = if (match.groupValues[2].isNotEmpty()) match.groupValues[2] else match.groupValues[3]
+                        
+                        when (key) {
+                            "user-agent", "user_agent", "http-user-agent" -> globalHeaders["User-Agent"] = value
+                            "referer", "referrer", "http-referer" -> globalHeaders["Referer"] = value
+                            "cookie", "cookies" -> globalHeaders["Cookie"] = value
+                            "origin", "http-origin" -> globalHeaders["Origin"] = value
+                        }
+                    }
                     continue
                 }
     
@@ -211,6 +232,19 @@ object M3UParser {
         // Add last channel
         saveAndReset()
 
+        if (channels.isEmpty() && !isM3U) {
+             // If nothing parsed and no EXTM3U found, maybe it was a simple list of URLs?
+             // SimpleListParser might have been better, but let's try one last fallback
+             Log.d(TAG, "No channels parsed, checking for plain URLs")
+             val lines = content.lines()
+             for ((index, l) in lines.withIndex()) {
+                 val tl = l.trim()
+                 if (tl.startsWith("http")) {
+                     channels.add(createTV(index, "", "", "", "", listOf(tl), mapOf(), null, null, null, null, null))
+                 }
+             }
+        }
+
         Log.i(TAG, "Parsed ${channels.size} channels from M3U")
         return channels
     }
@@ -232,11 +266,29 @@ object M3UParser {
         // M3U entries are almost exclusively streams or nested playlists. Default to STREAM.
         val type = Type.STREAM
         
+        var finalName = name
+        if (finalName.isEmpty() || finalName.startsWith("Channel")) {
+            // Try to extract name from URL if possible
+            val firstUri = uris.firstOrNull() ?: ""
+            if (firstUri.isNotEmpty()) {
+                val uri = android.net.Uri.parse(firstUri)
+                val path = uri.path ?: ""
+                val fileName = path.substringAfterLast('/').substringBefore('.')
+                if (fileName.isNotEmpty() && fileName != "index" && fileName != "playlist" && fileName != "chunklist") {
+                    finalName = fileName.replace('_', ' ').replace('-', ' ').trim()
+                }
+            }
+        }
+        
+        if (finalName.isEmpty()) {
+            finalName = "Channel ${id + 1}"
+        }
+
         return TV(
             id = id,
             apiId = apiId,
-            name = name,
-            title = name,
+            name = finalName,
+            title = finalName,
             description = null,
             logo = logo,
             image = null,

@@ -342,7 +342,7 @@ class SettingFragment : Fragment() {
         
         android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("Manage Sources (Tap to Remove)")
-            .setItems(urls) { dialog, which ->
+            .setItems(urls) { _, which ->
                 val selectedUrl = urls[which]
                 showRemoveSourceDialog(selectedUrl)
             }

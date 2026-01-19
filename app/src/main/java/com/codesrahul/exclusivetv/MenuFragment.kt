@@ -104,9 +104,22 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
             .commit()
     }
 
+    private val updateHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var pendingTvListModel: TVListModel? = null
+    private val updateRunnable = Runnable {
+        pendingTvListModel?.let {
+            (binding.list.adapter as ListAdapter).update(it)
+        }
+    }
+
     override fun onItemFocusChange(tvListModel: TVListModel, hasFocus: Boolean) {
         if (hasFocus) {
-            (binding.list.adapter as ListAdapter).update(tvListModel)
+            // Cancel any pending update
+            updateHandler.removeCallbacks(updateRunnable)
+            
+            pendingTvListModel = tvListModel
+            // Debounce update by 250ms
+            updateHandler.postDelayed(updateRunnable, 250)
         }
     }
 

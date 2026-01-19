@@ -400,13 +400,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                          .commitNowAllowingStateLoss()
                  }
                 
-                 val current = if (progress == 60) 0 else 60
-                 if(progress == 60) {
-                      importProgressFragment.animateProgress(0, 60)
-                 } else if (progress == 100) {
-                      importProgressFragment.animateProgress(60, 100)
-                      // Hide after delay or let user dismiss? 
-                      // User said "move to 100% and close".
+                 importProgressFragment.setProgress(progress)
+                 
+                 if (progress == 100) {
+                      // Hide after delay
                       handler.postDelayed({ 
                           if (!importProgressFragment.isHidden) {
                               supportFragmentManager.beginTransaction()
@@ -414,10 +411,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                                   .commitNowAllowingStateLoss()
                               importProgressFragment.setProgress(0) // Reset
                           }
-                      }, 1000)
+                      }, 2000)
                  }
             } else {
-                 // Reset or hide
                  if (!importProgressFragment.isHidden) {
                      supportFragmentManager.beginTransaction()
                          .hide(importProgressFragment)
@@ -425,6 +421,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                  }
                  importProgressFragment.setProgress(0)
             }
+        }
+        
+        TVList.importStatus.observe(this) { status ->
+             importProgressFragment.setStatus(status)
         }
 
         val port = PortUtil.findFreePort()

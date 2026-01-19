@@ -130,6 +130,7 @@ class GroupAdapter(
                         v?.itemView?.isSelected = true
                         v?.itemView?.requestFocus()
                     }, 0)
+                    return@setOnKeyListener true
                 }
 
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && position == getItemCount() - 1) {
@@ -145,6 +146,7 @@ class GroupAdapter(
                         v?.itemView?.isSelected = true
                         v?.itemView?.requestFocus()
                     }, 0)
+                    return@setOnKeyListener true
                 }
 
                 if (movingPosition != -1 && movingPosition == position) {

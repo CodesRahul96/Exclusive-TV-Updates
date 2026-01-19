@@ -31,35 +31,28 @@ class ImportProgressFragment : Fragment() {
 
     fun setProgress(progress: Int) {
         if (_binding == null) return
+        binding.tvPercent.text = "$progress%"
         
-        if (progress > 0 && progress < 10) {
-            binding.tvPercent.text = "Connecting..."
+        // Smooth progress animation
+        val current = binding.progressBar.progress
+        if (progress > current) {
+             val animation = ObjectAnimator.ofInt(binding.progressBar, "progress", current, progress)
+             animation.duration = 300
+             animation.interpolator = DecelerateInterpolator()
+             animation.start()
         } else {
-            binding.tvPercent.text = "$progress%"
+             binding.progressBar.progress = progress
         }
-        binding.progressBar.progress = progress
     }
 
-    fun animateProgress(from: Int, to: Int, duration: Long = 500) {
+    fun setStatus(status: String) {
         if (_binding == null) return
-        
-        val progressBar = binding.progressBar
-        val currentProgress = progressBar.progress
-        
-        // Don't animate backwards unless explicitly resetting
-        if (to > currentProgress || (from == 0 && to == 0)) {
-            val animation = ObjectAnimator.ofInt(progressBar, "progress", from, to)
-            animation.duration = duration
-            animation.interpolator = DecelerateInterpolator()
-            animation.addUpdateListener { 
-                val value = it.animatedValue as Int
-                if (value > 0 && value < 10) {
-                     binding.tvPercent.text = "Connecting..."
-                } else {
-                     binding.tvPercent.text = "$value%"
-                }
-            }
-            animation.start()
-        }
+        binding.tvStatus.text = status
+    }
+
+    // Deprecated / unused animation method removed for clarity as we use internal logic now
+    fun animateProgress(from: Int, to: Int, duration: Long = 500) {
+        // Kept empty compatibility or remove if safe. Let's redirect to setProgress.
+        setProgress(to)
     }
 }

@@ -126,6 +126,7 @@ class WebFragment : Fragment() {
 
     private var wakeLock: android.os.PowerManager.WakeLock? = null
     private var retryCount = 0
+    private var currentUrlIndex = 0
     private val maxRetries = 10
     
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -734,6 +735,7 @@ class WebFragment : Fragment() {
         this.tvModel = tvModel
         tvModel.setErrInfo("") // Clear any previous error state immediately
         retryCount = 0 // Reset for new channel
+        currentUrlIndex = 0 // Reset URL index
         val url = tvModel.videoUrl.value ?: return
         this.currentVideoUrl = url
 
@@ -808,7 +810,7 @@ class WebFragment : Fragment() {
         var videoUrl = url
         var drmConfig: DrmConfig? = null
         val requestHeaders = mutableMapOf<String, String>()
-        var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        var userAgent = getOptimalUserAgent(url)
 
         // 1. Load from TV Model (Priority)
         val currentTv = tvModel?.tv
@@ -880,6 +882,8 @@ class WebFragment : Fragment() {
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(requestHeaders)
         
+        Log.i(TAG, "ExoPlayer Headers: $requestHeaders (User-Agent: $userAgent)")
+
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext())
             .setDataSourceFactory(httpDataSourceFactory)
 
@@ -987,6 +991,17 @@ class WebFragment : Fragment() {
                             initializePlayer(currentVideoUrl)
                         }
                     }, delay)
+                } else if (currentTv != null && currentUrlIndex < (currentTv.uris.size - 1)) {
+                    // TRY NEXT URL FALLBACK
+                    currentUrlIndex++
+                    retryCount = 0
+                    val nextUrl = currentTv.uris[currentUrlIndex]
+                    Log.i(TAG, "Falling back to next URL ($currentUrlIndex): $nextUrl")
+                    tvModel?.setErrInfo("Trying Backup Link...")
+                    
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        initializePlayer(nextUrl)
+                    }
                 } else {
                      // Check if we should fallback to WebView (Universal Support)
                      // If we are in "Stream" mode but it failed repeatedly, maybe it's a web link?
@@ -1077,6 +1092,18 @@ class WebFragment : Fragment() {
         exoPlayer?.play()
     }
 
+
+    private fun getOptimalUserAgent(url: String): String {
+        return when {
+            url.contains("googlevideo.com") || url.contains("youtube.com") -> 
+                "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US) gzip"
+            url.contains("facebook.com") || url.contains("fbcdn.net") ->
+                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
+            url.contains("twitch.tv") ->
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+            else -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+    }
 
     data class DrmConfig(val scheme: String, val license: String)
 

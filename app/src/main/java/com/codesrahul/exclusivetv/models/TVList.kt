@@ -164,6 +164,10 @@ object TVList {
         }
     }
 
+    private val _importStatus = MutableLiveData<String>()
+    val importStatus: LiveData<String>
+        get() = _importStatus
+
     fun update(ctx: Context, silent: Boolean = false) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -171,17 +175,23 @@ object TVList {
                 
                 // Get all URLs to fetch
                 val urls = SP.playlistUrls.toMutableSet()
-                // Ensure at least one URL exists (default)
+                // Ensure at least the default URL is present if nothing else is
                 if (urls.isEmpty()) {
                     urls.add(DEFAULT_CONFIG_URL)
                     SP.addPlaylistUrl(DEFAULT_CONFIG_URL)
+                } else if (!urls.contains(DEFAULT_CONFIG_URL)) {
+                    // Optional: Always keep Main API as a baseline? 
+                    // The user said "dont hide them", referring to Main API data.
+                    urls.add(DEFAULT_CONFIG_URL)
                 }
 
                 withContext(Dispatchers.Main) {
                     if (size() == 0 && !silent) {
                          _importProgress.value = 5
+                         _importStatus.value = "Initializing..."
                     } else if (!silent) {
                          _importProgress.value = 0
+                         _importStatus.value = "Checking for updates..."
                     }
                 }
                 
@@ -190,9 +200,15 @@ object TVList {
                 var successCount = 0
                 
                 // Fetch all playlists concurrently
-                val deferredResults = urls.map { url ->
+                val totalSources = urls.size
+                var completedSources = 0
+
+                val deferredResults = urls.mapIndexed { index, url ->
                     async {
                         try {
+                           withContext(Dispatchers.Main) {
+                               if (!silent) _importStatus.value = "Fetching source ${index + 1} of $totalSources..."
+                           }
                            Log.i(TAG, "Fetching playlist: $url")
                            val request = Request.Builder().url(url).get().build()
                            
@@ -200,6 +216,9 @@ object TVList {
                                if (response.isSuccessful) {
                                    val str = response.body()?.string() ?: ""
                                    if (str.isNotBlank()) {
+                                       withContext(Dispatchers.Main) {
+                                            if (!silent) _importStatus.value = "Parsing data..."
+                                       }
                                        parseUniversal(str)
                                    } else {
                                        emptyList<TV>()
@@ -212,6 +231,12 @@ object TVList {
                         } catch (e: Exception) {
                            Log.e(TAG, "Error fetching $url", e)
                            emptyList<TV>()
+                        } finally {
+                            completedSources++
+                            val progress = ((completedSources.toFloat() / totalSources) * 80).toInt() + 10
+                            withContext(Dispatchers.Main) {
+                                if (!silent) _importProgress.value = progress
+                            }
                         }
                     }
                 }
@@ -226,28 +251,45 @@ object TVList {
                 }
                 
                 if (successCount > 0) {
-                     // Save merged list
-                     // We need to serialize this list to JSON to save it to channels.txt 
-                     // OR just save the raw content? No, raw content of multiple files is hard.
-                     // We should save the List<TV> as JSON to channels.txt.
+                     withContext(Dispatchers.Main) {
+                          if (!silent) _importStatus.value = "Finalizing..."
+                     }
                      
+                     // UNROLL: If one channel contains multiple sources, show them all in the list
+                     val finalChannels = mutableListOf<TV>()
+                     allChannels.forEach { tv ->
+                         if (tv.uris.size > 1) {
+                             tv.uris.forEachIndexed { index, uri ->
+                                 finalChannels.add(tv.copy(
+                                     id = tv.id * 100 + index, // Generate a unique sub-id
+                                     title = "${tv.title} (S${index + 1})",
+                                     uris = listOf(uri)
+                                 ))
+                             }
+                         } else {
+                             finalChannels.add(tv)
+                         }
+                     }
+
                      val gson = com.google.gson.Gson()
-                     val jsonStr = gson.toJson(allChannels)
+                     val jsonStr = gson.toJson(finalChannels)
                      
                      val file = File(ctx.filesDir, FILE_NAME)
                      file.writeText(jsonStr) // Save formatted JSON
                      
                      // Update memory
-                     list = allChannels
+                     list = finalChannels
                      
                      withContext(Dispatchers.Main) {
                          refreshModels(MyTVApplication.getInstance())
                          if (!silent) "Channels updated from $successCount sources".showToast()
                          _importProgress.value = 100
+                         _importStatus.value = "Complete"
                          
                          if (SP.epgEnabled) {
                              EPGManager.init(ctx)
                              CoroutineScope(Dispatchers.IO).launch {
+                                 withContext(Dispatchers.Main) { _importStatus.value = "Updating Guide..." } 
                                  EPGManager.fetchEPG(force = true)
                                  withContext(Dispatchers.Main) {
                                      listModel.forEach { it.updateEPG() }
@@ -259,6 +301,7 @@ object TVList {
                     withContext(Dispatchers.Main) {
                         if (!silent) "Failed to update channels".showToast()
                         _importProgress.value = 0
+                        _importStatus.value = "Failed"
                     }
                 }
                 
@@ -267,6 +310,7 @@ object TVList {
                 withContext(Dispatchers.Main) {
                      if (!silent) "Update error: ${e.message}".showToast()
                      _importProgress.value = 0
+                     _importStatus.value = "Error"
                 }
             } finally {
                 isUpdating = false
@@ -345,13 +389,72 @@ object TVList {
         if (string.isBlank()) return emptyList()
         val decryptedContent = string
 
-        // 1. PLS Playlist
+        // LOGGING: Aid in debugging large payloads
+        Log.d(TAG, "Parsing universal content (Length: ${decryptedContent.length})")
+        Log.d(TAG, "Content Sample: ${decryptedContent.take(500)}")
+
+        // 1. JSON Detection (PRIORITY)
+        // We try JSON first because our main API returns a JSON array that might contain M3U strings.
+        // If we check for M3U first, the presence of "EXTHTTP" in the JSON will trigger M3U parsing prematurely.
+        val startIndex = string.indexOfFirst { it == '[' || it == '{' }
+        if (startIndex != -1) {
+             try {
+                val jsonString = string.substring(startIndex)
+                val element = com.google.gson.JsonParser.parseString(jsonString)
+                val allChannels = mutableListOf<TV>()
+                val gson = com.google.gson.GsonBuilder().setLenient().create()
+
+                fun processElement(item: com.google.gson.JsonElement) {
+                    when {
+                        item.isJsonObject -> {
+                            val obj = item.asJsonObject
+                            // A. Try Standard TV mapping
+                            try {
+                                val tv = gson.fromJson(obj, TV::class.java)
+                                if (tv != null && !tv.uris.isNullOrEmpty()) {
+                                    allChannels.add(tv)
+                                } else {
+                                    // B. Fallback to Generic Parser for this object
+                                    val genericTv = GenericJsonParser.parseSingleObject(obj, allChannels.size)
+                                    if (genericTv != null) allChannels.add(genericTv)
+                                }
+                            } catch (e: Exception) {
+                                // C. Fallback for object-wrapped lists (like {"channels": [...]})
+                                val subList = GenericJsonParser.parse(obj.toString())
+                                if (subList.isNotEmpty()) allChannels.addAll(subList)
+                            }
+                        }
+                        item.isJsonPrimitive && item.asJsonPrimitive.isString -> {
+                            val m3uContent = item.asString
+                            if (m3uContent.contains("#EXTINF") || m3uContent.contains("http") || m3uContent.contains("EXTHTTP")) {
+                                allChannels.addAll(parseUniversal(m3uContent))
+                            }
+                        }
+                    }
+                }
+
+                if (element.isJsonArray) {
+                    element.asJsonArray.forEach { processElement(it) }
+                } else if (element.isJsonObject) {
+                    processElement(element)
+                }
+
+                if (allChannels.isNotEmpty()) {
+                    Log.i(TAG, "Parsed ${allChannels.size} channels from JSON")
+                    return allChannels
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Not a valid JSON or parsing failed, falling back to M3U")
+            }
+        }
+
+        // 2. PLS Playlist
         if (decryptedContent.contains("[playlist]", ignoreCase = true)) {
              val plsList = PlsParser.parse(decryptedContent)
              if (plsList.isNotEmpty()) return plsList
         }
 
-        // 2. M3U / M3U8 / Kodi Playlist
+        // 3. M3U / M3U8 / Kodi Playlist
         if (decryptedContent.contains("#EXTINF") || decryptedContent.contains("#EXTM3U") || 
             decryptedContent.contains("EXTHTTP") || decryptedContent.contains("#KODIPROP")) {
             
@@ -378,60 +481,6 @@ object TVList {
                 Log.e(TAG, "M3U parse error", e)
             }
         }
-        
-        // 3. JSON Detection (If not M3U)
-        val startIndex = string.indexOfFirst { it == '[' || it == '{' }
-        if (startIndex != -1) {
-             try {
-                val jsonString = string.substring(startIndex)
-                val gson = com.google.gson.GsonBuilder().setLenient().create()
-                
-                // A. Try Standard TV List
-                try {
-                    val type = object : com.google.gson.reflect.TypeToken<List<TV>>() {}.type
-                    val parsedList = gson.fromJson<List<TV>>(jsonString, type)
-                    if (!parsedList.isNullOrEmpty() && !parsedList[0].uris.isNullOrEmpty()) {
-                        Log.i(TAG, "Parsed Standard JSON: ${parsedList.size}")
-                        return parsedList
-                    }
-                } catch (e: Exception) { /* Continue */ }
-
-                // B. Try JioTV JSON
-                try {
-                    val jioType = object : com.google.gson.reflect.TypeToken<List<JioTVChannel>>() {}.type
-                    val jioList = gson.fromJson<List<JioTVChannel>>(jsonString, jioType)
-                    if (!jioList.isNullOrEmpty() && !jioList[0].mpdUrl.isNullOrEmpty()) {
-                        Log.i(TAG, "Parsed JioTV JSON: ${jioList.size}")
-                        // ... (Jio mapping logic same as before)
-                         return jioList.map { jio ->
-                            TV(
-                                apiId = jio.id ?: "",
-                                name = jio.name ?: "",
-                                logo = jio.logo ?: "",
-                                group = jio.group ?: "",
-                                uris = if (jio.mpdUrl != null) listOf(jio.mpdUrl) else emptyList(),
-                                drmLicenseUrl = jio.licenseUrl,
-                                type = if (jio.type == "dash") Type.STREAM else Type.WEB,
-                                headers = mutableMapOf<String, String>().apply {
-                                    jio.headers?.let { putAll(it) }
-                                    jio.userAgent?.let { put("User-Agent", it) }
-                                },
-                                child = emptyList()
-                            )
-                        }
-                    }
-                } catch (e: Exception) { /* Continue */ }
-
-                // C. Generic
-                 val genericList = GenericJsonParser.parse(jsonString)
-                if (genericList.isNotEmpty()) {
-                     return genericList
-                }
-
-             } catch (e: Exception) {
-                 Log.e(TAG, "JSON parsing failed", e)
-             }
-        }
 
         // 4. Fallback: Try Simple List Parser (for raw URL lists)
         // Only try if content has http links and wasn't parsed by others
@@ -445,7 +494,13 @@ object TVList {
         return emptyList()
     }
 
-    private suspend fun expandNestedPlaylists(originalList: List<TV>): List<TV> = withContext(Dispatchers.IO) {
+    private suspend fun expandNestedPlaylists(originalList: List<TV>, depth: Int = 0): List<TV> = withContext(Dispatchers.IO) {
+        // Prevent infinite recursion or excessive depth
+        if (depth > 3) {
+            Log.w(TAG, "Max playlist expansion depth reached, skipping nested content")
+            return@withContext originalList
+        }
+
         val client = unsafeClient
         // Limit concurrency to avoid overwhelming servers (max 5 parallel fetches)
         val semaphore = kotlinx.coroutines.sync.Semaphore(5)
@@ -459,7 +514,13 @@ object TVList {
             // specially if coming from a dynamic API
             val isStream = url.contains(".m3u8", ignoreCase = true) || 
                            url.contains(".mpd", ignoreCase = true) ||
-                           url.contains(".ts", ignoreCase = true)
+                           url.contains(".ts", ignoreCase = true) ||
+                           url.contains(".mkv", ignoreCase = true) ||
+                           url.contains(".mp4", ignoreCase = true) ||
+                           url.startsWith("rtsp://", ignoreCase = true) ||
+                           url.startsWith("rtmp://", ignoreCase = true) ||
+                           url.contains("/manifest", ignoreCase = true) ||
+                           url.contains("playlist.m3u8", ignoreCase = true)
 
             // If it has children already, it's a group, don't expand
             if (tv.child.isNotEmpty()) {
@@ -489,15 +550,9 @@ object TVList {
                                     Log.i(TAG, "Expanded ${tv.name}: ${subChannels.size} channels")
                                     subChannels.forEach { child ->
                                         if (child.group.isBlank()) child.group = tv.group
-                                        
-                                        // FIX: Do NOT propagate ANY headers from the playlist container to the items.
-                                        // The container's credentials (for fetching the M3U) are generally NOT valid for the streams.
-                                        // This matches "Source Config" behavior where streams use default (Chrome) UA.
-                                        
-                                        // If child has headers (from M3U), keep them. Otherwise null.
-                                        // child.headers is already set by the parser.
                                     }
-                                    subChannels
+                                    // RECURSIVE: Expand if these items are also playlists
+                                    expandNestedPlaylists(subChannels, depth + 1)
                                 } else {
                                     listOf(tv) // Keep original if empty/parsing failed
                                 }
