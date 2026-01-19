@@ -1065,7 +1065,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
 
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
                     if (infoFragment.isShowing()) {
                         infoFragment.dismiss()
                     } else {
@@ -1080,7 +1080,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
 
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_UP -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
                     channelUp()
                     return true
                 }
@@ -1093,7 +1093,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
 
             KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
                     channelDown()
                     return true
                 }
@@ -1112,7 +1112,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 }
                 
                 // 2. For settings and track selection, let them handle navigation naturally
-                if (!settingFragment.isHidden || !trackSelectionFragment.isHidden) {
+                if (!settingFragment.isHidden || !trackSelectionFragment.isHidden || !epgGridFragment.isHidden) {
                     return false
                 }
                 
@@ -1135,7 +1135,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
 
             KeyEvent.KEYCODE_DPAD_LEFT -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
                     showFragment(menuFragment)
                     return true
                 }
