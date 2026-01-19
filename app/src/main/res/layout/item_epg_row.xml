@@ -3,9 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="80dp"
     android:orientation="horizontal"
-    android:background="@drawable/selector_item_focus"
-    android:focusable="true"
-    android:clickable="true">
+    android:focusable="false"
+    android:descendantFocusability="afterDescendants"
+    android:clickable="false">
 
     <!-- Channel Info -->
     <LinearLayout
@@ -40,6 +40,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="none"
+        android:focusable="false"
         android:overScrollMode="never">
         
         <RelativeLayout
