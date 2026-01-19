@@ -44,6 +44,7 @@ class EpgGridFragment : Fragment() {
             return
         }
 
+        binding.epgRecycler.layoutManager = LinearLayoutManager(requireContext())
         binding.epgRecycler.adapter = EpgRowAdapter(channels)
         
         // Sync header scroll with rows
