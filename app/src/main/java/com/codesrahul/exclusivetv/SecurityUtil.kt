@@ -8,6 +8,8 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
 
+import com.codesrahul.exclusivetv.requests.ReleaseResponse
+
 object SecurityUtil {
 
     fun isDeviceRestricted(context: Context): Boolean {
@@ -41,6 +43,8 @@ object SecurityUtil {
 
     @Volatile
     var isAppOutdated: Boolean = false
+
+    var remoteRelease: ReleaseResponse? = null
 
 
 

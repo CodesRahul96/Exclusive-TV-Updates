@@ -133,6 +133,26 @@ object TVList {
                  File(appDirectory, FILE_NAME).delete() // Clear old cache
             }
 
+            // Early version check to prevent data fetch if update available
+            try {
+                Log.i(TAG, "Performing early update check...")
+                val release = com.codesrahul.exclusivetv.requests.ReleaseRequest().getRelease()
+                if (release != null) {
+                    SecurityUtil.remoteRelease = release
+                    if (release.version_code!! > currentVersion) {
+                        SecurityUtil.isAppOutdated = true
+                        Log.w(TAG, "Early update check: App is outdated (Remote: ${release.version_code}, Local: $currentVersion). Blocking load.")
+                        clear() // Delete cached channels.txt to make app "useless"
+                    } else {
+                        Log.i(TAG, "Early update check: App is up to date.")
+                    }
+                } else {
+                    Log.i(TAG, "Early update check: Check failed (No response).")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Early update check error", e)
+            }
+
             val cfg = SP.config
             if (SP.configAutoLoad && !cfg.isNullOrEmpty()) {
                 if (!SecurityUtil.isAppOutdated) {
@@ -141,7 +161,7 @@ object TVList {
                     Log.i(TAG, "Skipping channel load - update required")
                 }
             }
-    }
+        }
     }
 
 

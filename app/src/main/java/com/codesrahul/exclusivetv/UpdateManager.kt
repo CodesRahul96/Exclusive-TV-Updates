@@ -38,6 +38,18 @@ class UpdateManager(
     fun checkAndUpdate() {
         Log.i(TAG, "checkAndUpdate")
         CoroutineScope(Dispatchers.Main).launch {
+            // Check if we already have the release info from TVList's early check
+            val cachedRelease = SecurityUtil.remoteRelease
+            if (cachedRelease != null) {
+                Log.i(TAG, "Using cached release info from SecurityUtil")
+                release = cachedRelease
+                if (SecurityUtil.isAppOutdated) {
+                    val text = "New version available: ${release?.version_name}\n\nPlease update to continue using the app."
+                    updateUI(text, true, true)
+                    return@launch
+                }
+            }
+
             var text = "Failed to obtain version"
             var update = false
             try {
@@ -48,6 +60,8 @@ class UpdateManager(
                     if (release?.version_code!! > versionCode) {
                         text = "New version available: ${release?.version_name}\n\nPlease update to continue using the app."
                         update = true
+                        SecurityUtil.isAppOutdated = true
+                        SecurityUtil.remoteRelease = release
                     } else {
                         text = "Already the latest version, no need to update"
                     }

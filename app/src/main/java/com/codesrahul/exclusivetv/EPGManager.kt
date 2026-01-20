@@ -39,7 +39,7 @@ object EPGManager {
         }
     }
     
-    private val client = OkHttpClient()
+    private val client = SecureHttpClient.client
     private val dateFormats = listOf(
         SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US),
         SimpleDateFormat("yyyyMMddHHmmssZ", Locale.US),
