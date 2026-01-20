@@ -278,22 +278,19 @@ class GroupAdapter(
                 val from = viewHolder.adapterPosition
                 val to = target.adapterPosition
 
-                if (from <= 1 || to <= 1) return false // can't move first two
+                if (from <= 1 || to <= 1) return false
 
-                // 1. Update LOCAL model immediately
                 val currentList = tvGroupModel.getTVListModelList().toMutableList()
                 Collections.swap(currentList, from, to)
                 tvGroupModel.setTVListModelList(currentList)
 
-                // 2. Persist to Preferences
                 val currentOrder = getCurrentCategoryOrder()
-                // currentOrder now reflects the swap because getCurrentCategoryOrder() uses tvGroupModel
                 OrderPreferenceManager.saveCategoryOrder(currentOrder)
                 
-                // 3. Notify global
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                     com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
                 }
+
                 notifyItemMoved(from, to)
                 return true
             }
@@ -401,24 +398,19 @@ class GroupAdapter(
         val index = position - 2
 
         if (index > 0) {
-            // 1. Update LOCAL Model
             val currentList = tvGroupModel.getTVListModelList().toMutableList()
             Collections.swap(currentList, position, position - 1)
             tvGroupModel.setTVListModelList(currentList)
 
-            // 2. Persist
             val currentOrder = getCurrentCategoryOrder()
             OrderPreferenceManager.saveCategoryOrder(currentOrder)
             
-            // 3. Notify global
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                 com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
             }
             
-            // Notify adapter of move
             notifyItemMoved(position, position - 1)
             
-            // Handle focus/selection
             movingPosition = position - 1
             recyclerView.post {
                 toPosition(position - 1)
@@ -436,21 +428,17 @@ class GroupAdapter(
         val index = position - 2
 
         if (index < currentOrder.size - 1) {
-             // 1. Update LOCAL Model
             val currentList = tvGroupModel.getTVListModelList().toMutableList()
             Collections.swap(currentList, position, position + 1)
             tvGroupModel.setTVListModelList(currentList)
 
-            // 2. Persist
             val currentOrder = getCurrentCategoryOrder()
             OrderPreferenceManager.saveCategoryOrder(currentOrder)
 
-            // 3. Notify global
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                 com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
             }
             
-            // Notify adapter
             notifyItemMoved(position, position + 1)
             
             movingPosition = position + 1

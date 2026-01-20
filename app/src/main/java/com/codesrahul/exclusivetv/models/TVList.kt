@@ -158,14 +158,10 @@ object TVList {
                 // Get all URLs to fetch
                 val urls = SP.playlistUrls.toMutableSet()
                 
-                // Check for custom (non-default) sources
-                val hasCustomSource = urls.any { it != DEFAULT_CONFIG_URL }
-                
-                if (hasCustomSource) {
-                    // User provided a source: Hide Main API (Default)
+                // Hide default API if custom sources exist
+                if (urls.any { it != DEFAULT_CONFIG_URL }) {
                     urls.remove(DEFAULT_CONFIG_URL)
                 } else {
-                    // No custom source: Ensure Default is loaded
                     if (urls.isEmpty()) {
                          urls.add(DEFAULT_CONFIG_URL)
                          SP.addPlaylistUrl(DEFAULT_CONFIG_URL)
