@@ -157,14 +157,21 @@ object TVList {
                 
                 // Get all URLs to fetch
                 val urls = SP.playlistUrls.toMutableSet()
-                // Ensure at least the default URL is present if nothing else is
-                if (urls.isEmpty()) {
-                    urls.add(DEFAULT_CONFIG_URL)
-                    SP.addPlaylistUrl(DEFAULT_CONFIG_URL)
-                } else if (!urls.contains(DEFAULT_CONFIG_URL)) {
-                    // Optional: Always keep Main API as a baseline? 
-                    // The user said "dont hide them", referring to Main API data.
-                    urls.add(DEFAULT_CONFIG_URL)
+                
+                // Check for custom (non-default) sources
+                val hasCustomSource = urls.any { it != DEFAULT_CONFIG_URL }
+                
+                if (hasCustomSource) {
+                    // User provided a source: Hide Main API (Default)
+                    urls.remove(DEFAULT_CONFIG_URL)
+                } else {
+                    // No custom source: Ensure Default is loaded
+                    if (urls.isEmpty()) {
+                         urls.add(DEFAULT_CONFIG_URL)
+                         SP.addPlaylistUrl(DEFAULT_CONFIG_URL)
+                    } else if (!urls.contains(DEFAULT_CONFIG_URL)) {
+                         urls.add(DEFAULT_CONFIG_URL)
+                    }
                 }
 
                 withContext(Dispatchers.Main) {
