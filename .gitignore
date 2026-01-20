@@ -12,3 +12,5 @@ Thumbs.db
 # Ignore temporary files
 *.tmp
 *.log
+*.apk
+debug_build_log_*.txt
