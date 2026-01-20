@@ -24,3 +24,5 @@ keystore.properties
 testing/
 testing
 Testing
+debug_build_log_*.txt
+*.log
