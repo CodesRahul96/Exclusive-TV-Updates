@@ -43,8 +43,13 @@ Building with VersionCode: 16787712, VersionName: v1.0.41
 > Task :app:writeDebugSigningConfigVersions UP-TO-DATE
 
 > Task :app:compileDebugKotlin
-w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/ListAdapter.kt:120:39 'getter for adapterPosition: Int' is deprecated. Deprecated in Java
-w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/ListAdapter.kt:121:33 'getter for adapterPosition: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/GroupAdapter.kt:279:39 'getter for adapterPosition: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/GroupAdapter.kt:280:33 'getter for adapterPosition: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/GroupAdapter.kt:398:13 Variable 'currentOrder' is never used
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/GroupAdapter.kt:406:17 Name shadowed: currentOrder
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/GroupAdapter.kt:436:17 Name shadowed: currentOrder
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/ListAdapter.kt:122:39 'getter for adapterPosition: Int' is deprecated. Deprecated in Java
+w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/ListAdapter.kt:123:33 'getter for adapterPosition: Int' is deprecated. Deprecated in Java
 w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:127:40 'FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java
 w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:128:40 'FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java
 w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahul/exclusivetv/MainActivity.kt:157:13 'setter for systemUiVisibility: Int' is deprecated. Deprecated in Java
@@ -73,5 +78,5 @@ w: file:///D:/Android%20Projects/ExclusiveTV_APP/app/src/main/java/com/codesrahu
 > Task :app:createDebugApkListingFileRedirect UP-TO-DATE
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 6s
+BUILD SUCCESSFUL in 7s
 40 actionable tasks: 4 executed, 36 up-to-date

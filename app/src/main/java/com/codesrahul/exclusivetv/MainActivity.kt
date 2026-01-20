@@ -506,7 +506,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     
                     // Refresh menu if it's showing favorites or if we need to update hearts
                     if (!menuFragment.isHidden) {
-                        menuFragment.update()
+                        handler.post { menuFragment.update() }
                     }
                 }
             }

@@ -30,7 +30,7 @@ class GroupAdapter(
     private var tvGroupModel: TVGroupModel,
 ) :
     RecyclerView.Adapter<GroupAdapter.ViewHolder>() {
-
+    private var internalList: List<TVListModel> = tvGroupModel.getTVListModelList()
     private var listener: ItemListener? = null
     private var focused: View? = null
     private var defaultFocused = false
@@ -73,7 +73,7 @@ class GroupAdapter(
     }
 
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-        val tvListModel = tvGroupModel.getTVListModel(position)!!
+        val tvListModel = internalList.getOrNull(position) ?: return
         val view = viewHolder.itemView
         view.tag = position
 
@@ -183,7 +183,7 @@ class GroupAdapter(
         }
     }
 
-    override fun getItemCount() = tvGroupModel.size()
+    override fun getItemCount() = internalList.size
 
     class ViewHolder(private val context: Context, val binding: GroupItemBinding) :
         RecyclerView.ViewHolder(binding.root) {
@@ -251,13 +251,14 @@ class GroupAdapter(
     }
 
     fun update(newTvGroupModel: TVGroupModel) {
-        val oldList = tvGroupModel.getTVListModelList()
+        val oldList = internalList
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
             val newList = newTvGroupModel.getTVListModelList()
             
             val diffResult = DiffUtil.calculateDiff(TVListModelDiffCallback(oldList, newList))
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                internalList = newList
                 tvGroupModel = newTvGroupModel
                 diffResult.dispatchUpdatesTo(this@GroupAdapter)
             }
@@ -358,9 +359,9 @@ class GroupAdapter(
 
     private fun getCurrentCategoryOrder(): MutableList<String> {
         val order = mutableListOf<String>()
-        for (i in 0 until tvGroupModel.size()) {
-            val model = tvGroupModel.getTVListModel(i)
-            if (model != null && i > 1) { // Skip "My Collection" and "All channels"
+        for (i in internalList.indices) {
+            val model = internalList[i]
+            if (i > 1) { // Skip "My Collection" and "All channels"
                 // Get original name (before rename)
                 val displayName = model.getName()
                 val renames = OrderPreferenceManager.getCategoryRenames()
@@ -419,7 +420,7 @@ class GroupAdapter(
     }
 
     private fun moveGroupDown(position: Int) {
-        if (position >= tvGroupModel.size() - 1) {
+        if (position >= internalList.size - 1) {
             Toast.makeText(context, "Cannot move this category down", Toast.LENGTH_SHORT).show()
             return
         }

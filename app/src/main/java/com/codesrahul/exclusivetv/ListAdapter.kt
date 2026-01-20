@@ -40,6 +40,7 @@ class ListAdapter(
     var tvListModel: TVListModel,
 ) :
     RecyclerView.Adapter<ListAdapter.ViewHolder>() {
+    private var internalList: List<TVModel> = tvListModel.getTVModelList()
     private var listener: ItemListener? = null
     private var focused: View? = null
     private var defaultFocused = false
@@ -93,13 +94,14 @@ class ListAdapter(
     }
 
     fun update(newTvListModel: TVListModel) {
-        val oldList = tvListModel.getTVModelList()
+        val oldList = internalList
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
             val newList = newTvListModel.getTVModelList()
             
             val diffResult = DiffUtil.calculateDiff(TVModelDiffCallback(oldList, newList))
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                internalList = newList
                 tvListModel = newTvListModel
                 diffResult.dispatchUpdatesTo(this@ListAdapter)
             }
@@ -145,7 +147,7 @@ class ListAdapter(
     }
 
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-        val tvModel = tvListModel.getTVModel(position) ?: return
+        val tvModel = internalList.getOrNull(position) ?: return
         
         viewHolder.bind(tvModel, movingPosition, position)
 
@@ -282,7 +284,7 @@ class ListAdapter(
         holder.detachListeners()
     }
 
-    override fun getItemCount() = tvListModel.size()
+    override fun getItemCount() = internalList.size
 
     class ViewHolder(private val context: Context, val binding: ListItemBinding) :
         RecyclerView.ViewHolder(binding.root), OnSharedPreferenceChangeListener {
@@ -534,13 +536,10 @@ class ListAdapter(
 
     private fun getCurrentChannelOrder(): MutableList<String> {
         val order = mutableListOf<String>()
-        for (i in 0 until tvListModel.size()) {
-            val model = tvListModel.getTVModel(i)
-            if (model != null) {
-                val url = model.tv.uris.firstOrNull() ?: ""
-                if (url.isNotEmpty()) {
-                    order.add(url)
-                }
+        for (model in internalList) {
+            val url = model.tv.uris.firstOrNull() ?: ""
+            if (url.isNotEmpty()) {
+                order.add(url)
             }
         }
         return order
@@ -606,7 +605,7 @@ class ListAdapter(
     }
 
     private fun moveChannelDown(position: Int) {
-        if (position >= tvListModel.size() - 1) {
+        if (position >= internalList.size - 1) {
             Toast.makeText(context, "Cannot move this channel down", Toast.LENGTH_SHORT).show()
             return
         }
