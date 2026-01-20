@@ -3,6 +3,7 @@ package com.codesrahul.exclusivetv.requests
 
 
 import com.codesrahul.exclusivetv.SecureHttpClient
+import com.codesrahul.exclusivetv.StringObfuscator
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -27,11 +28,17 @@ class ApiClient {
 
     companion object {
         // Primary source (will be private)
-        const val HOST = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-APP/"
-        const val DOWNLOAD_HOST = "https://github.com/CodesRahul96/Exclusive-TV-APP/releases/download/"
+        val HOST: String
+            get() = StringObfuscator.getHost()
+            
+        val DOWNLOAD_HOST: String
+            get() = StringObfuscator.getDownloadHost()
         
         // Fallback source (public updates repository)
-        const val HOST_FALLBACK = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-Updates/"
-        const val DOWNLOAD_HOST_FALLBACK = "https://github.com/CodesRahul96/Exclusive-TV-Updates/releases/download/"
+        val HOST_FALLBACK: String
+            get() = StringObfuscator.getHostFallback()
+            
+        val DOWNLOAD_HOST_FALLBACK: String
+            get() = StringObfuscator.getDownloadHostFallback()
     }
 }

@@ -60,7 +60,7 @@ class WebFragment : Fragment() {
     private var exoPlayer: ExoPlayer? = null
     private lateinit var playerView: PlayerView
     private var currentVideoUrl: String = ""
-    val client = OkHttpClient()
+    val client = SecureHttpClient.client
     private var tvModel: TVModel? = null
     private var savedAudioTrackToApply: Int = -1
 
@@ -168,7 +168,7 @@ class WebFragment : Fragment() {
                 handler: SslErrorHandler,
                 error: SslError?
             ) {
-                handler.proceed()
+                handler.cancel()
             }
 
             override fun shouldInterceptRequest(

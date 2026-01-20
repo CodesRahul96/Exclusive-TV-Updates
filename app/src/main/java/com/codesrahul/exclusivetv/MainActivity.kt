@@ -269,7 +269,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private fun startPeriodicRefresh() {
         refreshHandler.postDelayed(object : Runnable {
             override fun run() {
-                if (!isUpdateRequired) {
+                if (!SecurityUtil.isAppOutdated) {
                     Log.i(TAG, "Triggering periodic background refresh")
                     val config = SP.config
                     if (!config.isNullOrEmpty() && config.startsWith("http")) {
@@ -323,7 +323,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onResume() {
         super.onResume()
-        if (!isUpdateRequired) {
+        if (!SecurityUtil.isAppOutdated) {
             // Check for refresh on resume
             val now = System.currentTimeMillis()
             if (now - lastRefreshTime > resumeRefreshThreshold) {
@@ -1215,7 +1215,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onForceUpdate() {
         Log.i(TAG, "Force update detected. Blocking app usage.")
-        isUpdateRequired = true
+        SecurityUtil.isAppOutdated = true
+        com.codesrahul.exclusivetv.models.TVList.clear()
         
         // Stop playback
         webFragment.stop()
@@ -1231,8 +1232,5 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     companion object {
         private const val TAG = "MainActivity"
-        @JvmStatic
-        var isUpdateRequired = false
-            private set
     }
 }

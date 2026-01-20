@@ -24,11 +24,34 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.async
 import java.io.File
 import com.codesrahul.exclusivetv.models.JioTVChannel
+import com.codesrahul.exclusivetv.SecurityUtil
+import com.codesrahul.exclusivetv.StringObfuscator
 
 object TVList {
+    fun clear() {
+        list = emptyList()
+        listModel = emptyList()
+        // Create empty structures to update valid state
+        val emptyGroups = listOf(
+            TVListModel("My Collection", 0),
+            TVListModel("All channels", 1)
+        )
+        groupModel.setTVListModelList(emptyGroups)
+        groupModel.setChange()
+        _position.postValue(-1)
+        
+        try {
+            if (::appDirectory.isInitialized) {
+                File(appDirectory, FILE_NAME).delete()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete secret file", e)
+        }
+    }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    const val DEFAULT_CONFIG_URL = "https://exclusive-tv-app-api.vercel.app/"
+    val DEFAULT_CONFIG_URL: String
+        get() = StringObfuscator.getConfigUrl()
     private lateinit var appDirectory: File
     private lateinit var serverUrl: String
     private lateinit var list: List<TV>
@@ -110,59 +133,18 @@ object TVList {
                  File(appDirectory, FILE_NAME).delete() // Clear old cache
             }
 
-            if (SP.configAutoLoad && !SP.config.isNullOrEmpty()) {
-                val cfg = SP.config
-                if (cfg != null) {
-                    // Check if update is required before loading channels
-                    val mainActivityClass = try {
-                        Class.forName("com.codesrahul.exclusivetv.MainActivity")
-                    } catch (e: Exception) {
-                        null
-                    }
-                    val isUpdateRequired = mainActivityClass?.let {
-                        it.getDeclaredField("isUpdateRequired").apply { isAccessible = true }.getBoolean(null)
-                    } ?: false
-                    
-                    if (!isUpdateRequired) {
-                        update(context, cfg)
-                    } else {
-                        Log.i(TAG, "Skipping channel load - update required")
-                    }
+            val cfg = SP.config
+            if (SP.configAutoLoad && !cfg.isNullOrEmpty()) {
+                if (!SecurityUtil.isAppOutdated) {
+                    update(context, cfg)
+                } else {
+                    Log.i(TAG, "Skipping channel load - update required")
                 }
             }
-        }
+    }
     }
 
-    private val unsafeClient: okhttp3.OkHttpClient by lazy {
-        try {
-            val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
-                override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-                override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-                override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
-            })
 
-            val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
-            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
-
-            okhttp3.OkHttpClient.Builder()
-                .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
-                .hostnameVerifier { _, _ -> true }
-                .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .connectionPool(okhttp3.ConnectionPool(5, 5, java.util.concurrent.TimeUnit.MINUTES))
-                .addInterceptor { chain ->
-                    val original = chain.request()
-                    val request = original.newBuilder()
-                        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                        .method(original.method(), original.body())
-                        .build()
-                    chain.proceed(request)
-                }
-                .build()
-        } catch (e: Exception) {
-            throw RuntimeException(e)
-        }
-    }
 
     private val _importStatus = MutableLiveData<String>()
     val importStatus: LiveData<String>
@@ -195,7 +177,7 @@ object TVList {
                     }
                 }
                 
-                val client = unsafeClient
+                val client = SecureHttpClient.client
                 val allChannels = mutableListOf<TV>()
                 var successCount = 0
                 
@@ -501,7 +483,7 @@ object TVList {
             return@withContext originalList
         }
 
-        val client = unsafeClient
+        val client = SecureHttpClient.client
         // Limit concurrency to avoid overwhelming servers (max 5 parallel fetches)
         val semaphore = kotlinx.coroutines.sync.Semaphore(5)
         
@@ -772,7 +754,7 @@ object TVList {
                 .head() // Try HEAD first
                 .build()
             
-            val client = unsafeClient
+            val client = SecureHttpClient.client
             var response = client.newCall(request).execute()
             
             if (response.isSuccessful) {
