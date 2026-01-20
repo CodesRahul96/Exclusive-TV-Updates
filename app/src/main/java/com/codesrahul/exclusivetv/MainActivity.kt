@@ -503,6 +503,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         TVList.groupModel.getTVListModel(0)?.removeTVModel(tvModel.tv.id)
                     }
                     SP.setLike(tvModel.tv.id, liked)
+                    
+                    // Refresh menu if it's showing favorites or if we need to update hearts
+                    if (!menuFragment.isHidden) {
+                        menuFragment.update()
+                    }
                 }
             }
         }

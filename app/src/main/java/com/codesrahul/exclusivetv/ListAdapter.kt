@@ -145,7 +145,7 @@ class ListAdapter(
     }
 
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-        val tvModel = tvListModel.getTVModel(position)!!
+        val tvModel = tvListModel.getTVModel(position) ?: return
         
         viewHolder.bind(tvModel, movingPosition, position)
 

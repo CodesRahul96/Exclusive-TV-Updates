@@ -102,7 +102,11 @@ class TVListModel(private val name: String, private val index: Int) : ViewModel(
     }
 
     fun getTVModel(idx: Int): TVModel? {
-        return _tvListModel.value?.get(idx)
+        val list = _tvListModel.value
+        if (list == null || idx < 0 || idx >= list.size) {
+            return null
+        }
+        return list[idx]
     }
 
     init {
