@@ -118,7 +118,9 @@ class SettingFragment : Fragment() {
             binding.cardAudioLanguage,
             binding.manageCategories,
             binding.clear,
+            binding.clear,
             binding.checkVersion,
+            binding.copyrightInfo,
             binding.closeMenu
         )
 
@@ -196,6 +198,11 @@ class SettingFragment : Fragment() {
         binding.checkVersion.setOnClickListener {
             tvUiUtils?.playClickSound()
             requestInstallPermissions()
+        }
+
+        binding.copyrightInfo.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            showCopyrightDialog()
         }
 
         binding.closeMenu.setOnClickListener {
@@ -461,6 +468,24 @@ class SettingFragment : Fragment() {
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showCopyrightDialog() {
+        val copyrightText = """
+            Exclusive TV does not stream or host any of the content included in this application. 
+            
+            All streaming links are gathered from third-party sources available freely on the internet. Exclusive TV merely provides a user-friendly interface for playback.
+            
+            All content is the copyright of their respective owners.
+            
+            © 2026 CodesRahul96
+        """.trimIndent()
+
+        android.app.AlertDialog.Builder(requireContext(), android.app.AlertDialog.THEME_HOLO_DARK)
+            .setTitle("Copyright & Disclaimer")
+            .setMessage(copyrightText)
+            .setPositiveButton("Close", null)
             .show()
     }
 

@@ -3,7 +3,7 @@
 # Usage: .\release.ps1 v1.0.X
 
 param (
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string]$Version
 )
 
@@ -47,11 +47,13 @@ if (Test-Path ".\gradlew.bat") {
     & .\gradlew.bat $gradleArgs
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Build Successful."
-    } else {
+    }
+    else {
         Write-Error "Build Failed. Aborting release (Tag not created)."
         exit 1
     }
-} else {
+}
+else {
     Write-Error "Error: .\gradlew.bat not found."
     exit 1
 }
@@ -65,7 +67,8 @@ git commit -m "Release $Version"
 git tag $Version
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Tag $Version created."
-} else {
+}
+else {
     Write-Error "Error creating tag. It might already exist."
     exit 1
 }
@@ -83,7 +86,8 @@ $targetName = "ExclusiveTV-$Version.apk"
 if (Test-Path $apkPath) {
     Copy-Item -Path $apkPath -Destination ".\$targetName"
     Write-Host "--> APK copied to .\$targetName"
-} else {
+}
+else {
     Write-Error "Error: APK not found at $apkPath"
     exit 1
 }
@@ -105,8 +109,14 @@ if (Test-Path "C:\Program Files\GitHub CLI\gh.exe") {
     }
 
     & "C:\Program Files\GitHub CLI\gh.exe" release create "$Version" "$targetName" --title "$Version" --notes "$notes"
-    Write-Host "Release $Version published to GitHub!"
-} else {
+    
+    Write-Host "Releasing to Updates Repo..."
+    # Explicitly specify repo for the second release
+    & "C:\Program Files\GitHub CLI\gh.exe" release create "$Version" "$targetName" --repo "CodesRahul96/Exclusive-TV-Updates" --title "$Version" --notes "$notes"
+    
+    Write-Host "Release $Version published to GitHub (Both Repos)!"
+}
+else {
     Write-Host "GitHub CLI (gh) not found."
     Write-Host "DONE. Please manually upload '$targetName' to GitHub Releases."
 }
