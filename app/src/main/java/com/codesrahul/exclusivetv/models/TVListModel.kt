@@ -34,7 +34,7 @@ class TVListModel(private val name: String, private val index: Int) : ViewModel(
         get() = _change
 
     fun setChange() {
-        _change.value = true
+        _change.postValue(true)
     }
 
     fun setTVListModel(tvListModel: List<TVModel>) {
@@ -98,7 +98,8 @@ class TVListModel(private val name: String, private val index: Int) : ViewModel(
     }
 
     fun getTVModel(): TVModel? {
-        return getTVModel(position.value as Int)
+        val pos = position.value ?: return null
+        return getTVModel(pos)
     }
 
     fun getTVModel(idx: Int): TVModel? {

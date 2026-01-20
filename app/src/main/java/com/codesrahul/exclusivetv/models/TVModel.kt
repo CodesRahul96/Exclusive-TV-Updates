@@ -39,15 +39,11 @@ class TVModel(var tv: TV) : ViewModel() {
     }
 
     private fun getVideoUrl(): String? {
-        if (_videoIndex.value == null || tv.uris.isEmpty()) {
+        val index = _videoIndex.value ?: return null
+        if (tv.uris.isEmpty() || index >= tv.uris.size) {
             return null
         }
-
-        if (videoIndex.value!! >= tv.uris.size) {
-            return null
-        }
-
-        return tv.uris[_videoIndex.value!!]
+        return tv.uris[index]
     }
 
     private val _like = MutableLiveData<Boolean>()
@@ -55,7 +51,7 @@ class TVModel(var tv: TV) : ViewModel() {
         get() = _like
 
     fun setLike(liked: Boolean) {
-        _like.value = liked
+        _like.postValue(liked)
     }
 
     private val _ready = MutableLiveData<Boolean>()
@@ -63,7 +59,7 @@ class TVModel(var tv: TV) : ViewModel() {
         get() = _ready
 
     fun setReady() {
-        _ready.value = true
+        _ready.postValue(true)
     }
 
     private val _videoQuality = MutableLiveData<String>()

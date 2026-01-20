@@ -42,6 +42,7 @@ class ListAdapter(
     RecyclerView.Adapter<ListAdapter.ViewHolder>() {
     private var internalList: List<TVModel> = tvListModel.getTVModelList()
     private var listener: ItemListener? = null
+    private var updateJob: kotlinx.coroutines.Job? = null
     private var focused: View? = null
     private var defaultFocused = false
     private var defaultFocus: Int = -1
@@ -94,10 +95,12 @@ class ListAdapter(
     }
 
     fun update(newTvListModel: TVListModel) {
+        updateJob?.cancel()
         val oldList = internalList
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
-            val newList = newTvListModel.getTVModelList()
-            
+        // Take snapshot on MAIN thread to avoid race conditions with model updates
+        val newList = newTvListModel.getTVModelList()
+        
+        updateJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
             val diffResult = DiffUtil.calculateDiff(TVModelDiffCallback(oldList, newList))
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {

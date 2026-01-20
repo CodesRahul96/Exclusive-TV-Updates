@@ -47,17 +47,17 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         groupAdapter.setItemListener(this)
         groupAdapter.attachItemTouchHelper()
 
-        var tvListModel = TVList.groupModel.getTVListModel(TVList.groupModel.position.value!!)
+        val currentPos = TVList.groupModel.position.value ?: 0
+        var tvListModel = TVList.groupModel.getTVListModel(currentPos)
         if (tvListModel == null) {
             TVList.groupModel.setPosition(0)
+            tvListModel = TVList.groupModel.getTVListModel(0)
         }
-
-        tvListModel = TVList.groupModel.getTVListModel(TVList.groupModel.position.value!!)
 
         listAdapter = ListAdapter(
             requireContext(),
             binding.list,
-            tvListModel!!,
+            tvListModel ?: TVList.groupModel.getTVListModel(0)!!,
         )
         binding.list.adapter = listAdapter
         binding.list.layoutManager =
@@ -77,11 +77,12 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         if (!::groupAdapter.isInitialized) return
         groupAdapter.update(TVList.groupModel)
 
-        var tvListModel = TVList.groupModel.getTVListModel(TVList.groupModel.position.value!!)
+        val currentPos = TVList.groupModel.position.value ?: 0
+        var tvListModel = TVList.groupModel.getTVListModel(currentPos)
         if (tvListModel == null) {
             TVList.groupModel.setPosition(0)
+            tvListModel = TVList.groupModel.getTVListModel(0)
         }
-        tvListModel = TVList.groupModel.getTVListModel(TVList.groupModel.position.value!!)
 
         if (tvListModel != null) {
             (binding.list.adapter as ListAdapter).update(tvListModel)

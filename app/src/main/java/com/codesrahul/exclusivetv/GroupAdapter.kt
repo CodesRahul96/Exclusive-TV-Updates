@@ -32,6 +32,7 @@ class GroupAdapter(
     RecyclerView.Adapter<GroupAdapter.ViewHolder>() {
     private var internalList: List<TVListModel> = tvGroupModel.getTVListModelList()
     private var listener: ItemListener? = null
+    private var updateJob: kotlinx.coroutines.Job? = null
     private var focused: View? = null
     private var defaultFocused = false
     private var defaultFocus: Int = -1
@@ -251,10 +252,12 @@ class GroupAdapter(
     }
 
     fun update(newTvGroupModel: TVGroupModel) {
+        updateJob?.cancel()
         val oldList = internalList
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
-            val newList = newTvGroupModel.getTVListModelList()
-            
+        // Take snapshot on MAIN thread to avoid race conditions with model updates
+        val newList = newTvGroupModel.getTVListModelList()
+        
+        updateJob = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
             val diffResult = DiffUtil.calculateDiff(TVListModelDiffCallback(oldList, newList))
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {

@@ -493,16 +493,20 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun setupCollectionObservers() {
-        TVList.listModel.forEach { tvModel ->
+        // Take a snapshot to avoid ConcurrentModificationException during iteration
+        val snapshot = com.codesrahul.exclusivetv.models.TVList.listModel.toList()
+        
+        snapshot.forEach { tvModel ->
             tvModel.like.removeObservers(this)
             tvModel.like.observe(this) { liked ->
                 if (liked != null) {
+                    val collectionModel = com.codesrahul.exclusivetv.models.TVList.groupModel.getTVListModel(0)
                     if (liked) {
-                        TVList.groupModel.getTVListModel(0)?.replaceTVModel(tvModel)
+                        collectionModel?.replaceTVModel(tvModel)
                     } else {
-                        TVList.groupModel.getTVListModel(0)?.removeTVModel(tvModel.tv.id)
+                        collectionModel?.removeTVModel(tvModel.tv.id)
                     }
-                    SP.setLike(tvModel.tv.id, liked)
+                    com.codesrahul.exclusivetv.SP.setLike(tvModel.tv.id, liked)
                     
                     // Refresh menu if it's showing favorites or if we need to update hearts
                     if (!menuFragment.isHidden) {
