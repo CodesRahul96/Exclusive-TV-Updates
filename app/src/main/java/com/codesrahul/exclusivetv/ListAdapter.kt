@@ -159,8 +159,9 @@ class ListAdapter(
         view.isFocusableInTouchMode = true
 
         viewHolder.binding.heart.setOnClickListener {
-            tvModel.setLike(!(tvModel.like.value as Boolean))
-            viewHolder.like(tvModel.like.value as Boolean)
+            val currentLike = tvModel.like.value ?: false
+            tvModel.setLike(!currentLike)
+            viewHolder.like(!currentLike)
         }
 
         if (!defaultFocused && position == defaultFocus) {
@@ -331,7 +332,7 @@ class ListAdapter(
             binding.channelNumber.text = (tvModel.tv.id + 1).toString()
             
             setArrows(movingPosition == position)
-            like(tvModel.like.value as Boolean)
+            like(tvModel.like.value ?: false)
         }
 
         fun attachListeners() {

@@ -48,16 +48,18 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         groupAdapter.attachItemTouchHelper()
 
         val currentPos = TVList.groupModel.position.value ?: 0
-        var tvListModel = TVList.groupModel.getTVListModel(currentPos)
+        val tvListModel = TVList.groupModel.getTVListModel(currentPos) ?: TVList.groupModel.getTVListModel(0)
+        
         if (tvListModel == null) {
-            TVList.groupModel.setPosition(0)
-            tvListModel = TVList.groupModel.getTVListModel(0)
+            // This should ideally never happen as group 0 is local, but we must protect it
+            Log.e(TAG, "Initialization failed: No categories available")
+            return binding.root 
         }
 
         listAdapter = ListAdapter(
             requireContext(),
             binding.list,
-            tvListModel ?: TVList.groupModel.getTVListModel(0)!!,
+            tvListModel,
         )
         binding.list.adapter = listAdapter
         binding.list.layoutManager =
@@ -149,7 +151,8 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 if (tvModel != null) {
                     listAdapter.toPosition(tvModel.listIndex)
 
-                    if (tvModel.groupIndex == TVList.groupModel.position.value!!) {
+                    val currentGroupPosition = TVList.groupModel.position.value ?: 0
+                    if (tvModel.groupIndex == currentGroupPosition) {
                         Log.i(
                             TAG,
                             "list on show toPosition ${tvModel.tv.title} ${tvModel.listIndex}/${listAdapter.tvListModel.size()}"
@@ -181,7 +184,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 listAdapter.focusable(false)
                 listAdapter.clear()
                 Log.i(TAG, "group toPosition on left")
-                groupAdapter.toPosition(TVList.groupModel.position.value!!)
+                groupAdapter.toPosition(TVList.groupModel.position.value ?: 0)
                 return true
             }
 //            KeyEvent.KEYCODE_DPAD_RIGHT -> {
@@ -208,12 +211,13 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 val currentTvModel = TVList.getTVModel()
                 if (currentTvModel != null) {
                     val groupIndex = currentTvModel.groupIndex
+                    val currentGroupPosition = TVList.groupModel.position.value ?: 0
                     Log.i(
                         TAG,
-                        "groupIndex $groupIndex ${TVList.groupModel.position.value!!}"
+                        "groupIndex $groupIndex $currentGroupPosition"
                     )
 
-                    if (groupIndex == TVList.groupModel.position.value!!) {
+                    if (groupIndex == currentGroupPosition) {
                         if (listAdapter.tvListModel.getIndex() != currentTvModel.groupIndex) {
                             updateList(groupIndex)
                         }
@@ -229,6 +233,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 }
             }
             if (binding.group.isVisible) {
+                val currentGroupPosition = TVList.groupModel.position.value ?: 0
                 Log.i(
                     TAG,
                     "group on show toPosition ${TVList.groupModel.position.value!!}/${TVList.groupModel.size()}"

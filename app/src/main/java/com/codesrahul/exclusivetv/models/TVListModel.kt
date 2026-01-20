@@ -42,21 +42,15 @@ class TVListModel(private val name: String, private val index: Int) : ViewModel(
     }
 
     fun addTVModel(tvModel: TVModel) {
-        if (_tvListModel.value == null) {
-            _tvListModel.value = mutableListOf(tvModel)
-            return
-        }
-
-        val newList = _tvListModel.value!!.toMutableList()
+        val currentList = _tvListModel.value ?: emptyList()
+        val newList = currentList.toMutableList()
         newList.add(tvModel)
         _tvListModel.value = newList
     }
 
     fun removeTVModel(id: Int) {
-        if (_tvListModel.value == null) {
-            return
-        }
-        val newList = _tvListModel.value!!.toMutableList()
+        val currentList = _tvListModel.value ?: return
+        val newList = currentList.toMutableList()
         val iterator = newList.iterator()
         while (iterator.hasNext()) {
             if (iterator.next().tv.id == id) {
@@ -67,12 +61,8 @@ class TVListModel(private val name: String, private val index: Int) : ViewModel(
     }
 
     fun replaceTVModel(tvModel: TVModel) {
-        if (_tvListModel.value == null) {
-            _tvListModel.value = mutableListOf(tvModel)
-            return
-        }
-
-        val newList = _tvListModel.value!!.toMutableList()
+        val currentList = _tvListModel.value ?: emptyList()
+        val newList = currentList.toMutableList()
         var exists = false
         
         // Check if the channel already exists in the list
@@ -115,10 +105,6 @@ class TVListModel(private val name: String, private val index: Int) : ViewModel(
     }
 
     fun size(): Int {
-        if (_tvListModel.value == null) {
-            return 0
-        }
-
-        return _tvListModel.value!!.size
+        return _tvListModel.value?.size ?: 0
     }
 }

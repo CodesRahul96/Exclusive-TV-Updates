@@ -56,7 +56,8 @@ class ChannelFragment : Fragment() {
         if (binding.content.text.length > 1) {
             return
         }
-        this.channel = "${binding.content.text}$channel".toInt()
+        val textValue = "${binding.content.text}$channel"
+        this.channel = try { textValue.toInt() } catch (e: Exception) { 0 }
         handler.removeCallbacks(hideRunnable)
         handler.removeCallbacks(playRunnable)
         if (binding.content.text == "") {

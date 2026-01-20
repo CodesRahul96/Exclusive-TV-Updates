@@ -77,7 +77,8 @@ class InfoFragment : Fragment() {
                     val canvas = Canvas(bitmap)
 
                     val paint = Paint().apply {
-                        color = ContextCompat.getColor(context!!, R.color.blur)
+                        val ctx = context ?: return
+                        color = ContextCompat.getColor(ctx, R.color.blur)
                         textSize = 100f
                         textAlign = Paint.Align.CENTER
                     }

@@ -139,7 +139,8 @@ object TVList {
                 val release = com.codesrahul.exclusivetv.requests.ReleaseRequest().getRelease()
                 if (release != null) {
                     SecurityUtil.remoteRelease = release
-                    if (release.version_code!! > currentVersion) {
+                    val remoteVersionCode = release.version_code ?: 0
+                    if (remoteVersionCode > currentVersion) {
                         SecurityUtil.isAppOutdated = true
                         Log.w(TAG, "Early update check: App is outdated (Remote: ${release.version_code}, Local: $currentVersion). Blocking load.")
                         clear() // Delete cached channels.txt to make app "useless"

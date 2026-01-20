@@ -369,6 +369,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     TVList.getTVModel(pos)?.let { playChannel(it) }
                 }
                 menuFragment.update()
+                
+                // Only setup collection observers once for the whole list
                 setupCollectionObservers()
             }
         }
@@ -492,7 +494,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }, "loader_timeout", SystemClock.uptimeMillis() + 6000)
     }
 
+    private var observersSet = false
     private fun setupCollectionObservers() {
+        if (observersSet) return // Avoid redundant setup
+        
+        Log.i(TAG, "Setting up collection observers for ${com.codesrahul.exclusivetv.models.TVList.listModel.size} items")
+        observersSet = true
+        
         // Take a snapshot to avoid ConcurrentModificationException during iteration
         val snapshot = com.codesrahul.exclusivetv.models.TVList.listModel.toList()
         
@@ -510,7 +518,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     
                     // Refresh menu if it's showing favorites or if we need to update hearts
                     if (!menuFragment.isHidden) {
-                        handler.post { menuFragment.update() }
+                        handler.post { 
+                            if (!menuFragment.isHidden) { // Re-check visibility
+                                menuFragment.update() 
+                            }
+                        }
                     }
                 }
             }

@@ -31,31 +31,33 @@ class TVGroupModel : ViewModel() {
     }
 
     fun addTVListModel(tvListModel: TVListModel) {
-        if (_tvGroupModel.value == null) {
-            _tvGroupModel.value = mutableListOf(tvListModel)
-            return
-        }
-
-        val newList = _tvGroupModel.value!!.toMutableList()
+        val currentList = _tvGroupModel.value ?: emptyList()
+        val newList = currentList.toMutableList()
         newList.add(tvListModel)
         _tvGroupModel.value = newList
     }
 
     fun clear() {
-        _tvGroupModel.value = mutableListOf(getTVListModel(0)!!, getTVListModel(1)!!)
+        val model0 = getTVListModel(0)
+        val model1 = getTVListModel(1)
+        if (model0 != null && model1 != null) {
+            _tvGroupModel.value = mutableListOf(model0, model1)
+            model1.clear()
+        }
         setPosition(0)
-        getTVListModel(1)?.clear()
     }
 
     fun getTVListModel(): TVListModel? {
-        return getTVListModel(position.value as Int)
+        val pos = position.value ?: 0
+        return getTVListModel(pos)
     }
 
     fun getTVListModel(idx: Int): TVListModel? {
-        if (idx >= size()) {
+        val list = _tvGroupModel.value ?: return null
+        if (idx < 0 || idx >= list.size) {
             return null
         }
-        return _tvGroupModel.value?.get(idx)
+        return list[idx]
     }
 
     fun getTVListModelList(): List<TVListModel> {
@@ -67,10 +69,6 @@ class TVGroupModel : ViewModel() {
     }
 
     fun size(): Int {
-        if (_tvGroupModel.value == null) {
-            return 0
-        }
-
-        return _tvGroupModel.value!!.size
+        return _tvGroupModel.value?.size ?: 0
     }
 }

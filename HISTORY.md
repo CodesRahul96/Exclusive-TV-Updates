@@ -1,5 +1,12 @@
 # Exclusive TV - Version History
 
+## v1.0.41 (2026-01-20) - Deep Stability Overhaul
+- **Favorites Crash Resolved**: Eliminated race conditions and unsafe data access during collection management
+- **Thread-Safe Logic**: Switched to `postValue` and main-thread snapshots for all model-to-UI syncing
+- **Null Safety Audit**: Neutralized 20+ risky non-null assertions across adapters and fragments
+- **Optimized Observers**: Redesigned collection observer system in MainActivity to prevent computational lag
+- **Fragment Resiliency**: Secured Menu, Info, and Channel fragments against transient lifecycle nulls
+
 ## v1.0.38 (2026-01-18) - Performance & UI Overhaul
 
 ### ⚡ Performance & Reliability
