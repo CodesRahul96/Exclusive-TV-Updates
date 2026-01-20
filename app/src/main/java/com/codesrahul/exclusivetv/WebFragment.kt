@@ -749,9 +749,16 @@ class WebFragment : Fragment() {
                            tvModel.tv.type == com.codesrahul.exclusivetv.models.Type.HLS
                            
         if (isStreamType || 
-            url.endsWith(".m3u8", ignoreCase = true) || url.endsWith(".ts", ignoreCase = true) ||
-            url.endsWith(".mpd", ignoreCase = true) ||
-            url.startsWith("rtmp://") || url.startsWith("rtsp://") || url.contains("?|")) {
+            url.contains(".m3u8", ignoreCase = true) || 
+            url.contains(".ts", ignoreCase = true) ||
+            url.contains(".mpd", ignoreCase = true) ||
+            url.contains(".mkv", ignoreCase = true) ||
+            url.contains(".mp4", ignoreCase = true) ||
+            // Support for php/script based streams (common in IPTV)
+            (url.contains(".php", ignoreCase = true) && (url.contains("id=") || url.contains("stream") || url.contains("live"))) ||
+            url.startsWith("rtmp://", ignoreCase = true) || 
+            url.startsWith("rtsp://", ignoreCase = true) || 
+            url.contains("?|")) {
             
             webView.visibility = View.GONE
             playerView.visibility = View.VISIBLE
@@ -1088,8 +1095,16 @@ class WebFragment : Fragment() {
 
         playerView.player = exoPlayer
         
-        val mediaItem = MediaItem.fromUri(videoUrl)
-        exoPlayer?.setMediaItem(mediaItem)
+        val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
+        
+        // Force HLS MIME type for .php streams or any link detected as M3U8 but not ending in standard extensions
+        if (videoUrl.contains(".m3u8", ignoreCase = true) || 
+            (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))) {
+             Log.i(TAG, "Forcing MIME type to HLS (APPLICATION_M3U8) for: $videoUrl")
+             mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+        }
+
+        exoPlayer?.setMediaItem(mediaItemBuilder.build())
         exoPlayer?.prepare()
         exoPlayer?.play()
     }
