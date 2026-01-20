@@ -271,11 +271,40 @@ object M3UParser {
             // Try to extract name from URL if possible
             val firstUri = uris.firstOrNull() ?: ""
             if (firstUri.isNotEmpty()) {
-                val uri = android.net.Uri.parse(firstUri)
-                val path = uri.path ?: ""
-                val fileName = path.substringAfterLast('/').substringBefore('.')
-                if (fileName.isNotEmpty() && fileName != "index" && fileName != "playlist" && fileName != "chunklist") {
-                    finalName = fileName.replace('_', ' ').replace('-', ' ').trim()
+                try {
+                    val uri = android.net.Uri.parse(firstUri)
+                    val pathSegments = uri.pathSegments
+                    if (!pathSegments.isNullOrEmpty()) {
+                         var pIdx = pathSegments.lastIndex
+                         var candidate = pathSegments[pIdx]
+
+                         // 1. Skip generic filenames
+                         if (candidate.equals("index.mpd", ignoreCase = true) || 
+                             candidate.equals("master.m3u8", ignoreCase = true) ||
+                             candidate.equals("manifest.mpd", ignoreCase = true) ||
+                             candidate.startsWith("index", ignoreCase = true) ||
+                             candidate.startsWith("playlist", ignoreCase = true)) {
+                             pIdx--
+                         }
+
+                         if (pIdx >= 0) {
+                             candidate = pathSegments[pIdx]
+                             // 2. Skip UUID/Hash segments (common in Star/Hotstar: 32 chars hex)
+                             if (candidate.length > 20 && candidate.matches(Regex("[a-fA-F0-9]+"))) {
+                                  pIdx--
+                             }
+                         }
+
+                         if (pIdx >= 0) {
+                             // Clean up the name
+                             var params = pathSegments[pIdx]
+                             // Remove trailing numeric IDs often attached (e.g., -1540057075)
+                             params = params.replace(Regex("[-_]\\d{8,}$"), "")
+                             finalName = params.replace('_', ' ').replace('-', ' ').trim()
+                         }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to extract name from URI", e)
                 }
             }
         }

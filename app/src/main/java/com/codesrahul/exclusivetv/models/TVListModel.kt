@@ -4,9 +4,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
-class TVListModel(private val name: String, private val index: Int) : ViewModel() {
+class TVListModel(private val name: String, private val originalName: String, private val index: Int) : ViewModel() {
     fun getName(): String {
         return name
+    }
+
+    fun getOriginalName(): String {
+        return originalName
     }
 
     fun getIndex(): Int {

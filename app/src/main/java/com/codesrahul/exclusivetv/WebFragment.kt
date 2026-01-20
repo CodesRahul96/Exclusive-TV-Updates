@@ -63,6 +63,7 @@ class WebFragment : Fragment() {
     val client = SecureHttpClient.client
     private var tvModel: TVModel? = null
     private var savedAudioTrackToApply: Int = -1
+    private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
 
     data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
@@ -1106,6 +1107,22 @@ class WebFragment : Fragment() {
 
         exoPlayer?.setMediaItem(mediaItemBuilder.build())
         exoPlayer?.prepare()
+        
+        // Audio Stabilizer (LoudnessEnhancer)
+        if (SP.audioStabilizer) {
+            try {
+                val sessionId = exoPlayer?.audioSessionId ?: 0
+                if (sessionId != 0) {
+                     loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(sessionId)
+                     loudnessEnhancer?.setTargetGain(800) // 800mB gain (approx +8dB boost for low volume)
+                     loudnessEnhancer?.enabled = true
+                     Log.i(TAG, "Audio Stabilizer Enabled (Session: $sessionId)")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to init Audio Stabilizer", e)
+            }
+        }
+        
         exoPlayer?.play()
     }
 
@@ -1199,6 +1216,15 @@ class WebFragment : Fragment() {
     }
 
     private fun releasePlayer() {
+        try {
+            if (loudnessEnhancer != null) {
+                loudnessEnhancer?.release()
+                loudnessEnhancer = null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing audio effects", e)
+        }
+
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
         }

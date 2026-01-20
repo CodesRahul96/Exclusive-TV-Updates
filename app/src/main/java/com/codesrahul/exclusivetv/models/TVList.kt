@@ -33,8 +33,8 @@ object TVList {
         listModel = emptyList()
         // Create empty structures to update valid state
         val emptyGroups = listOf(
-            TVListModel("My Collection", 0),
-            TVListModel("All channels", 1)
+            TVListModel("My Collection", "My Collection", 0),
+            TVListModel("All channels", "All channels", 1)
         )
         groupModel.setTVListModelList(emptyGroups)
         groupModel.setChange()
@@ -89,8 +89,8 @@ object TVList {
         _position.value = 0
         _importProgress.value = 0
 
-        groupModel.addTVListModel(TVListModel("My Collection", 0))
-        groupModel.addTVListModel(TVListModel("All channels", 1))
+        groupModel.addTVListModel(TVListModel("My Collection", "My Collection", 0))
+        groupModel.addTVListModel(TVListModel("All channels", "All channels", 1))
 
         appDirectory = context.filesDir
         
@@ -288,7 +288,10 @@ object TVList {
                      
                      withContext(Dispatchers.Main) {
                          refreshModels(MyTVApplication.getInstance())
-                         if (!silent) "Channels updated from $successCount sources".showToast()
+                         // Only show toast if using custom config (not default)
+                         if (!silent && SP.config != DEFAULT_CONFIG_URL) {
+                             "Channels updated from $successCount sources".showToast()
+                         }
                          _importProgress.value = 100
                          _importStatus.value = "Complete"
                          
@@ -616,7 +619,8 @@ object TVList {
                 map.keys.toList()
             }
 
-            val preparedGroups = mutableListOf<Triple<String, Int, List<TV>>>()
+            data class PreparedGroup(val originalName: String, val displayName: String, val index: Int, val channels: List<TV>)
+            val preparedGroups = mutableListOf<PreparedGroup>()
             var groupIndex = 2
             
             val hiddenCategories = OrderPreferenceManager.getHiddenCategories()
@@ -655,7 +659,7 @@ object TVList {
                      }
                 }
                 
-                preparedGroups.add(Triple(displayCategoryName, groupIndex, sortedChannels))
+                preparedGroups.add(PreparedGroup(originalCategoryName, displayCategoryName, groupIndex, sortedChannels))
                 groupIndex++
             }
 
@@ -673,11 +677,11 @@ object TVList {
                 val newGroups = mutableListOf<TVListModel>()
                 
                 // Keep "Special" groups logic from clear() but more explicit
-                newGroups.add(groupModel.getTVListModel(0) ?: TVListModel("My Collection", 0))
-                newGroups.add(groupModel.getTVListModel(1) ?: TVListModel("All channels", 1))
+                newGroups.add(groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0))
+                newGroups.add(groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1))
 
-                for ((name, idx, channels) in preparedGroups) {
-                    val tvListModel = TVListModel(name, idx)
+                for ((itemOriginalName, itemDisplayName, idx, channels) in preparedGroups) {
+                    val tvListModel = TVListModel(itemDisplayName, itemOriginalName, idx)
                     val groupChannels = mutableListOf<TVModel>()
 
                     for (tv in channels) {

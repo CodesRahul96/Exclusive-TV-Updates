@@ -84,14 +84,18 @@ class GroupAdapter(
         }
 
         val onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
-            listener?.onItemFocusChange(tvListModel, hasFocus)
+            if (viewHolder.bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                 listener?.onItemFocusChange(tvListModel, hasFocus)
+            }
 
             if (hasFocus) {
                 viewHolder.focus(true)
                 focused = view
                 if (visible) {
-                    if (position != tvGroupModel.position.value) {
-                        tvGroupModel.setPosition(position)
+                    // Update model position if needed
+                    val currentPos = viewHolder.bindingAdapterPosition
+                    if (currentPos != RecyclerView.NO_POSITION && currentPos != tvGroupModel.position.value) {
+                        tvGroupModel.setPosition(currentPos)
                     }
                 } else {
                     visible = true
@@ -104,21 +108,32 @@ class GroupAdapter(
         view.onFocusChangeListener = onFocusChangeListener
 
         view.setOnClickListener { _ ->
-            if (movingPosition == position) {
+            val currentPos = viewHolder.bindingAdapterPosition
+            if (currentPos == RecyclerView.NO_POSITION) return@setOnClickListener
+
+            if (movingPosition == currentPos) {
                 stopMove()
             } else {
-                listener?.onItemClicked(position)
+                listener?.onItemClicked(currentPos)
             }
         }
 
         view.setOnLongClickListener {
-            showCategoryOptions(position, tvListModel)
+            val currentPos = viewHolder.bindingAdapterPosition
+            if (currentPos > 1) { // Prevent modifying system categories (My Collection, All channels)
+                showCategoryOptions(currentPos, tvListModel)
+            } else {
+                 Toast.makeText(context, "System category cannot be modified", Toast.LENGTH_SHORT).show()
+            }
             true
         }
 
         view.setOnKeyListener { _, keyCode, event: KeyEvent? ->
+            val currentPos = viewHolder.bindingAdapterPosition
+            if (currentPos == RecyclerView.NO_POSITION) return@setOnKeyListener false
+
             if (event?.action == KeyEvent.ACTION_DOWN) {
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP && position == 0) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP && currentPos == 0) {
                     val p = getItemCount() - 1
 
                     (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
@@ -134,7 +149,7 @@ class GroupAdapter(
                     return@setOnKeyListener true
                 }
 
-                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && position == getItemCount() - 1) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && currentPos == getItemCount() - 1) {
                     val p = 0
 
                     (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
@@ -150,14 +165,14 @@ class GroupAdapter(
                     return@setOnKeyListener true
                 }
 
-                if (movingPosition != -1 && movingPosition == position) {
+                if (movingPosition != -1 && movingPosition == currentPos) {
                     when (keyCode) {
                         KeyEvent.KEYCODE_DPAD_UP -> {
-                            moveGroupUp(position)
+                            moveGroupUp(currentPos)
                             return@setOnKeyListener true
                         }
                         KeyEvent.KEYCODE_DPAD_DOWN -> {
-                            moveGroupDown(position)
+                            moveGroupDown(currentPos)
                             return@setOnKeyListener true
                         }
                         KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
@@ -309,8 +324,7 @@ class GroupAdapter(
 
     private fun showCategoryOptions(position: Int, tvListModel: TVListModel) {
         val displayName = tvListModel.getName()
-        val renames = OrderPreferenceManager.getCategoryRenames()
-        val originalName = renames.entries.find { it.value == displayName }?.key ?: displayName
+        val originalName = tvListModel.getOriginalName()
 
         val optionsDialog = CategoryOptionsDialogFragment.newInstance(displayName)
         optionsDialog.setCategoryOptionsListener(object : CategoryOptionsDialogFragment.CategoryOptionsListener {
@@ -319,7 +333,7 @@ class GroupAdapter(
             }
 
             override fun onRenameSelected() {
-                showRenameDialog(originalName)
+                showRenameDialog(originalName, displayName)
             }
 
             override fun onHideSelected() {
@@ -330,7 +344,9 @@ class GroupAdapter(
                 Toast.makeText(context, "Hidden $displayName", Toast.LENGTH_SHORT).show()
                 
                 // Trigger refresh
-                com.codesrahul.exclusivetv.models.TVList.update(context, silent = true)
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
+                }
             }
 
             override fun onCancelSelected() {
@@ -356,6 +372,11 @@ class GroupAdapter(
         val prevPosition = movingPosition
         movingPosition = -1
         notifyItemChanged(prevPosition)
+        
+        // Refresh models strictly after move is done to persist changes and sync everything
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+            com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
+        }
     }
 
 
@@ -366,21 +387,24 @@ class GroupAdapter(
             val model = internalList[i]
             if (i > 1) { // Skip "My Collection" and "All channels"
                 // Get original name (before rename)
-                val displayName = model.getName()
-                val renames = OrderPreferenceManager.getCategoryRenames()
-                val originalName = renames.entries.find { it.value == displayName }?.key ?: displayName
+                val originalName = model.getOriginalName()
                 order.add(originalName)
             }
         }
         return order
     }
 
-    private fun showRenameDialog(originalName: String) {
-        val renameDialog = RenameDialogFragment.newInstance(originalName, "Rename Category")
+    private fun showRenameDialog(originalName: String, displayName: String) {
+        val renameDialog = RenameDialogFragment.newInstance(displayName, "Rename Category")
         renameDialog.setRenameListener(object : RenameDialogFragment.RenameListener {
             override fun onRenameConfirmed(newName: String) {
-                OrderPreferenceManager.saveCategoryRename(originalName, newName)
-                Toast.makeText(context, "Category renamed", Toast.LENGTH_SHORT).show()
+                if (newName == originalName) {
+                    OrderPreferenceManager.removeCategoryRename(originalName)
+                    Toast.makeText(context, "Category name reverted", Toast.LENGTH_SHORT).show()
+                } else {
+                    OrderPreferenceManager.saveCategoryRename(originalName, newName)
+                    Toast.makeText(context, "Category renamed", Toast.LENGTH_SHORT).show()
+                }
                 // Trigger refresh to apply rename
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                 com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
@@ -404,14 +428,15 @@ class GroupAdapter(
         if (index > 0) {
             val currentList = tvGroupModel.getTVListModelList().toMutableList()
             Collections.swap(currentList, position, position - 1)
+            
+            // Critical: Update internal list immediately to prevent DiffUtil glitches in update()
             tvGroupModel.setTVListModelList(currentList)
-
+            internalList = currentList // Sync local list
+            
             val currentOrder = getCurrentCategoryOrder()
             OrderPreferenceManager.saveCategoryOrder(currentOrder)
             
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
-            }
+            // REMOVED: refreshModels() call that caused focus loss/lag
             
             notifyItemMoved(position, position - 1)
             
@@ -434,14 +459,15 @@ class GroupAdapter(
         if (index < currentOrder.size - 1) {
             val currentList = tvGroupModel.getTVListModelList().toMutableList()
             Collections.swap(currentList, position, position + 1)
+            
+            // Critical: Update internal list immediately
             tvGroupModel.setTVListModelList(currentList)
-
+            internalList = currentList // Sync local list
+            
             val currentOrder = getCurrentCategoryOrder()
             OrderPreferenceManager.saveCategoryOrder(currentOrder)
 
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
-            }
+            // REMOVED: refreshModels() call that caused focus loss/lag
             
             notifyItemMoved(position, position + 1)
             

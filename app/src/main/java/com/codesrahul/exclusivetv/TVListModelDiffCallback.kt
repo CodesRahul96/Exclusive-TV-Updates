@@ -14,7 +14,7 @@ class TVListModelDiffCallback(
 
     override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
         // Categories have names. Index might change during reordering.
-        return oldList[oldItemPosition].getName() == newList[newItemPosition].getName()
+        return oldList[oldItemPosition].getOriginalName() == newList[newItemPosition].getOriginalName()
     }
 
     override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {

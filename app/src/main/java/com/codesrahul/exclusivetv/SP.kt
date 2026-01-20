@@ -283,6 +283,13 @@ object SP {
         get() = sp.getString(KEY_WATERMARK_POSITION, "bottom_right") ?: "bottom_right"
         set(value) = sp.edit().putString(KEY_WATERMARK_POSITION, value).apply()
 
+    // Audio Stabilizer
+    private const val KEY_AUDIO_STABILIZER = "audio_stabilizer"
+    
+    var audioStabilizer: Boolean
+        get() = sp.getBoolean(KEY_AUDIO_STABILIZER, false) // Default: Disabled
+        set(value) = sp.edit().putBoolean(KEY_AUDIO_STABILIZER, value).apply()
+
     fun reset() {
         sp.edit().clear().apply()
     }

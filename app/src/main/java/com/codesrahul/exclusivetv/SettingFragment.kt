@@ -81,7 +81,7 @@ class SettingFragment : Fragment() {
             binding.statusShowDateInInfo,
             binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
-            binding.statusWatermark, binding.statusBufferMode
+            binding.statusWatermark, binding.statusBufferMode, binding.statusAudioStabilizer
         )
 
         statusViews.forEach { v ->
@@ -96,6 +96,9 @@ class SettingFragment : Fragment() {
             java.util.Locale(langCode).displayLanguage
         }
         binding.statusAudioLanguage.setTextColor(if (langCode.isNotEmpty()) activeColor else inactiveColor)
+
+        binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
+        binding.statusAudioStabilizer.setTextColor(if (SP.audioStabilizer) activeColor else inactiveColor)
     }
 
     private fun setupFocusAnimations() {
@@ -116,6 +119,8 @@ class SettingFragment : Fragment() {
             binding.cardWatermark,
             binding.cardBufferMode,
             binding.cardAudioLanguage,
+            binding.cardAudioLanguage,
+            binding.cardAudioStabilizer,
             binding.manageCategories,
             binding.clear,
             binding.clear,
@@ -153,6 +158,7 @@ class SettingFragment : Fragment() {
         binding.cardWatermark.setOnClickListener { toggleSetting("watermark") }
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
         binding.cardAudioLanguage.setOnClickListener { setupAudioLanguageDialog() }
+        binding.cardAudioStabilizer.setOnClickListener { toggleSetting("audioStabilizer") }
 
         binding.confirmConfig.setOnClickListener {
             tvUiUtils?.playClickSound()
@@ -240,6 +246,10 @@ class SettingFragment : Fragment() {
                 current = (current + 1) % 3 // 0->1->2->0
                 SP.bufferMode = current
                 Toast.makeText(requireContext(), "Buffering: " + arrayOf("Default", "Max Stability", "Low Latency")[current], Toast.LENGTH_SHORT).show()
+            }
+            "audioStabilizer" -> {
+                SP.audioStabilizer = !SP.audioStabilizer
+                Toast.makeText(requireContext(), if (SP.audioStabilizer) "Audio Stabilizer Enabled" else "Audio Stabilizer Disabled", Toast.LENGTH_SHORT).show()
             }
         }
         syncStatusUI()

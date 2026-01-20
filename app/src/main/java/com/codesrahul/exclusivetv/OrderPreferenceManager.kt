@@ -65,6 +65,15 @@ object OrderPreferenceManager {
         prefs.edit().putString(KEY_CATEGORY_RENAME, json).apply()
     }
 
+    fun removeCategoryRename(originalName: String) {
+        val renames = getCategoryRenames().toMutableMap()
+        if (renames.containsKey(originalName)) {
+            renames.remove(originalName)
+            val json = gson.toJson(renames)
+            prefs.edit().putString(KEY_CATEGORY_RENAME, json).apply()
+        }
+    }
+
     fun getCategoryRenames(): Map<String, String> {
         val json = prefs.getString(KEY_CATEGORY_RENAME, null) ?: return emptyMap()
         val type = object : TypeToken<Map<String, String>>() {}.type
