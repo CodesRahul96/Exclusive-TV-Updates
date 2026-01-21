@@ -7,6 +7,13 @@
     android:padding="30dp"
     android:gravity="center_horizontal">
 
+    <ImageView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:src="@drawable/ic_update"
+        android:tint="#FFD700"
+        android:layout_marginBottom="16dp" />
+
     <TextView
         android:id="@+id/tvTitle"
         android:layout_width="wrap_content"

@@ -35,6 +35,9 @@
             android:fontFamily="sans-serif-medium"
             android:textColor="#B3FFFFFF"
             android:textSize="14sp"
+            android:drawableStart="@drawable/ic_time"
+            android:drawablePadding="6dp"
+            android:drawableTint="#B3FFFFFF"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:text="Jan 17, 01:14 PM" />
@@ -122,6 +125,10 @@
             android:textColor="#FFAC33"
             android:textSize="12sp"
             android:textStyle="bold"
+            android:drawableStart="@drawable/ic_update"
+            android:drawablePadding="4dp"
+            android:drawableTint="#FFAC33"
+            android:gravity="center_vertical"
             android:visibility="gone"
             app:layout_constraintStart_toStartOf="@+id/channel_number"
             app:layout_constraintTop_toBottomOf="@+id/desc"
@@ -182,6 +189,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
                 android:textStyle="bold"
+                android:drawableStart="@drawable/ic_video_quality"
+                android:drawablePadding="4dp"
+                android:drawableTint="#FFFFFF"
+                android:gravity="center_vertical"
                 android:visibility="gone" />
 
             <TextView
@@ -195,6 +206,10 @@
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
                 android:textStyle="bold"
+                android:drawableStart="@drawable/ic_audio_track"
+                android:drawablePadding="4dp"
+                android:drawableTint="#FFFFFF"
+                android:gravity="center_vertical"
                 android:visibility="gone" />
         </LinearLayout>
 
