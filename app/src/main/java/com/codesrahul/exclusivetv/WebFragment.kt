@@ -792,7 +792,16 @@ class WebFragment : Fragment() {
             }
         }
 
-        webView.loadUrl(url)
+    webView.loadUrl(url)
+    }
+
+    fun refreshPlayback() {
+        val currentTv = tvModel ?: return
+        Log.i(TAG, "Refreshing playback (Network Restored)")
+        // Use a short delay to ensure network stacks are fully ready
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            play(currentTv)
+        }, 1000)
     }
 
     private fun initializePlayer(url: String) {

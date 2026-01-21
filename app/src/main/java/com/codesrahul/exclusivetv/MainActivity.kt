@@ -746,6 +746,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (!offlineFragment.isHidden) {
             hideFragment(offlineFragment)
             Log.d(TAG, "Offline Screen Hidden")
+            webFragment.refreshPlayback()
         }
     }
 
