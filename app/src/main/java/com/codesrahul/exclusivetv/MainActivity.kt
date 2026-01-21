@@ -483,7 +483,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 if (info == "" || info == "web ok") {
                     Log.i(TAG, "${tvModel.tv.title} Playing")
                     hideFragment(loadingFragment)
+                    hideErrorFragment()
                     showFragment(webFragment)
+                } else if (info.contains("Retrying", ignoreCase = true) || info.contains("Trying", ignoreCase = true)) {
+                    Log.i(TAG, "${tvModel.tv.title} Status: $info")
+                    // Don't hide webFragment during retries, just show the error overlay on top
+                    showFragment(webFragment) 
+                    showErrorFragment(info)
                 } else {
                     Log.i(TAG, "${tvModel.tv.title} Error: $info")
                     hideFragment(loadingFragment)

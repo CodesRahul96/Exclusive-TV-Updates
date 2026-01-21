@@ -64,6 +64,7 @@ class WebFragment : Fragment() {
     private var tvModel: TVModel? = null
     private var savedAudioTrackToApply: Int = -1
     private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
+    private val playbackHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
@@ -798,8 +799,10 @@ class WebFragment : Fragment() {
     fun refreshPlayback() {
         val currentTv = tvModel ?: return
         Log.i(TAG, "Refreshing playback (Network Restored)")
+        // Cancel any pending retries first
+        playbackHandler.removeCallbacksAndMessages(null)
         // Use a short delay to ensure network stacks are fully ready
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        playbackHandler.postDelayed({
             play(currentTv)
         }, 1000)
     }
@@ -1011,7 +1014,7 @@ class WebFragment : Fragment() {
                         tvModel?.setErrInfo("") 
                     }
                     
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    playbackHandler.postDelayed({
                         if (retryCount > 0 && currentVideoUrl.isNotEmpty()) { 
                             Log.i(TAG, "Retrying playback (Re-initializing)...")
                             initializePlayer(currentVideoUrl)
@@ -1025,7 +1028,7 @@ class WebFragment : Fragment() {
                     Log.i(TAG, "Falling back to next URL ($currentUrlIndex): $nextUrl")
                     tvModel?.setErrInfo("Trying Backup Link...")
                     
-                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    playbackHandler.post {
                         initializePlayer(nextUrl)
                     }
                 } else {
@@ -1236,7 +1239,9 @@ class WebFragment : Fragment() {
     }
 
     private fun releasePlayer() {
+        playbackHandler.removeCallbacksAndMessages(null)
         try {
+            playerView.player = null
             if (loudnessEnhancer != null) {
                 loudnessEnhancer?.release()
                 loudnessEnhancer = null
