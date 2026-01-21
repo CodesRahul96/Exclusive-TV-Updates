@@ -72,6 +72,10 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
             (activity as? MainActivity)?.showEpgGrid()
         }
 
+        binding.root.setOnClickListener {
+            hideSelf()
+        }
+
         return binding.root
     }
 

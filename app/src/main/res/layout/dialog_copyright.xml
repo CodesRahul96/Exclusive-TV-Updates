@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#80000000"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="450dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_glass_dialog"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_dialog_info"
+            android:tint="#FFD700"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Copyright &amp; Disclaimer"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="24dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Exclusive TV does not stream or host any of the content included in this application.\n\nAll streaming links are gathered from third-party sources available freely on the internet. Exclusive TV merely provides a user-friendly interface for playback.\n\nAll content is the copyright of their respective owners."
+            android:textSize="14sp"
+            android:textColor="#B3FFFFFF"
+            android:lineSpacingMultiplier="1.4"
+            android:gravity="center"
+            android:layout_marginBottom="32dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Developed by CodesRahul96"
+            android:textSize="12sp"
+            android:textColor="#FFD700"
+            android:textStyle="italic"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="© 2026 All Rights Reserved"
+            android:textSize="10sp"
+            android:textColor="#4DFFFFFF"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/btn_close"
+            android:layout_width="200dp"
+            android:layout_height="48dp"
+            android:text="Close"
+            android:layout_gravity="center_horizontal"
+            android:background="@drawable/bg_glass_button"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:stateListAnimator="@null" />
+
+    </LinearLayout>
+</FrameLayout>

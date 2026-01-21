@@ -14,6 +14,7 @@ import com.codesrahul.exclusivetv.EPGManager
 import com.codesrahul.exclusivetv.showToast
 import com.codesrahul.exclusivetv.MyTVApplication
 import com.codesrahul.exclusivetv.SecureHttpClient
+import com.codesrahul.exclusivetv.UnsafeHttpClient
 import com.codesrahul.exclusivetv.OrderPreferenceManager
 import okhttp3.Request
 import io.github.lizongying.Gua
@@ -201,7 +202,7 @@ object TVList {
                     }
                 }
                 
-                val client = SecureHttpClient.client
+                val client = UnsafeHttpClient.client
                 val allChannels = mutableListOf<TV>()
                 var successCount = 0
                 
@@ -510,7 +511,7 @@ object TVList {
             return@withContext originalList
         }
 
-        val client = SecureHttpClient.client
+        val client = UnsafeHttpClient.client
         // Limit concurrency to avoid overwhelming servers (max 5 parallel fetches)
         val semaphore = kotlinx.coroutines.sync.Semaphore(5)
         
@@ -782,7 +783,7 @@ object TVList {
                 .head() // Try HEAD first
                 .build()
             
-            val client = SecureHttpClient.client
+            val client = UnsafeHttpClient.client
             var response = client.newCall(request).execute()
             
             if (response.isSuccessful) {

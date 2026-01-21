@@ -12,9 +12,56 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.net.NetworkInterface
+import java.util.Collections
 
 object Utils {
     private var between: Long = 0
+
+    fun getIPAddress(useIPv4: Boolean): String {
+        try {
+            val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
+            for (intf in interfaces) {
+                val addrs = Collections.list(intf.inetAddresses)
+                for (addr in addrs) {
+                    if (!addr.isLoopbackAddress) {
+                        val sAddr = addr.hostAddress ?: continue
+                        val isIPv4 = sAddr.indexOf(':') < 0
+                        if (useIPv4) {
+                            if (isIPv4) return sAddr
+                        } else {
+                            if (!isIPv4) {
+                                val delim = sAddr.indexOf('%') // drop ip6 zone suffix
+                                return if (delim < 0) sAddr.uppercase(Locale.getDefault()) else sAddr.substring(0, delim).uppercase(Locale.getDefault())
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (ignored: Exception) { }
+        return ""
+    }
+
+    fun getMacAddress(): String {
+        try {
+            val all = Collections.list(NetworkInterface.getNetworkInterfaces())
+            for (nif in all) {
+                if (!nif.name.equals("wlan0", ignoreCase = true) && !nif.name.equals("eth0", ignoreCase = true)) continue
+
+                val macBytes = nif.hardwareAddress ?: continue
+                val res1 = StringBuilder()
+                for (b in macBytes) {
+                    res1.append(String.format("%02X:", b))
+                }
+                if (res1.isNotEmpty()) {
+                    res1.deleteCharAt(res1.length - 1)
+                }
+                return res1.toString()
+            }
+        } catch (ex: Exception) {
+        }
+        return "02:00:00:00:00:00"
+    }
 
     fun getDateFormat(format: String): String {
         return SimpleDateFormat(

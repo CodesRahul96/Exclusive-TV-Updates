@@ -35,12 +35,43 @@ class UpdateManager(
 
     private var downloadReceiver: DownloadReceiver? = null
 
-    fun checkAndUpdate() {
+    private var checkingDialog: android.app.Dialog? = null
+
+    fun checkAndUpdate(isManualCheck: Boolean = false) {
         Log.i(TAG, "checkAndUpdate")
         CoroutineScope(Dispatchers.Main).launch {
+            if (isManualCheck) {
+                // Show professional loading dialog
+                val builder = android.app.AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog)
+                val container = android.widget.LinearLayout(context).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    setPadding(50, 50, 50, 50)
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                }
+                
+                val progressBar = android.widget.ProgressBar(context).apply {
+                    isIndeterminate = true
+                }
+                
+                val tv = android.widget.TextView(context).apply {
+                    text = "Checking for updates..."
+                    setTextColor(android.graphics.Color.WHITE)
+                    textSize = 16f
+                    setPadding(40, 0, 0, 0)
+                }
+
+                container.addView(progressBar)
+                container.addView(tv)
+                
+                builder.setView(container)
+                builder.setCancelable(false)
+                checkingDialog = builder.show()
+                checkingDialog?.window?.setBackgroundDrawableResource(R.drawable.bg_menu_glass) // Match existing style
+            }
+
             // Check if we already have the release info from TVList's early check
             val cachedRelease = SecurityUtil.remoteRelease
-            if (cachedRelease != null) {
+            if (cachedRelease != null && !isManualCheck) {
                 Log.i(TAG, "Using cached release info from SecurityUtil")
                 release = cachedRelease
                 if (SecurityUtil.isAppOutdated) {
@@ -63,7 +94,7 @@ class UpdateManager(
                         SecurityUtil.isAppOutdated = true
                         SecurityUtil.remoteRelease = release
                     } else {
-                        text = "Already the latest version, no need to update"
+                        text = "You are using the latest version."
                     }
                 }
                 if (release == null) {
@@ -73,11 +104,13 @@ class UpdateManager(
                 text = "Update Error: ${e.localizedMessage}"
                 Log.e(TAG, "Error occurred: ${e.message}", e)
             }
-            updateUI(text, update, update) // Force update is true if update is available
+            updateUI(text, update, update, isManualCheck) // Force update is true if update is available
         }
     }
 
-    private fun updateUI(text: String, update: Boolean, force: Boolean = false) {
+    private fun updateUI(text: String, update: Boolean, force: Boolean = false, isManualCheck: Boolean = false) {
+        try { checkingDialog?.dismiss() } catch (e: Exception) {}
+
         if (update) {
             val dialog = ConfirmationFragment(this@UpdateManager, text, update, force)
             dialog.show((context as FragmentActivity).supportFragmentManager, TAG)
@@ -86,8 +119,11 @@ class UpdateManager(
             if (force && context is UpdateListener) {
                 (context as UpdateListener).onForceUpdate()
             }
+        } else if (isManualCheck) {
+            // Use ConfirmationFragment for "Up to Date" style too
+            val dialog = ConfirmationFragment(this@UpdateManager, text, false, false)
+            dialog.show((context as FragmentActivity).supportFragmentManager, TAG)
         }
-        // Removed: Don't show "up to date" message
     }
 
     interface UpdateListener {

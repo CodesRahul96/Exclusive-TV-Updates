@@ -16,23 +16,51 @@
         android:padding="24dp"
         android:elevation="12dp">
 
-        <TextView
-            android:id="@+id/name"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:layout_marginBottom="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="32dp">
 
-        <TextView
-            android:id="@+id/version"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Settings"
-            android:textSize="14sp"
-            android:textColor="#80FFFFFF"
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:src="@drawable/logo_exclusive"
+                android:layout_marginEnd="16dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textSize="26sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFD700"
+                    android:letterSpacing="0.05" />
+
+                <TextView
+                    android:id="@+id/version"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Control Center &amp; Settings"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#80FFFFFF"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#1AFFFFFF"
             android:layout_marginBottom="24dp" />
 
         <ScrollView
@@ -678,14 +706,7 @@
             </LinearLayout>
         </ScrollView>
         
-        <TextView
-            android:id="@+id/server"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Server: offline"
-            android:textSize="10sp"
-            android:textColor="#4DFFFFFF"
-            android:layout_gravity="center_horizontal" />
+
 
         <TextView
             android:id="@+id/versionName"
@@ -697,10 +718,20 @@
             android:layout_gravity="center_horizontal" />
 
         <TextView
+            android:id="@+id/device_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="IP: -- | MAC: --"
+            android:textSize="10sp"
+            android:textColor="#4DFFFFFF"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="2dp" />
+
+        <TextView
             android:id="@+id/developer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Developed by CodesRahul"
+            android:text="Developed by CodesRahul96"
             android:textSize="9sp"
             android:textColor="#80FFD700"
             android:textStyle="italic"

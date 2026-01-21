@@ -45,6 +45,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var importProgressFragment = ImportProgressFragment()
     private var trackSelectionFragment = TrackSelectionFragment()
     private var epgGridFragment = EpgGridFragment()
+    private var offlineFragment = OfflineFragment()
 
     private lateinit var updateManager: UpdateManager
     
@@ -93,6 +94,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             super.onAvailable(network)
+            runOnUiThread {
+                hideOfflineScreen()
+            }
             if (isVpnActive()) {
                 runOnUiThread {
                     Log.d(TAG, "VPN detected via Callback. Exiting app.")
@@ -104,9 +108,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         override fun onLost(network: Network) {
             super.onLost(network)
+            runOnUiThread {
+                showOfflineScreen()
+            }
             if (!isVpnActive()) {
                 runOnUiThread {
-                    Toast.makeText(this@MainActivity, "VPN disconnected.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "Internet connection lost.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -120,6 +127,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
+        
+        // Initial network check
+        if (!isNetworkAvailable()) {
+            handler.postDelayed({
+                showOfflineScreen()
+            }, 500) // Small delay to let fragments settle
+        }
+
         startRootMonitoring()
 
 //        requestWindowFeature(FEATURE_NO_TITLE)
@@ -180,10 +195,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .add(R.id.main_browse_fragment, settingFragment)
                 .add(R.id.main_browse_fragment, importProgressFragment)
                 .add(R.id.main_browse_fragment, trackSelectionFragment)
+                .add(R.id.main_browse_fragment, offlineFragment)
                 .hide(menuFragment)
                 .hide(settingFragment)
                 .hide(importProgressFragment)
                 .hide(trackSelectionFragment)
+                .hide(offlineFragment)
                 .hide(epgGridFragment)
                 .hide(errorFragment)
                 .show(loadingFragment)
@@ -708,6 +725,30 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
     }
 
+    private fun isNetworkAvailable(): Boolean {
+        try {
+            val network = connectivityManager.activeNetwork ?: return false
+            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
+    fun showOfflineScreen() {
+        if (offlineFragment.isHidden) {
+            showFragment(offlineFragment)
+            Log.d(TAG, "Offline Screen Shown")
+        }
+    }
+
+    fun hideOfflineScreen() {
+        if (!offlineFragment.isHidden) {
+            hideFragment(offlineFragment)
+            Log.d(TAG, "Offline Screen Hidden")
+        }
+    }
+
     private fun showFragment(fragment: Fragment) {
         if (!fragment.isHidden) {
             return
@@ -721,6 +762,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             menuFragment -> menuActive()
             settingFragment -> settingActive()
             trackSelectionFragment -> trackSelectionActive()
+            offlineFragment -> {
+                 // Offline screen specific sound or logic if needed
+            }
         }
     }
 

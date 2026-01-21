@@ -913,10 +913,17 @@ class WebFragment : Fragment() {
                 DefaultDrmSessionManager.Builder()
                     .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
                     .build(drmCallback)
-            } else {
+             } else {
                 // Remote License (Widevine/PlayReady or Remote ClearKey)
                 Log.d(TAG, "Configuring Remote DRM: ${drmConfig.scheme} @ ${drmConfig.license}")
-                val drmCallback = HttpMediaDrmCallback(drmConfig.license, DefaultHttpDataSource.Factory())
+                
+                // Use a DataSourceFactory that mirrors the media request settings (UA, headers)
+                val drmDataSourceFactory = DefaultHttpDataSource.Factory()
+                    .setUserAgent(userAgent)
+                    .setAllowCrossProtocolRedirects(true)
+                    .setDefaultRequestProperties(requestHeaders)
+                
+                val drmCallback = HttpMediaDrmCallback(drmConfig.license, drmDataSourceFactory)
                 
                 // Pass headers to license request if needed (e.g. Auth tokens)
                 for ((k, v) in requestHeaders) {
@@ -1129,6 +1136,10 @@ class WebFragment : Fragment() {
 
     private fun getOptimalUserAgent(url: String): String {
         return when {
+            // SPECIAL HANDLING: IPTV Providers blocking standard browsers
+            url.contains("drmlive.net") || url.contains("servertvhub.site") -> 
+                "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
+                
             url.contains("googlevideo.com") || url.contains("youtube.com") -> 
                 "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US) gzip"
             url.contains("facebook.com") || url.contains("fbcdn.net") ->
@@ -1334,7 +1345,7 @@ class WebFragment : Fragment() {
         val startBuffer = when (bufferMode) {
             1 -> 2500 // 2.5s start
             2 -> 1000 // 1s start
-            else -> 2000 // Balanced start
+            else -> 1000 // Optimized default: 1s start (was 2000)
         }
         
         return DefaultLoadControl.Builder()
@@ -1342,7 +1353,7 @@ class WebFragment : Fragment() {
                 minBuffer,
                 maxBuffer,
                 startBuffer,
-                5000 // Rebuffer
+                2500 // Optimized rebuffer: 2.5s (was 5000)
             )
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()

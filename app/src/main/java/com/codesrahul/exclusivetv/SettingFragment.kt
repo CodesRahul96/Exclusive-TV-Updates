@@ -57,6 +57,17 @@ class SettingFragment : Fragment() {
             isFocusableInTouchMode = true
             requestFocus()
         }
+
+        binding.versionName.text = "v${com.codesrahul.exclusivetv.BuildConfig.VERSION_NAME}"
+        
+        // IP & MAC Address display
+        val ip = Utils.getIPAddress(true)
+        val mac = Utils.getMacAddress()
+        
+        val displayIp = if (ip.isEmpty()) "Unavailable" else ip
+        val displayMac = if (mac.isEmpty() || mac == "02:00:00:00:00:00") "Unavailable" else mac
+        
+        binding.deviceInfo.text = "IP: $displayIp  |  MAC: $displayMac"
     }
 
     private fun syncStatusUI() {
@@ -144,6 +155,17 @@ class SettingFragment : Fragment() {
     }
 
     private fun setupListeners() {
+        // Developer Link
+        binding.developer.setOnClickListener {
+            try {
+                tvUiUtils?.playClickSound()
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse("https://github.com/CodesRahul96"))
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Could not open link", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         // Card Toggles
         binding.cardChannelReversal.setOnClickListener { toggleSetting("channelReversal") }
         binding.cardChannelNum.setOnClickListener { toggleSetting("channelNum") }
@@ -245,7 +267,7 @@ class SettingFragment : Fragment() {
                 var current = SP.bufferMode
                 current = (current + 1) % 3 // 0->1->2->0
                 SP.bufferMode = current
-                Toast.makeText(requireContext(), "Buffering: " + arrayOf("Default", "Max Stability", "Low Latency")[current], Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Buffering: " + arrayOf("Default", "Max Stability", "Low Latency")[current] + " (Restart stream to apply)", Toast.LENGTH_SHORT).show()
             }
             "audioStabilizer" -> {
                 SP.audioStabilizer = !SP.audioStabilizer
@@ -257,28 +279,47 @@ class SettingFragment : Fragment() {
 
     private fun performFullReset() {
         try {
+            Toast.makeText(requireContext(), "Resetting...", Toast.LENGTH_SHORT).show()
+            
             // 1. Clear all Preference Managers
-            SP.reset()
-            OrderPreferenceManager.resetAll()
+            try { SP.reset() } catch (e: Exception) { e.printStackTrace() }
+            try { OrderPreferenceManager.resetAll() } catch (e: Exception) { e.printStackTrace() }
 
             // 2. Delete all local files (channels.txt, etc)
-            deleteRecursive(requireContext().filesDir)
+            try { deleteRecursive(requireContext().filesDir) } catch (e: Exception) { e.printStackTrace() }
             
             // 3. Delete cache (epg_cache.xml.gz, etc)
-            deleteRecursive(requireContext().cacheDir)
+            try { deleteRecursive(requireContext().cacheDir) } catch (e: Exception) { e.printStackTrace() }
+            
+            // 4. Clear WebViews/Cookies if any
+            try { android.webkit.WebStorage.getInstance().deleteAllData() } catch (e: Exception) {}
 
             Toast.makeText(requireContext(), "Factory Reset Complete. Restarting...", Toast.LENGTH_LONG).show()
 
-            // 4. Force Restart App
+            // 5. Force Restart App
+            val ctx = context ?: return
             binding.root.postDelayed({
-                requireActivity().finishAffinity()
-                val intent = requireActivity().packageManager.getLaunchIntentForPackage(requireActivity().packageName)
-                startActivity(intent)
+                try {
+                    val pm = ctx.packageManager
+                    val intent = pm.getLaunchIntentForPackage(ctx.packageName)
+                    if (intent != null) {
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                    }
+                    activity?.finishAffinity()
+                    System.exit(0)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    System.exit(0)
+                }
             }, 1000)
 
         } catch (e: Exception) {
             Log.e(TAG, "Reset failed", e)
             Toast.makeText(requireContext(), "Reset failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            // Try to crash/restart anyway to clear state
+            System.exit(0) 
         }
     }
 
@@ -309,7 +350,16 @@ class SettingFragment : Fragment() {
     }
 
     fun setServer(server: String) {
-        binding.server.text = "http://$server"
+        // Only update if server is not empty/offline (avoid redundancy with static IP display)
+        if (server.isNotEmpty() && !server.contains("offline", ignoreCase = true)) {
+            val ip = Utils.getIPAddress(true)
+            val mac = Utils.getMacAddress()
+            val displayMac = if (mac.isEmpty() || mac == "02:00:00:00:00:00") "Unavailable" else mac
+            
+            // Show full server link as it contains the port
+            binding.deviceInfo.text = "Server: http://$server  |  MAC: $displayMac"
+            Log.i(TAG, "Server UI Updated: http://$server")
+        }
     }
 
     fun setVersionName(versionName: String) {
@@ -351,7 +401,7 @@ class SettingFragment : Fragment() {
         if (permissionsList.isNotEmpty()) {
             ActivityCompat.requestPermissions(requireActivity(), permissionsList.toTypedArray(), PERMISSIONS_REQUEST_CODE)
         } else {
-            updateManager.checkAndUpdate()
+            updateManager.checkAndUpdate(isManualCheck = true)
         }
     }
 
@@ -374,15 +424,12 @@ class SettingFragment : Fragment() {
     }
 
     private fun showManageCategoriesDialog() {
-        // Get all groups from the model
-        val mainActivity = activity as? MainActivity ?: return
         val allGroups = com.codesrahul.exclusivetv.models.TVList.groupModel.getTVListModelList()
         if (allGroups.isEmpty()) {
             Toast.makeText(requireContext(), "No categories loaded", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // We filter out "My Collection" and "All channels" as they should always be visible
         val categoryPairs = allGroups.filter { it.getIndex() > 1 }.map { 
             val originalName = it.getName()
             val displayName = OrderPreferenceManager.getCategoryDisplayName(originalName)
@@ -396,24 +443,22 @@ class SettingFragment : Fragment() {
 
         val displayNames = categoryPairs.map { it.second }.toTypedArray()
         val checkedItems = categoryPairs.map { it.third }.toBooleanArray()
+        val currentHidden = OrderPreferenceManager.getHiddenCategories().toMutableSet()
 
         android.app.AlertDialog.Builder(requireContext(), android.app.AlertDialog.THEME_HOLO_DARK)
             .setTitle("Manage Category Visibility")
             .setMultiChoiceItems(displayNames, checkedItems) { _, which: Int, isChecked: Boolean ->
                 val originalName = categoryPairs[which].first
-                val currentHidden = OrderPreferenceManager.getHiddenCategories().toMutableSet()
                 if (isChecked) {
                     currentHidden.remove(originalName)
                 } else {
                     currentHidden.add(originalName)
                 }
-                OrderPreferenceManager.saveHiddenCategories(currentHidden)
-                
-                OrderPreferenceManager.saveHiddenCategories(currentHidden)
-                // Don't update instantly to avoid Recycler Crash
             }
             .setPositiveButton("Done") { _, _ ->
+                OrderPreferenceManager.saveHiddenCategories(currentHidden)
                 TVList.update(requireContext(), silent = true)
+                Toast.makeText(requireContext(), "Categories updated", Toast.LENGTH_SHORT).show()
             }
             .setNeutralButton("Reset All") { _, _ ->
                 OrderPreferenceManager.saveHiddenCategories(emptySet())
@@ -481,22 +526,29 @@ class SettingFragment : Fragment() {
             .show()
     }
 
-    private fun showCopyrightDialog() {
-        val copyrightText = """
-            Exclusive TV does not stream or host any of the content included in this application. 
-            
-            All streaming links are gathered from third-party sources available freely on the internet. Exclusive TV merely provides a user-friendly interface for playback.
-            
-            All content is the copyright of their respective owners.
-            
-            © 2026 CodesRahul96
-        """.trimIndent()
 
-        android.app.AlertDialog.Builder(requireContext(), android.app.AlertDialog.THEME_HOLO_DARK)
-            .setTitle("Copyright & Disclaimer")
-            .setMessage(copyrightText)
-            .setPositiveButton("Close", null)
-            .show()
+    private fun showCopyrightDialog() {
+        val dialog = android.app.Dialog(requireContext(), android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
+        dialog.setContentView(R.layout.dialog_copyright)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        val btnClose = dialog.findViewById<android.widget.Button>(R.id.btn_close)
+        
+        btnClose.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            dialog.dismiss()
+        }
+        
+        btnClose.setOnFocusChangeListener { view, hasFocus ->
+            if (hasFocus) {
+                view.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
+                tvUiUtils?.playFocusSound()
+            } else {
+                view.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+            }
+        }
+        
+        dialog.show()
     }
 
     companion object {
