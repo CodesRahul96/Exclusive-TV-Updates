@@ -28,9 +28,7 @@ object GenericJsonParser {
                 // Check if this array looks like a channel list (at least one object with a URL)
                 val looksLikeChannels = array.any { 
                     it.isJsonObject && (
-                        it.asJsonObject.has("url") || it.asJsonObject.has("link") || 
-                        it.asJsonObject.has("stream") || it.asJsonObject.has("uri") ||
-                        it.asJsonObject.has("m3u8_url") || it.asJsonObject.has("mpd_url")
+                        hasAnyKey(it.asJsonObject, "url", "link", "stream", "uri", "source", "file", "m3u8_url", "mpd_url", "play_url")
                     )
                 }
 
@@ -44,7 +42,7 @@ object GenericJsonParser {
             element.isJsonObject -> {
                 val obj = element.asJsonObject
                 // Special case: if object ITSELF looks like a single channel
-                if (obj.has("url") || obj.has("link") || obj.has("m3u8_url")) {
+                if (hasAnyKey(obj, "url", "link", "stream", "uri", "source", "file", "m3u8_url")) {
                     val tv = parseSingleObject(obj, list.size)
                     if (tv != null) list.add(tv)
                 } else {
@@ -55,6 +53,10 @@ object GenericJsonParser {
                 }
             }
         }
+    }
+    
+    private fun hasAnyKey(obj: JsonObject, vararg keys: String): Boolean {
+        return keys.any { findString(obj, it) != null }
     }
 
     private fun processArray(array: JsonArray, list: MutableList<TV>) {
@@ -73,42 +75,61 @@ object GenericJsonParser {
         // Heuristic Field Mapping
         
         // 1. Find Name
-        val name = findString(obj, "name", "title", "channel_name", "display_name", "caption", "station", "tv_name", "channel", "label", "tvg-name", "tvg_name") ?: "Channel $index"
+        val name = findString(obj, "name", "title", "channel_name", "display_name", "caption", "station", "tv_name", "channel", "label", "tvg-name", "tvg_name", "ch_name") ?: "Channel $index"
         
-        // 2. Find URL
-        val url = findString(obj, "url", "stream_url", "uri", "file", "src", "link", "stream", "play_url", "m3u8_url", "mpd_url", "video_url", "address", "location", "media_url", "hls_url", "dash_url", "rtsp_url", "source")
-        if (url.isNullOrBlank()) return null // URL is mandatory
+        // 2. Find URL (Strict - must exist)
+        val url = findString(obj, "url", "stream_url", "uri", "file", "src", "link", "stream", "play_url", "m3u8_url", "mpd_url", "video_url", "address", "location", "media_url", "hls_url", "dash_url", "rtsp_url", "source", "content_url")
+        if (url.isNullOrBlank()) return null
 
         // 3. Find Logo
-        val logo = findString(obj, "logo", "icon", "image", "thumb", "thumbnail", "stream_icon", "channel_logo", "logo_url", "poster", "tvg-logo", "banner", "tvg_logo", "img") ?: ""
+        val logo = findString(obj, "logo", "icon", "image", "thumb", "thumbnail", "stream_icon", "channel_logo", "logo_url", "poster", "tvg-logo", "banner", "tvg_logo", "img", "cover", "picture") ?: ""
 
         // 4. Find Group
-        val group = findString(obj, "group", "category", "genre", "category_name", "group_title", "group-title", "cat_name", "category_id", "folder", "playlist", "section") ?: "Uncategorized"
+        val group = findString(obj, "group", "category", "genre", "category_name", "group_title", "group-title", "cat_name", "category_id", "folder", "playlist", "section", "group_name") ?: "Uncategorized"
 
         // 5. Find DRM
         val drmLicense = findString(obj, "license_key", "drm_url", "license", "clearkey", "key", "license_url", "license_src", "drm_license", "kodi_prop_license_key")
-        var drmScheme = findString(obj, "drm_scheme", "drm_type", "license_type", "license_mode", "scheme")
+        var drmScheme = findString(obj, "drm_scheme", "drm_type", "license_type", "license_mode", "scheme", "drm_system")
         
-        if (drmScheme == null && drmLicense != null) {
+        // Try to parse nested DRM object commonly used
+        if (drmScheme == null && obj.has("drm") && obj.get("drm").isJsonObject) {
+            val drmObj = obj.getAsJsonObject("drm")
+            drmScheme = findString(drmObj, "type", "scheme", "system")
+            // If license key was not found at top level, check inside drm object
+            if (drmLicense == null) {
+                 // We can't reassign val drmLicense, so we handle it below or use a separate var?
+                 // Let's rely on fallback logic below, but first try to peek.
+                 // Actually Kotlin params are vals. We need new vars if we want to change logic significantly.
+            }
+        }
+        
+        var finalDrmLicense = drmLicense
+        if (finalDrmLicense == null && obj.has("drm") && obj.get("drm").isJsonObject) {
+             val drmObj = obj.getAsJsonObject("drm")
+             finalDrmLicense = findString(drmObj, "key", "license", "url", "license_url")
+        }
+
+        if (drmScheme == null && finalDrmLicense != null) {
             // Auto detect from license string or license URL
             when {
-                drmLicense.contains("clearkey", ignoreCase = true) -> drmScheme = "clearkey"
-                drmLicense.contains("widevine", ignoreCase = true) || drmLicense.contains("wv", ignoreCase = true) -> drmScheme = "widevine"
-                drmLicense.contains("playready", ignoreCase = true) || drmLicense.contains("pr", ignoreCase = true) -> drmScheme = "playready"
-                drmLicense.contains("keyid=", ignoreCase = true) && drmLicense.contains("key=", ignoreCase = true) -> drmScheme = "clearkey"
+                finalDrmLicense.contains("clearkey", ignoreCase = true) -> drmScheme = "clearkey"
+                finalDrmLicense.contains("widevine", ignoreCase = true) || finalDrmLicense.contains("wv", ignoreCase = true) -> drmScheme = "widevine"
+                finalDrmLicense.contains("playready", ignoreCase = true) || finalDrmLicense.contains("pr", ignoreCase = true) -> drmScheme = "playready"
+                finalDrmLicense.contains("keyid=", ignoreCase = true) && finalDrmLicense.contains("key=", ignoreCase = true) -> drmScheme = "clearkey"
                 // Heuristic: If it looks like a hex key pair (32 chars : 32 chars)
-                drmLicense.matches(Regex("^[0-9a-fA-F]{32}:[0-9a-fA-F]{32}$")) -> drmScheme = "clearkey"
+                finalDrmLicense.matches(Regex("^[0-9a-fA-F]{32}:[0-9a-fA-F]{32}$")) -> drmScheme = "clearkey"
             }
         }
         
         // Fallback: If DASH (.mpd), assume Widevine if not explicit and has license
-        if (drmLicense != null && drmScheme == null && url.contains(".mpd", ignoreCase = true)) {
+        if (finalDrmLicense != null && drmScheme == null && url.contains(".mpd", ignoreCase = true)) {
              drmScheme = "widevine"
         }
 
         // 6. Find ID (Optional, default to index)
-        val idStr = findString(obj, "id", "channel_id", "tvg-id", "tvg_id", "ch_id", "unique_id")
-        val finalId = idStr?.toIntOrNull() ?: index
+        val idStr = findString(obj, "id", "channel_id", "tvg-id", "tvg_id", "ch_id", "unique_id", "stream_id")
+        val finalId = idStr?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: index
+        val apiId = idStr ?: finalId.toString()
         
         // 7. Find Catchup Info
         val catchupType = findString(obj, "catchup", "catchup-type", "catchup_type", "catchup_mode", "timeshift_type")
@@ -133,18 +154,18 @@ object GenericJsonParser {
 
         return TV(
             id = finalId,
-            apiId = finalId.toString(),
+            apiId = apiId,
             name = name,
             title = name,
-            description = null,
+            description = findString(obj, "description", "desc", "plot", "info", "summary"),
             logo = logo,
-            image = null,
+            image = findString(obj, "image", "backdrop", "fanart", "background"),
             uris = arrayListOf(url),
             headers = parseHeaders(obj),
             group = group,
             type = type,
             drmScheme = drmScheme,
-            drmLicenseUrl = drmLicense,
+            drmLicenseUrl = finalDrmLicense,
             catchupType = catchupType,
             catchupDays = catchupDays,
             catchupSource = catchupSource,
@@ -155,63 +176,68 @@ object GenericJsonParser {
     private fun parseHeaders(obj: JsonObject): Map<String, String>? {
         val headers = mutableMapOf<String, String>()
         
-        // 1. Try "headers" object
-        if (obj.has("headers") && obj.get("headers").isJsonObject) {
-            val headersObj = obj.getAsJsonObject("headers")
+        // 1. Try "headers" object (or "http_headers", "request_headers")
+        val headersKey = obj.keySet().firstOrNull { 
+            it.equals("headers", ignoreCase = true) || it.equals("http_headers", ignoreCase = true) || 
+            it.equals("request_headers", ignoreCase = true) || it.equals("stream_headers", ignoreCase = true)
+        }
+        
+        if (headersKey != null && obj.get(headersKey).isJsonObject) {
+            val headersObj = obj.getAsJsonObject(headersKey)
             for (key in headersObj.keySet()) {
                 val value = headersObj.get(key)
                 if (!value.isJsonNull) {
-                    // Normalize Key: cookie -> Cookie, user-agent -> User-Agent
-                    val normalizedKey = when (key.lowercase()) {
-                        "cookie" -> "Cookie"
-                        "user-agent" -> "User-Agent"
-                        "referer", "referrer" -> "Referer"
-                        "origin" -> "Origin"
-                        "authorization" -> "Authorization"
-                        else -> key // Keep as is if not common
-                    }
+                    val normalizedKey = normalizeHeaderKey(key)
                     headers[normalizedKey] = value.asString
                 }
             }
         }
 
-        // 2. Try Top-Level Common Headers
-        findString(obj, "user-agent", "user_agent", "ua")?.let { headers["User-Agent"] = it }
-        findString(obj, "referer", "referrer", "http-referer")?.let { headers["Referer"] = it }
-        findString(obj, "cookie", "cookies")?.let { headers["Cookie"] = it }
-        findString(obj, "origin", "http-origin")?.let { headers["Origin"] = it }
+        // 2. Try Top-Level Common Headers (snake_case or flat)
+        findString(obj, "user-agent", "user_agent", "ua", "http_user_agent")?.let { headers["User-Agent"] = it }
+        findString(obj, "referer", "referrer", "http-referer", "http_referrer")?.let { headers["Referer"] = it }
+        findString(obj, "cookie", "cookies", "http_cookie")?.let { headers["Cookie"] = it }
+        findString(obj, "origin", "http-origin", "http_origin")?.let { headers["Origin"] = it }
+        findString(obj, "authorization", "auth", "token")?.let { headers["Authorization"] = it }
 
         return if (headers.isNotEmpty()) headers else null
     }
 
+    private fun normalizeHeaderKey(key: String): String {
+        return when (key.lowercase().replace("_", "-")) {
+            "cookie" -> "Cookie"
+            "user-agent" -> "User-Agent"
+            "referer", "referrer" -> "Referer"
+            "origin" -> "Origin"
+            "authorization" -> "Authorization"
+            "content-type" -> "Content-Type"
+            "accept" -> "Accept"
+            else -> key // Return original casing if unknown, or maybe capitalize first letter?
+        }
+    }
+
     private fun findString(obj: JsonObject, vararg keys: String): String? {
+        // Fast path: direct match
         for (key in keys) {
-            // Direct Check
             if (obj.has(key) && !obj.get(key).isJsonNull) {
-                return obj.get(key).asString
+                val element = obj.get(key)
+                return if (element.isJsonPrimitive) element.asString else element.toString()
             }
-            
-            // Case-Insensitive Check (Iterate keys once per call? optimization possible but list is small)
-            // But strict keys loop is better for priority.
-            // Let's iterate object keys only if not found directly
-             for (objKey in obj.keySet()) {
-                // Determine equality
-                // We want to match "key" against "objKey"
-                // e.g. looking for "channel_name", obj has "Channel_Name"
-                if (objKey.equals(key, ignoreCase = true) && !obj.get(objKey).isJsonNull) {
-                    val element = obj.get(objKey)
-                    return if (element.isJsonPrimitive) element.asString else element.toString()
-                }
-                
-                // Also handle "snake_case" vs "camelCase" mismatch?
-                // e.g. looking for "user_agent", obj has "userAgent"
-                val normalizedKey = key.replace("_", "").replace("-", "").lowercase()
-                val normalizedObjKey = objKey.replace("_", "").replace("-", "").lowercase()
-                if (normalizedKey == normalizedObjKey && !obj.get(objKey).isJsonNull) {
+        }
+        
+        // Slow path: fuzzy match
+        for (objKey in obj.keySet()) {
+             val normalizedObjKey = objKey.replace("_", "").replace("-", "").lowercase()
+             
+             for (key in keys) {
+                 val normalizedKey = key.replace("_", "").replace("-", "").lowercase()
+                 if (normalizedKey == normalizedObjKey) {
                      val element = obj.get(objKey)
-                     return if (element.isJsonPrimitive) element.asString else element.toString()
-                }
-            }
+                     if (!element.isJsonNull) {
+                         return if (element.isJsonPrimitive) element.asString else element.toString()
+                     }
+                 }
+             }
         }
         return null
     }

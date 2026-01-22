@@ -65,8 +65,13 @@ object KodiParser {
 
         while (reader.readLine().also { line = it } != null) {
             try {
-                val trimmedLine = line?.trim() ?: continue
+                var trimmedLine = line?.trim() ?: continue
                 if (trimmedLine.isEmpty()) continue
+
+                // Normalize tags with spaces
+                if (trimmedLine.startsWith("# ")) {
+                    trimmedLine = "#" + trimmedLine.substring(1).trimStart()
+                }
 
                 if (trimmedLine.startsWith("#EXTM3U")) {
                     continue
@@ -90,29 +95,28 @@ object KodiParser {
                     val matches = PROP_REGEX.findAll(propertiesPart)
                     for (match in matches) {
                         val key = match.groupValues[1].lowercase() 
-                        // Value is in group 2 (quoted content) or group 3 (unquoted content)
                         val value = if (match.groupValues[2].isNotEmpty()) match.groupValues[2] else match.groupValues[3]
                         
                         when (key) {
-                            "tvg-id", "tvg_id", "channel-id", "channel_id" -> currentTvgId = value
-                            "tvg-logo", "tvg_logo", "logo", "icon" -> currentLogo = value
-                            "group-title", "group_title", "group" -> currentGroup = value
-                            "tvg-name", "tvg_name", "channel-name" -> if (currentName.isEmpty() || currentName.startsWith("Channel")) currentName = value 
+                            "tvg-id", "tvg_id", "channel-id", "channel_id", "id" -> currentTvgId = value
+                            "tvg-logo", "tvg_logo", "logo", "icon", "thumb", "image" -> currentLogo = value
+                            "group-title", "group_title", "group", "category", "genre" -> currentGroup = value
+                            "tvg-name", "tvg_name", "channel-name", "name", "title" -> if (value.isNotEmpty()) currentName = value 
                             
                             // Catchup
                             "catchup", "catchup-type", "catchup_type" -> currentCatchupType = value
                             "catchup-days", "catchup_days", "timeshift" -> currentCatchupDays = value
                             "catchup-source", "catchup_source" -> currentCatchupSource = value
                             
-                            // Headers (Extended)
+                            // Headers (Standard & Extended)
                             "user-agent", "user_agent", "http-user-agent" -> currentHeaders["User-Agent"] = value
                             "referer", "referrer", "http-referer" -> currentHeaders["Referer"] = value
                             "cookie", "cookies", "http-cookie" -> currentHeaders["Cookie"] = value
                             "origin", "http-origin" -> currentHeaders["Origin"] = value
                             
                             // DRM
-                            "license-key", "license_key", "license-url", "license_url" -> currentDrmLicense = value
-                            "license-type", "license_type", "drm-scheme" -> currentDrmScheme = value
+                            "license-key", "license_key", "license-url", "license_url", "clearkey", "key" -> currentDrmLicense = value
+                            "license-type", "license_type", "drm-scheme", "drm" -> currentDrmScheme = value
                         }
                     }
 
@@ -161,6 +165,18 @@ object KodiParser {
                             "inputstream.adaptive.manifest_type" -> {
                                 // e.g. "mpd", "hls", "ism" - implies STREAM type
                             }
+                            "inputstream.adaptive.stream_headers" -> {
+                                val headerPairs = value.split("&")
+                                for (pair in headerPairs) {
+                                    val kv = pair.split("=", limit = 2)
+                                    if (kv.size == 2) {
+                                        currentHeaders[kv[0]] = kv[1]
+                                    }
+                                }
+                            }
+                            "mimetype", "inputstream.adaptive.mimetype" -> {
+                                // Hint
+                            }
                         }
                     }
                 } else if (trimmedLine.startsWith("#EXTVLCOPT:")) {
@@ -168,15 +184,19 @@ object KodiParser {
 
                     val parts = trimmedLine.substringAfter("#EXTVLCOPT:").split("=", limit = 2)
                     if (parts.size == 2) {
-                        val key = parts[0].trim()
+                        val key = parts[0].trim().lowercase()
                         val value = parts[1].trim()
-                        when(key.lowercase()) {
-                            "http-user-agent" -> currentHeaders["User-Agent"] = value
-                            "http-referrer", "http-referer" -> currentHeaders["Referer"] = value
-                            "http-origin" -> currentHeaders["Origin"] = value
-                            "http-cookie" -> currentHeaders["Cookie"] = value
+                        when(key) {
+                            "http-user-agent", "user-agent" -> currentHeaders["User-Agent"] = value
+                            "http-referrer", "http-referer", "referrer", "referer" -> currentHeaders["Referer"] = value
+                            "http-origin", "origin" -> currentHeaders["Origin"] = value
+                            "http-cookie", "cookie" -> currentHeaders["Cookie"] = value
                         }
                     }
+                } else if (trimmedLine.startsWith("#EXTGRP:")) {
+                    val group = trimmedLine.substringAfter("#EXTGRP:").trim()
+                    if (group.isNotEmpty()) currentGroup = group
+
                 } else if (!trimmedLine.startsWith("#")) {
                     // Verify it's a URL
                     if (trimmedLine.contains("://")) {
@@ -185,7 +205,7 @@ object KodiParser {
                          // Handle pipe headers
                          if (trimmedLine.contains("|")) {
                              val urlParts = trimmedLine.split("|", limit = 2)
-                             finalUrl = urlParts[0]
+                             finalUrl = urlParts[0].trim()
                              val headersPart = urlParts[1]
                              
                              val headerPairs = headersPart.split("&")

@@ -744,7 +744,7 @@ object TVList {
                     isAlive = false 
                 } else {
                     for (uri in tv.uris) {
-                        if (checkLink(uri)) {
+                        if (checkLink(uri, tv.headers)) {
                             isAlive = true
                             break 
                         }
@@ -776,10 +776,16 @@ object TVList {
         }
     }
 
-    private fun checkLink(url: String): Boolean {
+    private fun checkLink(url: String, headers: Map<String, String>? = null): Boolean {
         return try {
-            val request = Request.Builder()
+            val requestBuilder = Request.Builder()
                 .url(url)
+                
+            headers?.forEach { (k, v) ->
+                requestBuilder.addHeader(k, v)
+            }
+                
+            val request = requestBuilder
                 .head() // Try HEAD first
                 .build()
             
@@ -793,8 +799,14 @@ object TVList {
             response.close()
 
             // If HEAD fails (e.g. 405), try GET
-             val getRequest = Request.Builder()
+             val getRequestBuilder = Request.Builder()
                 .url(url)
+                
+             headers?.forEach { (k, v) ->
+                getRequestBuilder.addHeader(k, v)
+             }
+             
+             val getRequest = getRequestBuilder
                 .get()
                 .build()
             response = client.newCall(getRequest).execute()

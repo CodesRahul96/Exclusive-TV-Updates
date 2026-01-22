@@ -40,7 +40,6 @@ class EpgGridFragment : Fragment() {
         populateTimeHeader()
         val channels = TVList.listModel
         if (channels.isEmpty()) {
-            Toast.makeText(requireContext(), "No channels loaded for Guide", Toast.LENGTH_SHORT).show()
             return
         }
 
