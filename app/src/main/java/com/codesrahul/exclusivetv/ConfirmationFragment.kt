@@ -12,6 +12,7 @@ import android.widget.TextView
 class ConfirmationFragment(
     private val listener: ConfirmationListener,
     private val message: String,
+    private val changelog: String = "",
     private val update: Boolean,
     private val force: Boolean = false
 ) : DialogFragment() {
@@ -27,7 +28,15 @@ class ConfirmationFragment(
             val btnCancel = view.findViewById<Button>(R.id.btnCancel)
             val tvTitle = view.findViewById<TextView>(R.id.tvTitle)
 
+            val tvChangelog = view.findViewById<TextView>(R.id.tvChangelog)
+
             tvMessage.text = message
+            
+            if (changelog.isNotEmpty()) {
+                tvChangelog.text = changelog
+            } else {
+                tvChangelog.text = "Bug fixes and improvements."
+            }
 
             // Prevent cancellation if forced
             isCancelable = !force

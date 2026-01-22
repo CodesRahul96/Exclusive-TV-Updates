@@ -112,7 +112,8 @@ class UpdateManager(
         try { checkingDialog?.dismiss() } catch (e: Exception) {}
 
         if (update) {
-            val dialog = ConfirmationFragment(this@UpdateManager, text, update, force)
+            val changelog = release?.changelog ?: "Bug fixes and performance improvements."
+            val dialog = ConfirmationFragment(this@UpdateManager, text, changelog, update, force)
             dialog.show((context as FragmentActivity).supportFragmentManager, TAG)
             
             // Notify listener to block usage
@@ -121,7 +122,7 @@ class UpdateManager(
             }
         } else if (isManualCheck) {
             // Use ConfirmationFragment for "Up to Date" style too
-            val dialog = ConfirmationFragment(this@UpdateManager, text, false, false)
+            val dialog = ConfirmationFragment(this@UpdateManager, text, "", false, false)
             dialog.show((context as FragmentActivity).supportFragmentManager, TAG)
         }
     }

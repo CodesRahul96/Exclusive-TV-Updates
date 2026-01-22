@@ -155,6 +155,13 @@ object TVList {
                 Log.e(TAG, "Early update check error", e)
             }
 
+
+            
+            // --- ADD EAGLE PLAYLIST SUPPORT ---
+            val eagleUrl = "https://raw.githubusercontent.com/CodesRahul96/Live-TV/refs/heads/main/src/assets/eagle.m3u"
+            SP.addPlaylistUrl(eagleUrl)
+            // ----------------------------------
+
             val cfg = SP.config
             if (SP.configAutoLoad && !cfg.isNullOrEmpty()) {
                 if (!SecurityUtil.isAppOutdated) {

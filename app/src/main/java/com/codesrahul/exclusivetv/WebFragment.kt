@@ -1141,7 +1141,8 @@ class WebFragment : Fragment() {
         
         // Force HLS MIME type for .php streams or any link detected as M3U8 but not ending in standard extensions
         if (videoUrl.contains(".m3u8", ignoreCase = true) || 
-            (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))) {
+            (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")) &&
+             !videoUrl.contains("extension=ts", ignoreCase = true) && !videoUrl.contains(".ts", ignoreCase = true))) {
              Log.i(TAG, "Forcing MIME type to HLS (APPLICATION_M3U8) for: $videoUrl")
              mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
         }
@@ -1149,13 +1150,14 @@ class WebFragment : Fragment() {
         exoPlayer?.setMediaItem(mediaItemBuilder.build())
         exoPlayer?.prepare()
         
-        // Audio Stabilizer (LoudnessEnhancer) - DISABLED for performance (causes freezing on low-end devices)
-        /*
+        // Audio Stabilizer (LoudnessEnhancer)
         if (SP.audioStabilizer) {
             try {
                 val sessionId = exoPlayer?.audioSessionId ?: 0
                 if (sessionId != 0) {
                      loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(sessionId)
+                     // Target Gain: 800mB = 8dB. 
+                     // This boosts the signal to make it perceived "louder" and more consistent.
                      loudnessEnhancer?.setTargetGain(800) 
                      loudnessEnhancer?.enabled = true
                      Log.i(TAG, "Audio Stabilizer Enabled (Session: $sessionId)")
@@ -1164,7 +1166,6 @@ class WebFragment : Fragment() {
                 Log.e(TAG, "Failed to init Audio Stabilizer", e)
             }
         }
-        */
         
         exoPlayer?.play()
     }
