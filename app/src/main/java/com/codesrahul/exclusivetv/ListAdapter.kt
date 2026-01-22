@@ -154,6 +154,9 @@ class ListAdapter(
         
         viewHolder.bind(tvModel, movingPosition, position)
 
+        // Reset selected state to prevent sticky yellow borders from recycled views
+        viewHolder.itemView.isSelected = false
+
         val view = viewHolder.itemView
         view.isFocusable = true
         view.isFocusableInTouchMode = true
@@ -214,7 +217,7 @@ class ListAdapter(
 
                     recyclerView.postDelayed({
                         val v = recyclerView.findViewHolderForAdapterPosition(p)
-                        v?.itemView?.isSelected = true
+//                        v?.itemView?.isSelected = true
                         v?.itemView?.requestFocus()
                     }, 0)
                     return@setOnKeyListener true
@@ -230,7 +233,7 @@ class ListAdapter(
 
                     recyclerView.postDelayed({
                         val v = recyclerView.findViewHolderForAdapterPosition(p)
-                        v?.itemView?.isSelected = true
+//                        v?.itemView?.isSelected = true
                         v?.itemView?.requestFocus()
                     }, 0)
                     return@setOnKeyListener true
@@ -479,7 +482,7 @@ class ListAdapter(
 
             recyclerView.postDelayed({
                 val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
-                viewHolder?.itemView?.isSelected = true
+//                viewHolder?.itemView?.isSelected = true
                 viewHolder?.itemView?.requestFocus()
             }, 0)
         }

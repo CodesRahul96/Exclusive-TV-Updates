@@ -43,7 +43,7 @@ class InfoFragment : Fragment() {
     private val timeRunnable = object : Runnable {
         override fun run() {
             _binding?.let {
-                val sdf = SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault())
+                val sdf = SimpleDateFormat("EEEE | MMM dd | hh:mm a", Locale.getDefault())
                 it.dateTime.text = sdf.format(Date())
                 handler.postDelayed(this, 1000)
             }
@@ -143,9 +143,23 @@ class InfoFragment : Fragment() {
                 
                 binding.desc.text = program.description
                 binding.desc.visibility = if (program.description.isNotEmpty()) View.VISIBLE else View.GONE
+
+                // Progress Bar
+                val now = System.currentTimeMillis()
+                if (now in program.start..program.stop) {
+                    val totalDuration = program.stop - program.start
+                    val currentProgress = now - program.start
+                    val progressPercent = ((currentProgress.toDouble() / totalDuration.toDouble()) * 100).toInt()
+                    binding.programProgress.progress = progressPercent
+                    binding.programProgress.visibility = View.VISIBLE
+                } else {
+                    binding.programProgress.visibility = View.GONE
+                }
+
             } else {
                 binding.programTitle.visibility = View.GONE
                 binding.programTime.visibility = View.GONE
+                binding.programProgress.visibility = View.GONE
                 binding.desc.text = "No current program info\nStatus: ${EPGManager.epgStatus}"
                 binding.desc.visibility = View.VISIBLE
             }
@@ -153,7 +167,7 @@ class InfoFragment : Fragment() {
             // Upcoming Program
             val nextProg: EPGProgram? = tvViewModel.upcomingProgram.value
             if (nextProg != null) {
-                binding.nextProgramLabel.visibility = View.VISIBLE
+                binding.nextProgramContainer.visibility = View.VISIBLE
                 binding.nextProgramTitle.text = nextProg.title
                 binding.nextProgramTitle.visibility = View.VISIBLE
                 
@@ -161,16 +175,17 @@ class InfoFragment : Fragment() {
                 binding.nextProgramTime.text = timeSdf.format(Date(nextProg.start))
                 binding.nextProgramTime.visibility = View.VISIBLE
             } else {
-                binding.nextProgramLabel.visibility = View.GONE
+                binding.nextProgramContainer.visibility = View.GONE
                 binding.nextProgramTitle.visibility = View.GONE
                 binding.nextProgramTime.visibility = View.GONE
             }
         } else {
             binding.programTitle.visibility = View.GONE
             binding.programTime.visibility = View.GONE
+            binding.programProgress.visibility = View.GONE
             binding.desc.text = tvViewModel.tv.group
             binding.desc.visibility = View.VISIBLE
-            binding.nextProgramLabel.visibility = View.GONE
+            binding.nextProgramContainer.visibility = View.GONE
             binding.nextProgramTitle.visibility = View.GONE
             binding.nextProgramTime.visibility = View.GONE
         }

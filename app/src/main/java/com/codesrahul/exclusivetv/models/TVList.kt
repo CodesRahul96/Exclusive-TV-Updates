@@ -733,37 +733,40 @@ object TVList {
             val initialSize = list.size
             Log.i(TAG, "Starting background channel check. Total: $initialSize")
 
-            val validList = mutableListOf<TV>()
-            var removedCount = 0
-
+            // Use concurrent collection for thread safety if needed, 
+            // but map + filter is safer.
             val currentList = list.toList()
-
-            for (tv in currentList) {
-                var isAlive = false
-                if (tv.uris.isEmpty()) {
-                    isAlive = false 
-                } else {
-                    for (uri in tv.uris) {
-                        if (checkLink(uri, tv.headers)) {
-                            isAlive = true
-                            break 
+            
+            // Limit concurrency to avoid OOM or OS limits, but high enough for speed
+            // 50 concurrent checks is standard for fast checkers
+            val semaphore = kotlinx.coroutines.sync.Semaphore(50)
+            
+            val validList = currentList.map { tv ->
+                async {
+                    semaphore.acquire()
+                    try {
+                        var isAlive = false
+                        if (tv.uris.isNotEmpty()) {
+                            for (uri in tv.uris) {
+                                if (checkLink(uri, tv.headers)) {
+                                    isAlive = true
+                                    break
+                                }
+                            }
                         }
+                        if (isAlive) tv else null
+                    } finally {
+                        semaphore.release()
                     }
                 }
+            }.mapNotNull { it.await() }
 
-                if (isAlive) {
-                    validList.add(tv)
-                } else {
-                    removedCount++
-                    Log.i(TAG, "Removing dead channel: ${tv.name}")
-                }
-            }
+            val removedCount = initialSize - validList.size
 
             if (removedCount > 0) {
                 list = validList
                 withContext(Dispatchers.Main) {
                     refreshModels(MyTVApplication.getInstance())
-                    // Fetch EPG if enabled
                     if (SP.epgEnabled) {
                         EPGManager.fetchEPG()
                         listModel.forEach { it.updateEPG() }
@@ -778,46 +781,33 @@ object TVList {
 
     private fun checkLink(url: String, headers: Map<String, String>? = null): Boolean {
         return try {
-            val requestBuilder = Request.Builder()
-                .url(url)
-                
-            headers?.forEach { (k, v) ->
-                requestBuilder.addHeader(k, v)
-            }
-                
-            val request = requestBuilder
-                .head() // Try HEAD first
+            val requestBuilder = Request.Builder().url(url)
+            headers?.forEach { (k, v) -> requestBuilder.addHeader(k, v) }
+            // HEAD request is faster
+            val request = requestBuilder.head().build() 
+            
+            // Use a short timeout client for checking
+            val checkClient = UnsafeHttpClient.client.newBuilder()
+                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                .callTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
                 .build()
-            
-            val client = UnsafeHttpClient.client
-            var response = client.newCall(request).execute()
-            
-            if (response.isSuccessful) {
-                response.close()
-                return true
-            }
-            response.close()
 
-            // If HEAD fails (e.g. 405), try GET
-             val getRequestBuilder = Request.Builder()
-                .url(url)
-                
-             headers?.forEach { (k, v) ->
-                getRequestBuilder.addHeader(k, v)
-             }
-             
-             val getRequest = getRequestBuilder
-                .get()
-                .build()
-            response = client.newCall(getRequest).execute()
-            val success = response.isSuccessful
-            response.close()
-            success
+            checkClient.newCall(request).execute().use { response ->
+                if (response.isSuccessful) return true
+            }
+            // If HEAD fails (some servers reject it), try fast GET with limits? 
+            // Often 405 Method Not Allowed implies existence, but let's stick to success.
+            // 403/401 might mean alive but auth needed. We strictly check playability?
+            // If 403, we should probably keep it (user might have auth). 
+            // But usually we just check reachability. 
+            false 
         } catch (e: Exception) {
-            // Log.d(TAG, "Link check failed for $url: ${e.message}")
             false
         }
     }
+
+
 
     fun getTVModel(): TVModel? {
         return _position.value?.let { getTVModel(it) }

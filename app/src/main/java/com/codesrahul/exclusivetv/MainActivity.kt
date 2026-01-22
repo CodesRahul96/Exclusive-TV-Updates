@@ -605,6 +605,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
             
             // Single tap anywhere → menu
+            if (infoFragment.isShowing()) {
+                infoFragment.dismiss()
+            }
             showFragment(menuFragment)
             return true
         }
@@ -766,7 +769,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             .commitNow()
 
         when (fragment) {
-            menuFragment -> menuActive()
+            menuFragment -> {
+                 menuActive()
+                 if (infoFragment.isShowing()) infoFragment.dismiss()
+            }
             settingFragment -> settingActive()
             trackSelectionFragment -> trackSelectionActive()
             offlineFragment -> {

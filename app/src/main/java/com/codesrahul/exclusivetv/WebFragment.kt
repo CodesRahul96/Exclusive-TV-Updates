@@ -1067,6 +1067,7 @@ class WebFragment : Fragment() {
 
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                 super.onVideoSizeChanged(videoSize)
+                val width = videoSize.width
                 val height = videoSize.height
                 val label = when {
                     height >= 2160 -> "4K"
@@ -1075,7 +1076,9 @@ class WebFragment : Fragment() {
                     height >= 720 -> "HD"
                     else -> "SD"
                 }
-                tvModel?.setVideoQuality(label)
+                // Construct detailed string: "1920x1080 | FHD"
+                val qualityString = "${width}x${height} | $label"
+                tvModel?.setVideoQuality(qualityString)
             }
 
 
@@ -1088,28 +1091,47 @@ class WebFragment : Fragment() {
                     setAudioTrack(targetIndex)
                 }
 
-                var audioLabel = ""
+                var audioText = ""
                 for (group in tracks.groups) {
                     if (group.type == C.TRACK_TYPE_AUDIO && group.isSelected) {
                         val format = group.getTrackFormat(0)
                         val channels = format.channelCount
-                        audioLabel = when (channels) {
+                        
+                        // 1. Channel Config
+                        val channelStr = when (channels) {
                             1 -> "Mono"
                             2 -> "Stereo"
-                            6 -> "5.1ch"
-                            8 -> "7.1ch"
+                            6 -> "5.1"
+                            8 -> "7.1"
                             else -> if (channels > 0) "${channels}ch" else ""
                         }
-                        // Optional: Check for Dolby
-                        val mime = format.sampleMimeType
-                        if (mime == androidx.media3.common.MimeTypes.AUDIO_AC3 || 
-                            mime == androidx.media3.common.MimeTypes.AUDIO_E_AC3) {
-                            audioLabel = if (audioLabel.isNotEmpty()) "$audioLabel Dolby" else "Dolby"
+                        
+                        // 2. Codec (Simplified)
+                        val mime = format.sampleMimeType ?: ""
+                        val codec = when {
+                            mime.contains("ac-3") || mime.contains("ac3") -> "AC3"
+                            mime.contains("eac3") || mime.contains("e-ac-3") -> "E-AC3"
+                            mime.contains("avc") -> "AAC"
+                            mime.contains("mp4") -> "AAC"
+                            mime.contains("mpeg") -> "MP3"
+                            mime.contains("opus") -> "Opus"
+                            mime.contains("flac") -> "FLAC"
+                            else -> "AAC" // Fallback/Default for most streams
                         }
-                        break // Found the selected audio track
+
+                        audioText = if (channelStr.isNotEmpty()) "$codec | $channelStr" else codec
+                        
+                        // Special case for Dolby
+                        if (mime.contains("ac3") || mime.contains("eac3")) {
+                             // E.g. "Dolby 5.1"
+                             val surround = if(channels >= 6) " 5.1" else ""
+                             audioText = "Dolby$surround"
+                        }
+                        
+                        break
                     }
                 }
-                tvModel?.setAudioQuality(audioLabel)
+                tvModel?.setAudioQuality(audioText)
             }
         })
 
@@ -1127,13 +1149,14 @@ class WebFragment : Fragment() {
         exoPlayer?.setMediaItem(mediaItemBuilder.build())
         exoPlayer?.prepare()
         
-        // Audio Stabilizer (LoudnessEnhancer)
+        // Audio Stabilizer (LoudnessEnhancer) - DISABLED for performance (causes freezing on low-end devices)
+        /*
         if (SP.audioStabilizer) {
             try {
                 val sessionId = exoPlayer?.audioSessionId ?: 0
                 if (sessionId != 0) {
                      loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(sessionId)
-                     loudnessEnhancer?.setTargetGain(800) // 800mB gain (approx +8dB boost for low volume)
+                     loudnessEnhancer?.setTargetGain(800) 
                      loudnessEnhancer?.enabled = true
                      Log.i(TAG, "Audio Stabilizer Enabled (Session: $sessionId)")
                 }
@@ -1141,6 +1164,7 @@ class WebFragment : Fragment() {
                 Log.e(TAG, "Failed to init Audio Stabilizer", e)
             }
         }
+        */
         
         exoPlayer?.play()
     }
@@ -1340,26 +1364,25 @@ class WebFragment : Fragment() {
         val bufferMode = SP.bufferMode
         Log.i(TAG, "Initializing Player with Buffer Mode: $bufferMode")
         
-        // Mode 0: Default (Balanced)
-        // Mode 1: Max Stability (Large buffer for slow net)
-        // Mode 2: Low Latency (Small buffer for fast net)
-
+        // Optimize for RAM constrained devices (TV Boxes)
+        // Previous 60s buffer was too large (heap churn).
+        
         val minBuffer = when (bufferMode) {
-            1 -> 30000 // 30s
-            2 -> 5000  // 5s
-            else -> 15000 // Increased default to 15s to prevent pausing
+            1 -> 20000 // 20s
+            2 -> 3000  // 3s
+            else -> 10000 // 10s (was 15000)
         }
 
         val maxBuffer = when (bufferMode) {
-            1 -> 60000 // 60s
-            2 -> 15000 // 15s
-            else -> 60000 // Increased default to 60s
+            1 -> 40000 // 40s
+            2 -> 10000 // 10s
+            else -> 20000 // 20s (was 60000 - too big!)
         }
 
         val startBuffer = when (bufferMode) {
-            1 -> 2500 // 2.5s start
-            2 -> 1000 // 1s start
-            else -> 1000 // Optimized default: 1s start (was 2000)
+            1 -> 3000 // 3s
+            2 -> 1000 // 1s
+            else -> 1500 // 1.5s - Balanced start (was 2500, caused long wait)
         }
         
         return DefaultLoadControl.Builder()
@@ -1367,7 +1390,7 @@ class WebFragment : Fragment() {
                 minBuffer,
                 maxBuffer,
                 startBuffer,
-                2500 // Optimized rebuffer: 2.5s (was 5000)
+                2500 // 2.5s rebuffer - Quick recovery (was 4000)
             )
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()

@@ -22,5 +22,6 @@
         app:use_controller="false"
         app:keep_content_on_player_reset="true"
         app:resize_mode="fill"
+        app:surface_type="texture_view"
         xmlns:app="http://schemas.android.com/apk/res-auto" />
 </FrameLayout>
