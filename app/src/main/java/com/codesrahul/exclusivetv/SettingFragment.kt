@@ -18,6 +18,10 @@ import androidx.fragment.app.Fragment
 import com.codesrahul.exclusivetv.databinding.SettingBinding
 import com.codesrahul.exclusivetv.models.TVList
 import com.codesrahul.exclusivetv.ui.TvUiUtils
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import android.os.Looper
+import android.view.View
 
 class SettingFragment : Fragment() {
 
@@ -62,7 +66,7 @@ class SettingFragment : Fragment() {
         
         // IP & MAC Address display
         val ip = Utils.getIPAddress(true)
-        val mac = Utils.getMacAddress()
+        val mac = Utils.getMacAddress(requireContext())
         
         val displayIp = if (ip.isEmpty()) "Unavailable" else ip
         val displayMac = if (mac.isEmpty() || mac == "02:00:00:00:00:00") "Unavailable" else mac
@@ -212,15 +216,7 @@ class SettingFragment : Fragment() {
 
         binding.clear.setOnClickListener {
             tvUiUtils?.playClickSound()
-            
-            android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Factory Reset")
-                .setMessage("This will delete ALL data, including favorites, custom URLs, and cached channels. The app will restart. Continue?")
-                .setPositiveButton("Reset Everything") { _, _ ->
-                    performFullReset()
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
+            showResetConfirmation()
         }
 
         binding.checkVersion.setOnClickListener {
@@ -277,50 +273,126 @@ class SettingFragment : Fragment() {
         syncStatusUI()
     }
 
-    private fun performFullReset() {
-        try {
-            Toast.makeText(requireContext(), "Resetting...", Toast.LENGTH_SHORT).show()
-            
-            // 1. Clear all Preference Managers
-            try { SP.reset() } catch (e: Exception) { e.printStackTrace() }
-            try { OrderPreferenceManager.resetAll() } catch (e: Exception) { e.printStackTrace() }
+    private fun showResetConfirmation() {
+        val dialog = android.app.Dialog(requireContext())
+        val view = layoutInflater.inflate(R.layout.dialog_update, null)
+        
+        val tvTitle = view.findViewById<TextView>(R.id.tvTitle)
+        val tvMessage = view.findViewById<TextView>(R.id.tvMessage)
+        val btnConfirm = view.findViewById<android.widget.Button>(R.id.btnUpdate)
+        val btnCancel = view.findViewById<android.widget.Button>(R.id.btnCancel)
+        val tvChangelog = view.findViewById<TextView>(R.id.tvChangelog)
+        val scrollChangelog = view.findViewById<View>(R.id.tvChangelog).parent as View
 
-            // 2. Delete all local files (channels.txt, etc)
-            try { deleteRecursive(requireContext().filesDir) } catch (e: Exception) { e.printStackTrace() }
-            
-            // 3. Delete cache (epg_cache.xml.gz, etc)
-            try { deleteRecursive(requireContext().cacheDir) } catch (e: Exception) { e.printStackTrace() }
-            
-            // 4. Clear WebViews/Cookies if any
-            try { android.webkit.WebStorage.getInstance().deleteAllData() } catch (e: Exception) {}
+        // Styling
+        tvTitle.text = "Factory Reset"
+        tvTitle.setTextColor(Color.RED)
+        
+        tvMessage.text = "This action is irreversible."
+        
+        // Hide changelog scrollview and use it for the warning details
+        tvChangelog.text = "Warning: This will delete ALL data, including:\n\n• Custom Playlists\n• Saved Favorites\n• App Settings\n• Cached Data\n\nThe app will restart immediately."
+        tvChangelog.setTextColor(Color.LTGRAY)
+        
+        btnConfirm.text = "Reset Everything"
+        btnConfirm.setTextColor(Color.RED)
+        
+        btnCancel.visibility = View.VISIBLE
+        btnCancel.text = "Cancel"
+        btnCancel.requestFocus() // Default focus on Cancel for safety
 
-            Toast.makeText(requireContext(), "Factory Reset Complete. Restarting...", Toast.LENGTH_LONG).show()
-
-            // 5. Force Restart App
-            val ctx = context ?: return
-            binding.root.postDelayed({
-                try {
-                    val pm = ctx.packageManager
-                    val intent = pm.getLaunchIntentForPackage(ctx.packageName)
-                    if (intent != null) {
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(intent)
-                    }
-                    activity?.finishAffinity()
-                    System.exit(0)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    System.exit(0)
-                }
-            }, 1000)
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Reset failed", e)
-            Toast.makeText(requireContext(), "Reset failed: ${e.message}", Toast.LENGTH_SHORT).show()
-            // Try to crash/restart anyway to clear state
-            System.exit(0) 
+        btnConfirm.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            dialog.dismiss()
+            performFullResetWithProgress()
         }
+
+        btnCancel.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            dialog.dismiss()
+        }
+
+        dialog.setContentView(view)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.show()
+    }
+
+    private fun performFullResetWithProgress() {
+        // Show Loading Dialog
+        val loadingDialog = android.app.Dialog(requireContext())
+        val loadingView = layoutInflater.inflate(R.layout.dialog_checking, null)
+        
+        val tvStatus = loadingView.findViewById<TextView>(R.id.tvStatus)
+        val tvSubStatus = loadingView.findViewById<TextView>(R.id.tvSubStatus)
+        
+        tvStatus.text = "Resetting..."
+        tvSubStatus.text = "Clearing all data"
+        
+        loadingDialog.setContentView(loadingView)
+        loadingDialog.setCancelable(false)
+        loadingDialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        loadingDialog.show()
+
+        // Execute in Background
+        updateManager.destroy() // Stop any pending updates
+        
+        android.os.Handler(Looper.getMainLooper()).postDelayed({
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                try {
+                    // 1. Clear all Preference Managers
+                    try { SP.reset() } catch (e: Exception) { e.printStackTrace() }
+                    try { OrderPreferenceManager.resetAll() } catch (e: Exception) { e.printStackTrace() }
+
+                    // 2. Delete all local files (channels.txt, etc)
+                    try { deleteRecursive(requireContext().filesDir) } catch (e: Exception) { e.printStackTrace() }
+                    
+                    // 3. Delete cache (epg_cache.xml.gz, etc)
+                    try { deleteRecursive(requireContext().cacheDir) } catch (e: Exception) { e.printStackTrace() }
+                    
+                    // 4. Clear WebViews/Cookies if any
+                    try { 
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            android.webkit.WebStorage.getInstance().deleteAllData() 
+                        }
+                    } catch (e: Exception) {}
+
+                    kotlinx.coroutines.delay(1500) // Minimum visibility
+
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        tvStatus.text = "Restarting..."
+                        tvSubStatus.text = "Goodbye!"
+                    }
+                    
+                    kotlinx.coroutines.delay(500)
+
+                    // 5. Force Restart App
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        try {
+                            loadingDialog.dismiss()
+                            val ctx = context ?: MyTVApplication.getInstance()
+                            val pm = ctx.packageManager
+                            val intent = pm.getLaunchIntentForPackage(ctx.packageName)
+                            if (intent != null) {
+                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(intent)
+                            }
+                            activity?.finishAffinity()
+                            android.os.Process.killProcess(android.os.Process.myPid())
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            System.exit(0)
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        loadingDialog.dismiss()
+                        Toast.makeText(context, "Reset failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }, 500) // Small initial delay for UI to settle
     }
 
     private fun deleteRecursive(fileOrDirectory: java.io.File?) {
@@ -353,7 +425,7 @@ class SettingFragment : Fragment() {
         // Only update if server is not empty/offline (avoid redundancy with static IP display)
         if (server.isNotEmpty() && !server.contains("offline", ignoreCase = true)) {
             val ip = Utils.getIPAddress(true)
-            val mac = Utils.getMacAddress()
+            val mac = Utils.getMacAddress(requireContext())
             val displayMac = if (mac.isEmpty() || mac == "02:00:00:00:00:00") "Unavailable" else mac
             
             // Show full server link as it contains the port

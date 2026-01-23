@@ -42,8 +42,9 @@ object Utils {
         return ""
     }
 
-    fun getMacAddress(): String {
+    fun getMacAddress(context: android.content.Context): String {
         try {
+            // 1. Try NetworkInterface (Standard)
             val all = Collections.list(NetworkInterface.getNetworkInterfaces())
             for (nif in all) {
                 if (!nif.name.equals("wlan0", ignoreCase = true) && !nif.name.equals("eth0", ignoreCase = true)) continue
@@ -56,11 +57,54 @@ object Utils {
                 if (res1.isNotEmpty()) {
                     res1.deleteCharAt(res1.length - 1)
                 }
-                return res1.toString()
+                val mac = res1.toString()
+                if (mac.isNotEmpty() && mac != "02:00:00:00:00:00") {
+                    return mac
+                }
             }
         } catch (ex: Exception) {
+            ex.printStackTrace()
         }
+
+        // 2. Fallback: Generate pseudo-MAC from Android ID (Persistent on device)
+        try {
+            val androidId = android.provider.Settings.Secure.getString(
+                context.contentResolver,
+                android.provider.Settings.Secure.ANDROID_ID
+            )
+            if (!androidId.isNullOrEmpty()) {
+                return generateMacFromAndroidId(androidId)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         return "02:00:00:00:00:00"
+    }
+
+    private fun generateMacFromAndroidId(androidId: String): String {
+        try {
+            // Hash the Android ID to get bytes
+            val md = java.security.MessageDigest.getInstance("MD5")
+            md.update(androidId.toByteArray())
+            val bytes = md.digest()
+
+            // Build MAC string from first 6 bytes
+            val sb = StringBuilder()
+            for (i in 0 until 6) {
+                var b = bytes[i].toInt()
+                if (i == 0) {
+                    // Set unicast (bit 0=0) and locally administered (bit 1=1)
+                    // b & 11111110 | 00000010
+                    b = (b and 0xFE) or 0x02
+                }
+                sb.append(String.format("%02X:", b.toByte()))
+            }
+            if (sb.isNotEmpty()) sb.deleteCharAt(sb.length - 1)
+            return sb.toString()
+        } catch (e: Exception) {
+            return "02:00:00:00:00:00"
+        }
     }
 
     fun getDateFormat(format: String): String {

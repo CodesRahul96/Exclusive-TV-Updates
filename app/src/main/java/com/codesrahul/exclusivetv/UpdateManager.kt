@@ -21,6 +21,7 @@ import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 
@@ -41,32 +42,20 @@ class UpdateManager(
         Log.i(TAG, "checkAndUpdate")
         CoroutineScope(Dispatchers.Main).launch {
             if (isManualCheck) {
-                // Show professional loading dialog
-                val builder = android.app.AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog)
-                val container = android.widget.LinearLayout(context).apply {
-                    orientation = android.widget.LinearLayout.HORIZONTAL
-                    setPadding(50, 50, 50, 50)
-                    gravity = android.view.Gravity.CENTER_VERTICAL
+                try {
+                    val builder = android.app.AlertDialog.Builder(context)
+                    val inflater = android.view.LayoutInflater.from(context)
+                    val view = inflater.inflate(R.layout.dialog_checking, null)
+                    
+                    builder.setView(view)
+                    builder.setCancelable(false)
+                    
+                    checkingDialog = builder.create()
+                    checkingDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
+                    checkingDialog?.show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-                
-                val progressBar = android.widget.ProgressBar(context).apply {
-                    isIndeterminate = true
-                }
-                
-                val tv = android.widget.TextView(context).apply {
-                    text = "Checking for updates..."
-                    setTextColor(android.graphics.Color.WHITE)
-                    textSize = 16f
-                    setPadding(40, 0, 0, 0)
-                }
-
-                container.addView(progressBar)
-                container.addView(tv)
-                
-                builder.setView(container)
-                builder.setCancelable(false)
-                checkingDialog = builder.show()
-                checkingDialog?.window?.setBackgroundDrawableResource(R.drawable.bg_menu_glass) // Match existing style
             }
 
             // Check if we already have the release info from TVList's early check
@@ -76,34 +65,54 @@ class UpdateManager(
                 release = cachedRelease
                 if (SecurityUtil.isAppOutdated) {
                     val text = "New version available: ${release?.version_name}\n\nPlease update to continue using the app."
-                    updateUI(text, true, true)
+                    updateUI(text, update = true, force = true)
                     return@launch
                 }
             }
 
+            // Artificial delay for better UX (so dialog doesn't flash)
+            val startTime = System.currentTimeMillis()
+            
             var text = "Failed to obtain version"
             var update = false
+            var error = false
+            
             try {
-                release = releaseRequest.getRelease()
+                // Perform network request on IO thread to avoid strict mode violations if any
+                release = withContext(Dispatchers.IO) {
+                    releaseRequest.getRelease()
+                }
+                
+                val duration = System.currentTimeMillis() - startTime
+                if (isManualCheck && duration < 1000) {
+                    kotlinx.coroutines.delay(1000 - duration)
+                }
+
                 Log.i(TAG, "versionCode $versionCode ${release?.version_code}")
                 if (release?.version_code != null) {
                     // Update only if remote version code is STRICTLY GREATER than current
                     if (release?.version_code!! > versionCode) {
-                        text = "New version available: ${release?.version_name}\n\nPlease update to continue using the app."
+                        text = "New version available: ${release?.version_name}"
                         update = true
                         SecurityUtil.isAppOutdated = true
                         SecurityUtil.remoteRelease = release
                     } else {
                         text = "You are using the latest version."
                     }
-                }
-                if (release == null) {
-                    text = "Update Check Failed: No Response"
+                } else if (release == null) {
+                    text = "Could not connect to update server."
+                    error = true
                 }
             } catch (e: Exception) {
-                text = "Update Error: ${e.localizedMessage}"
+                text = "Connection Error"
+                error = true
                 Log.e(TAG, "Error occurred: ${e.message}", e)
+                if (isManualCheck) {
+                    val duration = System.currentTimeMillis() - startTime
+                    if (duration < 1000) kotlinx.coroutines.delay(1000 - duration)
+                }
             }
+            
             updateUI(text, update, update, isManualCheck) // Force update is true if update is available
         }
     }

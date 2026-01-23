@@ -157,10 +157,15 @@ object TVList {
 
 
             
-            // --- ADD EAGLE PLAYLIST SUPPORT ---
-            val eagleUrl = "https://raw.githubusercontent.com/CodesRahul96/Live-TV/refs/heads/main/src/assets/eagle.m3u"
-            SP.addPlaylistUrl(eagleUrl)
-            // ----------------------------------
+
+
+            // --- SANITIZATION: REMOVE PERSISTENT EAGLE PLAYLIST ---
+            val eagleUrlLegacy = "https://raw.githubusercontent.com/CodesRahul96/Live-TV/refs/heads/main/src/assets/eagle.m3u"
+            if (SP.playlistUrls.contains(eagleUrlLegacy)) {
+                Log.i(TAG, "Removing persistent legacy playlist: $eagleUrlLegacy")
+                SP.removePlaylistUrl(eagleUrlLegacy)
+            }
+            // ------------------------------------------------------
 
             val cfg = SP.config
             if (SP.configAutoLoad && !cfg.isNullOrEmpty()) {

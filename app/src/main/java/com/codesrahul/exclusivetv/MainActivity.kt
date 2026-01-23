@@ -773,7 +773,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                  menuActive()
                  if (infoFragment.isShowing()) infoFragment.dismiss()
             }
-            settingFragment -> settingActive()
+            settingFragment -> {
+                 settingActive()
+                 if (infoFragment.isShowing()) infoFragment.dismiss()
+            }
             trackSelectionFragment -> trackSelectionActive()
             offlineFragment -> {
                  // Offline screen specific sound or logic if needed

@@ -140,7 +140,7 @@
         android:maxLines="2"
         android:textColor="#99FFFFFF"
         android:textSize="13sp"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_percent="0.55"
         app:layout_constraintStart_toStartOf="@+id/program_title"
         app:layout_constraintTop_toBottomOf="@+id/program_time"
         tools:text="Documentary showing how luxury cars are manufactured from scratch, featuring behind the scenes footage." />
