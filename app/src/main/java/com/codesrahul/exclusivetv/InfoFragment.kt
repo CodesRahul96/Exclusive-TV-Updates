@@ -43,7 +43,7 @@ class InfoFragment : Fragment() {
     private val timeRunnable = object : Runnable {
         override fun run() {
             _binding?.let {
-                val sdf = SimpleDateFormat("MMM dd, hh:mm a", Locale.getDefault())
+                val sdf = SimpleDateFormat("EEEE | MMM dd, hh:mm a", Locale.getDefault())
                 it.dateTime.text = sdf.format(Date())
                 handler.postDelayed(this, 1000)
             }
