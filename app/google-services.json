@@ -1,14 +1,13 @@
 {
   "project_info": {
-    "project_number": "1059828767216",
-    "firebase_url": "https://tamil-tv-cast.firebaseio.com",
-    "project_id": "tamil-tv-cast",
-    "storage_bucket": "tamil-tv-cast.firebasestorage.app"
+    "project_number": "345135183440",
+    "project_id": "exclusivetv-55149",
+    "storage_bucket": "exclusivetv-55149.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1059828767216:android:eac7c1b9d3f0067c2c2535",
+        "mobilesdk_app_id": "1:345135183440:android:5873b215601edbb5638355",
         "android_client_info": {
           "package_name": "com.codesrahul.exclusivetv"
         }
@@ -16,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDBAwpo_g5OMRzGsn4Wx_ytG2yx7brHZM8"
+          "current_key": "AIzaSyBrZnluGIYAWrhHIIA2USe9sMIBVRGU9Bo"
         }
       ],
       "services": {

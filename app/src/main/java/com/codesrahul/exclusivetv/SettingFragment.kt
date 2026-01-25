@@ -28,6 +28,10 @@ class SettingFragment : Fragment() {
     private lateinit var updateManager: UpdateManager
     private var tvUiUtils: TvUiUtils? = null
 
+    private val idleHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val idleRunnable = Runnable { hideSelf() }
+    private val IDLE_TIMEOUT = 10000L // 10 seconds
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -56,6 +60,20 @@ class SettingFragment : Fragment() {
             isFocusable = true
             isFocusableInTouchMode = true
             requestFocus()
+        }
+
+        // Reset timer on scroll interactions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            binding.settingsScroll.setOnScrollChangeListener { _, _, _, _, _ -> resetIdleTimer() }
+        } else {
+             binding.settingsScroll.viewTreeObserver.addOnScrollChangedListener {
+                 resetIdleTimer()
+             }
+        }
+        
+        binding.settingsScroll.setOnTouchListener { _, _ ->
+            resetIdleTimer()
+            false
         }
 
         binding.versionName.text = "v${com.codesrahul.exclusivetv.BuildConfig.VERSION_NAME}"
@@ -143,6 +161,7 @@ class SettingFragment : Fragment() {
         focusViews.forEach { v ->
             v.setOnFocusChangeListener { view, hasFocus ->
                 if (hasFocus) {
+                    resetIdleTimer()
                     view.animate().scaleX(1.02f).scaleY(1.02f).setDuration(150).start()
                     if (view !is android.widget.EditText) {
                         tvUiUtils?.playFocusSound()
@@ -210,17 +229,39 @@ class SettingFragment : Fragment() {
              showManageCategoriesDialog()
         }
 
-        binding.clear.setOnClickListener {
+            binding.clear.setOnClickListener {
             tvUiUtils?.playClickSound()
+
+            val dialog = android.app.Dialog(requireContext(), android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
+            dialog.setContentView(R.layout.dialog_factory_reset)
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+            val btnCancel = dialog.findViewById<android.widget.Button>(R.id.btnCancel)
+            val btnReset = dialog.findViewById<android.widget.Button>(R.id.btnReset)
+
+            btnCancel.setOnClickListener {
+                tvUiUtils?.playClickSound()
+                dialog.dismiss()
+            }
+
+            btnReset.setOnClickListener {
+                tvUiUtils?.playClickSound()
+                performFullReset()
+                dialog.dismiss()
+            }
             
-            android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Factory Reset")
-                .setMessage("This will delete ALL data, including favorites, custom URLs, and cached channels. The app will restart. Continue?")
-                .setPositiveButton("Reset Everything") { _, _ ->
-                    performFullReset()
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
+            // Focus handling
+            btnCancel.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
+                else v.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+            }
+            btnReset.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
+                else v.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+            }
+
+            dialog.show()
+            btnCancel.requestFocus()
         }
 
         binding.checkVersion.setOnClickListener {
@@ -240,6 +281,7 @@ class SettingFragment : Fragment() {
 
     private fun toggleSetting(key: String) {
         tvUiUtils?.playClickSound()
+        resetIdleTimer()
         when (key) {
             "channelReversal" -> SP.channelReversal = !SP.channelReversal
             "channelNum" -> SP.channelNum = !SP.channelNum
@@ -380,7 +422,15 @@ class SettingFragment : Fragment() {
         if (!hidden) {
             binding.container.startAnimation(AnimationUtils.loadAnimation(requireContext(), R.anim.slide_in_right))
             setupUI()
+            resetIdleTimer()
+        } else {
+            idleHandler.removeCallbacks(idleRunnable)
         }
+    }
+
+    private fun resetIdleTimer() {
+        idleHandler.removeCallbacks(idleRunnable)
+        idleHandler.postDelayed(idleRunnable, IDLE_TIMEOUT)
     }
 
     private fun requestInstallPermissions() {
@@ -484,6 +534,7 @@ class SettingFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        idleHandler.removeCallbacks(idleRunnable)
         _binding = null
     }
 
