@@ -40,11 +40,15 @@ object EPGManager {
     }
     
     private val client = SecureHttpClient.client
-    private val dateFormats = listOf(
-        SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US),
-        SimpleDateFormat("yyyyMMddHHmmssZ", Locale.US),
-        SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
-    )
+    private val dateFormats = object : ThreadLocal<List<SimpleDateFormat>>() {
+        override fun initialValue(): List<SimpleDateFormat> {
+            return listOf(
+                SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US),
+                SimpleDateFormat("yyyyMMddHHmmssZ", Locale.US),
+                SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+            )
+        }
+    }
     
     var epgStatus = "Not Loaded"
 
@@ -214,7 +218,8 @@ object EPGManager {
     private fun parseDate(dateStr: String?): Long? {
         if (dateStr == null) return null
         val clean = dateStr.trim()
-        for (format in dateFormats) {
+        val formats = dateFormats.get() ?: return null
+        for (format in formats) {
             try { return format.parse(clean)?.time } catch (e: Exception) {}
         }
         return null

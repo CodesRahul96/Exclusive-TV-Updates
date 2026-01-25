@@ -43,16 +43,21 @@ class UpdateManager(
         CoroutineScope(Dispatchers.Main).launch {
             if (isManualCheck) {
                 try {
-                    val builder = android.app.AlertDialog.Builder(context)
-                    val inflater = android.view.LayoutInflater.from(context)
-                    val view = inflater.inflate(R.layout.dialog_checking, null)
-                    
-                    builder.setView(view)
-                    builder.setCancelable(false)
-                    
-                    checkingDialog = builder.create()
-                    checkingDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
-                    checkingDialog?.show()
+                    if (context is FragmentActivity && 
+                        !(context as FragmentActivity).isFinishing && 
+                        (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || !(context as FragmentActivity).isDestroyed)) {
+                        
+                        val builder = android.app.AlertDialog.Builder(context)
+                        val inflater = android.view.LayoutInflater.from(context)
+                        val view = inflater.inflate(R.layout.dialog_checking, null)
+                        
+                        builder.setView(view)
+                        builder.setCancelable(false)
+                        
+                        checkingDialog = builder.create()
+                        checkingDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
+                        checkingDialog?.show()
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -118,21 +123,37 @@ class UpdateManager(
     }
 
     private fun updateUI(text: String, update: Boolean, force: Boolean = false, isManualCheck: Boolean = false) {
-        try { checkingDialog?.dismiss() } catch (e: Exception) {}
-
-        if (update) {
-            val changelog = release?.changelog ?: "Bug fixes and performance improvements."
-            val dialog = ConfirmationFragment(this@UpdateManager, text, changelog, update, force)
-            dialog.show((context as FragmentActivity).supportFragmentManager, TAG)
-            
-            // Notify listener to block usage
-            if (force && context is UpdateListener) {
-                (context as UpdateListener).onForceUpdate()
+        try { 
+            if (checkingDialog?.isShowing == true) {
+                checkingDialog?.dismiss() 
             }
-        } else if (isManualCheck) {
-            // Use ConfirmationFragment for "Up to Date" style too
-            val dialog = ConfirmationFragment(this@UpdateManager, text, "", false, false)
-            dialog.show((context as FragmentActivity).supportFragmentManager, TAG)
+        } catch (e: Exception) {}
+
+        if (context is FragmentActivity) {
+            val activity = context as FragmentActivity
+            if (activity.isFinishing || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed)) {
+                Log.w(TAG, "Activity is finishing/destroyed, skipping updateUI dialog")
+                return
+            }
+
+            if (update) {
+                val changelog = release?.changelog ?: "Bug fixes and performance improvements."
+                val dialog = ConfirmationFragment(this@UpdateManager, text, changelog, update, force)
+                if (!activity.supportFragmentManager.isStateSaved) {
+                    dialog.show(activity.supportFragmentManager, TAG)
+                }
+                
+                // Notify listener to block usage
+                if (force && context is UpdateListener) {
+                    (context as UpdateListener).onForceUpdate()
+                }
+            } else if (isManualCheck) {
+                // Use ConfirmationFragment for "Up to Date" style too
+                val dialog = ConfirmationFragment(this@UpdateManager, text, "", false, false)
+                if (!activity.supportFragmentManager.isStateSaved) {
+                    dialog.show(activity.supportFragmentManager, TAG)
+                }
+            }
         }
     }
 
@@ -362,8 +383,18 @@ class UpdateManager(
     }
 
     fun destroy() {
+        try {
+            if (checkingDialog?.isShowing == true) {
+                checkingDialog?.dismiss()
+            }
+        } catch (e: Exception) { }
+
         if (downloadReceiver != null) {
-            context.unregisterReceiver(downloadReceiver)
+            try {
+                context.unregisterReceiver(downloadReceiver)
+            } catch (e: IllegalArgumentException) {
+                // Receiver not registered or already unregistered
+            }
             Log.i(TAG, "destroy downloadReceiver")
         }
     }

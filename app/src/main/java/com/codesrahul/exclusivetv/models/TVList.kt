@@ -601,137 +601,145 @@ object TVList {
 
     fun refreshModels(ctx: Context) {
         CoroutineScope(Dispatchers.IO).launch {
-            if (!::list.isInitialized || list.isEmpty()) {
-                Log.w(TAG, "Cannot refresh models: list not initialized or empty")
-                return@launch
-            }
-
-            // Preparation Phase (Background)
-            val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
-            for (v in list) {
-                if (v.group !in map) {
-                    map[v.group] = mutableListOf()
+            try {
+                if (!::list.isInitialized || list.isEmpty()) {
+                    Log.w(TAG, "Cannot refresh models: list not initialized or empty")
+                    return@launch
                 }
-                map[v.group]?.add(v)
-            }
 
-            val categoryOrder = OrderPreferenceManager.getCategoryOrder()
-            val categoryRenames = OrderPreferenceManager.getCategoryRenames()
-            
-            val sortedCategories = if (categoryOrder != null && categoryOrder.isNotEmpty()) {
-                val orderedCategories = mutableListOf<String>()
-                val unorderedCategories = map.keys.filter { it !in categoryOrder }.toMutableList()
-                for (catName in categoryOrder) {
-                    if (catName in map) {
-                        orderedCategories.add(catName)
+                // Preparation Phase (Background)
+                val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
+                for (v in list) {
+                    if (v.group !in map) {
+                        map[v.group] = mutableListOf()
                     }
+                    map[v.group]?.add(v)
                 }
-                orderedCategories.addAll(unorderedCategories)
-                orderedCategories
-            } else {
-                map.keys.toList()
-            }
 
-            data class PreparedGroup(val originalName: String, val displayName: String, val index: Int, val channels: List<TV>)
-            val preparedGroups = mutableListOf<PreparedGroup>()
-            var groupIndex = 2
-            
-            val hiddenCategories = OrderPreferenceManager.getHiddenCategories()
-            
-            for (categoryName in sortedCategories) {
-                if (categoryName in hiddenCategories) continue // Skip hidden groups
-
-                val originalCategoryName = categoryName
-                val displayCategoryName = OrderPreferenceManager.getCategoryDisplayName(originalCategoryName)
-                val channels = map[originalCategoryName] ?: continue
+                val categoryOrder = OrderPreferenceManager.getCategoryOrder()
+                val categoryRenames = OrderPreferenceManager.getCategoryRenames()
                 
-                val channelOrder = OrderPreferenceManager.getChannelOrder(originalCategoryName)
-                val channelRenames = OrderPreferenceManager.getChannelRenames()
-                
-                val sortedChannels = if (channelOrder != null && channelOrder.isNotEmpty()) {
-                    val urlToModel = channels.associateBy { it.uris.firstOrNull() ?: "" }
-                    val orderedChannels = mutableListOf<TV>()
-                    val unorderedChannels = channels.filter { 
-                        it.uris.firstOrNull()?.let { url -> url !in channelOrder } ?: true 
-                    }.toMutableList()
-                    
-                    for (url in channelOrder) {
-                        urlToModel[url]?.let { orderedChannels.add(it) }
+                val sortedCategories = if (categoryOrder != null && categoryOrder.isNotEmpty()) {
+                    val orderedCategories = mutableListOf<String>()
+                    val unorderedCategories = map.keys.filter { it !in categoryOrder }.toMutableList()
+                    for (catName in categoryOrder) {
+                        if (catName in map) {
+                            orderedCategories.add(catName)
+                        }
                     }
-                    orderedChannels.addAll(unorderedChannels)
-                    orderedChannels
+                    orderedCategories.addAll(unorderedCategories)
+                    orderedCategories
                 } else {
-                    channels
+                    map.keys.toList()
                 }
+
+                data class PreparedGroup(val originalName: String, val displayName: String, val index: Int, val channels: List<TV>)
+                val preparedGroups = mutableListOf<PreparedGroup>()
+                var groupIndex = 2
                 
-                for (tv in sortedChannels) {
-                     val channelUrl = tv.uris.firstOrNull() ?: ""
-                     val renamedTitle = channelRenames[channelUrl]
-                     if (renamedTitle != null) {
-                         tv.title = renamedTitle
-                     }
+                val hiddenCategories = OrderPreferenceManager.getHiddenCategories()
+                
+                for (categoryName in sortedCategories) {
+                    if (categoryName in hiddenCategories) continue // Skip hidden groups
+
+                    val originalCategoryName = categoryName
+                    val displayCategoryName = OrderPreferenceManager.getCategoryDisplayName(originalCategoryName)
+                    val channels = map[originalCategoryName] ?: continue
+                    
+                    val channelOrder = OrderPreferenceManager.getChannelOrder(originalCategoryName)
+                    val channelRenames = OrderPreferenceManager.getChannelRenames()
+                    
+                    val sortedChannels = if (channelOrder != null && channelOrder.isNotEmpty()) {
+                        val urlToModel = channels.associateBy { it.uris.firstOrNull() ?: "" }
+                        val orderedChannels = mutableListOf<TV>()
+                        val unorderedChannels = channels.filter { 
+                            it.uris.firstOrNull()?.let { url -> url !in channelOrder } ?: true 
+                        }.toMutableList()
+                        
+                        for (url in channelOrder) {
+                            urlToModel[url]?.let { orderedChannels.add(it) }
+                        }
+                        orderedChannels.addAll(unorderedChannels)
+                        orderedChannels
+                    } else {
+                        channels
+                    }
+                    
+                    for (tv in sortedChannels) {
+                         val channelUrl = tv.uris.firstOrNull() ?: ""
+                         val renamedTitle = channelRenames[channelUrl]
+                         if (renamedTitle != null) {
+                             tv.title = renamedTitle
+                         }
+                    }
+                    
+                    preparedGroups.add(PreparedGroup(originalCategoryName, displayCategoryName, groupIndex, sortedChannels))
+                    groupIndex++
                 }
-                
-                preparedGroups.add(PreparedGroup(originalCategoryName, displayCategoryName, groupIndex, sortedChannels))
-                groupIndex++
-            }
 
-            // Update Phase (Main Thread)
-            withContext(Dispatchers.Main) {
-                // Optimization: If current groupModel size matches and names match, 
-                // we might avoid a full clear, but clear() is safer for now due to 
-                // complex list indexing. However, we ensure listModel is updated atomically.
-                
-                val listModelSnapshot = listModel // Keep old for reference
-                val listModelNew: MutableList<TVModel> = mutableListOf()
-                val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
-                
-                var id = 0
-                val newGroups = mutableListOf<TVListModel>()
-                
-                // Keep "Special" groups logic from clear() but more explicit
-                newGroups.add(groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0))
-                newGroups.add(groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1))
+                // Update Phase (Main Thread)
+                withContext(Dispatchers.Main) {
+                    // Optimization: If current groupModel size matches and names match, 
+                    // we might avoid a full clear, but clear() is safer for now due to 
+                    // complex list indexing. However, we ensure listModel is updated atomically.
+                    
+                    val listModelSnapshot = listModel // Keep old for reference
+                    val listModelNew: MutableList<TVModel> = mutableListOf()
+                    val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
+                    
+                    var id = 0
+                    val newGroups = mutableListOf<TVListModel>()
+                    
+                    // Keep "Special" groups logic from clear() but more explicit
+                    newGroups.add(groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0))
+                    newGroups.add(groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1))
 
-                for ((itemOriginalName, itemDisplayName, idx, channels) in preparedGroups) {
-                    val tvListModel = TVListModel(itemDisplayName, itemOriginalName, idx)
-                    val groupChannels = mutableListOf<TVModel>()
+                    for ((itemOriginalName, itemDisplayName, idx, channels) in preparedGroups) {
+                        val tvListModel = TVListModel(itemDisplayName, itemOriginalName, idx)
+                        val groupChannels = mutableListOf<TVModel>()
 
-                    for (tv in channels) {
-                         tv.id = id
-                         // Reuse existing TVModel if URL match to preserve observers if possible
-                         // (Though TVModel usually gets recreated on full refresh)
-                         val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
-                         tvModel.groupIndex = idx
-                         tvModel.listIndex = groupChannels.size
-                         
-                         groupChannels.add(tvModel)
-                         listModelNew.add(tvModel)
-                         id++
+                        for (tv in channels) {
+                             tv.id = id
+                             // Reuse existing TVModel if URL match to preserve observers if possible
+                             // (Though TVModel usually gets recreated on full refresh)
+                             val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
+                             tvModel.groupIndex = idx
+                             tvModel.listIndex = groupChannels.size
+                             
+                             groupChannels.add(tvModel)
+                             listModelNew.add(tvModel)
+                             id++
+                        }
+
+                        tvListModel.setTVListModel(groupChannels)
+                        newGroups.add(tvListModel)
                     }
 
-                    tvListModel.setTVListModel(groupChannels)
-                    newGroups.add(tvListModel)
-                }
+                    listModel = listModelNew
+                    groupModel.setTVListModelList(newGroups)
+                    
+                    // All channels
+                    groupModel.getTVListModel(1)?.setTVListModel(listModel)
 
-                listModel = listModelNew
-                groupModel.setTVListModelList(newGroups)
-                
-                // All channels
-                groupModel.getTVListModel(1)?.setTVListModel(listModel)
-
-                Log.i(TAG, "groupModel refreshed: ${groupModel.size()} groups")
-                groupModel.setChange()
-                
-                if (SP.epgEnabled) {
-                    EPGManager.init(ctx)
-                    CoroutineScope(Dispatchers.IO).launch {
-                        EPGManager.fetchEPG(force = false) // Don't force every refresh
-                        withContext(Dispatchers.Main) {
-                            listModel.forEach { it.updateEPG() }
+                    Log.i(TAG, "groupModel refreshed: ${groupModel.size()} groups")
+                    groupModel.setChange()
+                    
+                    if (SP.epgEnabled) {
+                        EPGManager.init(ctx)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                EPGManager.fetchEPG(force = false) // Don't force every refresh
+                                withContext(Dispatchers.Main) {
+                                    listModel.forEach { it.updateEPG() }
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error fetching EPG in refreshModels", e)
+                            }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in refreshModels", e)
             }
         }
     }
@@ -740,53 +748,57 @@ object TVList {
         if (!SP.channelCheck) return
 
         CoroutineScope(Dispatchers.IO).launch {
-            if (!::list.isInitialized || list.isEmpty()) return@launch
+            try {
+                if (!::list.isInitialized || list.isEmpty()) return@launch
 
-            val initialSize = list.size
-            Log.i(TAG, "Starting background channel check. Total: $initialSize")
+                val initialSize = list.size
+                Log.i(TAG, "Starting background channel check. Total: $initialSize")
 
-            // Use concurrent collection for thread safety if needed, 
-            // but map + filter is safer.
-            val currentList = list.toList()
-            
-            // Limit concurrency to avoid OOM or OS limits, but high enough for speed
-            // 50 concurrent checks is standard for fast checkers
-            val semaphore = kotlinx.coroutines.sync.Semaphore(50)
-            
-            val validList = currentList.map { tv ->
-                async {
-                    semaphore.acquire()
-                    try {
-                        var isAlive = false
-                        if (tv.uris.isNotEmpty()) {
-                            for (uri in tv.uris) {
-                                if (checkLink(uri, tv.headers)) {
-                                    isAlive = true
-                                    break
+                // Use concurrent collection for thread safety if needed, 
+                // but map + filter is safer.
+                val currentList = list.toList()
+                
+                // Limit concurrency to avoid OOM or OS limits, but high enough for speed
+                // 50 concurrent checks is standard for fast checkers
+                val semaphore = kotlinx.coroutines.sync.Semaphore(50)
+                
+                val validList = currentList.map { tv ->
+                    async {
+                        semaphore.acquire()
+                        try {
+                            var isAlive = false
+                            if (tv.uris.isNotEmpty()) {
+                                for (uri in tv.uris) {
+                                    if (checkLink(uri, tv.headers)) {
+                                        isAlive = true
+                                        break
+                                    }
                                 }
                             }
+                            if (isAlive) tv else null
+                        } finally {
+                            semaphore.release()
                         }
-                        if (isAlive) tv else null
-                    } finally {
-                        semaphore.release()
                     }
-                }
-            }.mapNotNull { it.await() }
+                }.mapNotNull { it.await() }
 
-            val removedCount = initialSize - validList.size
+                val removedCount = initialSize - validList.size
 
-            if (removedCount > 0) {
-                list = validList
-                withContext(Dispatchers.Main) {
-                    refreshModels(MyTVApplication.getInstance())
-                    if (SP.epgEnabled) {
-                        EPGManager.fetchEPG()
-                        listModel.forEach { it.updateEPG() }
+                if (removedCount > 0) {
+                    list = validList
+                    withContext(Dispatchers.Main) {
+                        refreshModels(MyTVApplication.getInstance())
+                        if (SP.epgEnabled) {
+                            EPGManager.fetchEPG()
+                            listModel.forEach { it.updateEPG() }
+                        }
+                        "$removedCount not working channels removed".showToast(Toast.LENGTH_LONG)
                     }
-                    "$removedCount not working channels removed".showToast(Toast.LENGTH_LONG)
+                } else {
+                    Log.i(TAG, "No dead channels found")
                 }
-            } else {
-                Log.i(TAG, "No dead channels found")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in checkChannelsInBackground", e)
             }
         }
     }

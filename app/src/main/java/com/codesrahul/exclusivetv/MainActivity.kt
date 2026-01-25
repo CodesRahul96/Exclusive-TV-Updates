@@ -1270,6 +1270,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         refreshHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)
         server?.stop()
+        updateManager.destroy()
     }
 
     // Security check helper

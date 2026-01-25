@@ -1310,6 +1310,7 @@ class WebFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         releasePlayer()
+        _binding = null
     }
 
     companion object {
