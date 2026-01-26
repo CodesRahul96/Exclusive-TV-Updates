@@ -119,13 +119,13 @@ object Utils {
     }
 
     suspend fun init() {
-        var currentTimeMillis: Long = 0
         try {
-            currentTimeMillis = getTimestampFromServer()
+            val currentTimeMillis = getTimestampFromServer()
+            between = System.currentTimeMillis() - currentTimeMillis
         } catch (e: Exception) {
             Log.e("Utils", "Failed to retrieve timestamp from server: ${e.message}")
+            // Keep 'between' at current value (default 0) to use system time
         }
-        between = System.currentTimeMillis() - currentTimeMillis
     }
 
     /**

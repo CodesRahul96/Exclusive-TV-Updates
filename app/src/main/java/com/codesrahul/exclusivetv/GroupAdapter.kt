@@ -242,17 +242,28 @@ class GroupAdapter(
     }
 
     fun toPosition(position: Int) {
+        if (position < 0 || position >= itemCount) return
+        
         recyclerView.post {
             (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
                 position,
                 0
             )
 
-            recyclerView.postDelayed({
-                val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
-                viewHolder?.itemView?.isSelected = true
-                viewHolder?.itemView?.requestFocus()
-            }, 0)
+            val focusRunnable = object : Runnable {
+                var attempts = 0
+                override fun run() {
+                    val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
+                    if (viewHolder != null) {
+                        viewHolder.itemView.requestFocus()
+                        viewHolder.itemView.isSelected = true
+                    } else if (attempts < 5) {
+                        attempts++
+                        recyclerView.postDelayed(this, 30)
+                    }
+                }
+            }
+            recyclerView.postDelayed(focusRunnable, 10)
         }
     }
 
@@ -368,8 +379,9 @@ class GroupAdapter(
         notifyItemChanged(position)
     }
 
-    private fun stopMove() {
+    fun stopMove() {
         val prevPosition = movingPosition
+        if (prevPosition == -1) return
         movingPosition = -1
         notifyItemChanged(prevPosition)
         

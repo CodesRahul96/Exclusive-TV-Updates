@@ -12,6 +12,7 @@ import android.view.WindowManager
 import android.widget.EditText
 import android.widget.TextView
 import androidx.fragment.app.DialogFragment
+import com.codesrahul.exclusivetv.ui.TvUiUtils
 
 class RenameDialogFragment : DialogFragment() {
     private var currentName: String = ""
@@ -74,6 +75,21 @@ class RenameDialogFragment : DialogFragment() {
 
         btnCancel.setOnClickListener {
             dismiss()
+        }
+
+        val tvUiUtils = TvUiUtils(requireContext())
+        tvUiUtils.initSounds(R.raw.focus, R.raw.click)
+
+        val buttons = listOf(btnConfirm, btnCancel)
+        buttons.forEach { btn ->
+            btn.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) {
+                    v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start()
+                    tvUiUtils.playFocusSound()
+                } else {
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+                }
+            }
         }
 
         // Handle Enter key

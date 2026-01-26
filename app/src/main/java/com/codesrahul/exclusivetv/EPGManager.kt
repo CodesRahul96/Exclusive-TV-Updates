@@ -95,7 +95,7 @@ object EPGManager {
         
         val newData = mutableMapOf<String, MutableList<EPGProgram>>()
         val newDataById = mutableMapOf<String, MutableList<EPGProgram>>()
-        val now = System.currentTimeMillis()
+        val now = Utils.getDateTimestamp() * 1000L
 
         while (eventType != XmlPullParser.END_DOCUMENT) {
             if (eventType == XmlPullParser.START_TAG) {
@@ -181,7 +181,7 @@ object EPGManager {
     }
 
     fun getCurrentProgram(channelName: String, channelApiId: String = ""): EPGProgram? {
-        val now = System.currentTimeMillis()
+        val now = (Utils.getDateTimestamp() * 1000L) - (SP.epgShift * 3600_000L)
         
         // Try ID match first if available
         if (channelApiId.isNotEmpty()) {
@@ -198,7 +198,7 @@ object EPGManager {
     }
 
     fun getUpcomingProgram(channelName: String, channelApiId: String = ""): EPGProgram? {
-        val now = System.currentTimeMillis()
+        val now = (Utils.getDateTimestamp() * 1000L) - (SP.epgShift * 3600_000L)
         
         // Try ID match first
         if (channelApiId.isNotEmpty()) {

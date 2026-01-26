@@ -136,8 +136,9 @@ class InfoFragment : Fragment() {
                 binding.programTitle.text = program.title
                 binding.programTitle.visibility = View.VISIBLE
                 
-                val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-                val timeRange = "${timeSdf.format(Date(program.start))} - ${timeSdf.format(Date(program.stop))}"
+                 val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                 val shiftMs = SP.epgShift * 3600_000L
+                 val timeRange = "${timeSdf.format(Date(program.start + shiftMs))} - ${timeSdf.format(Date(program.stop + shiftMs))}"
                 binding.programTime.text = timeRange
                 binding.programTime.visibility = View.VISIBLE
                 
@@ -157,8 +158,9 @@ class InfoFragment : Fragment() {
                 binding.nextProgramTitle.text = nextProg.title
                 binding.nextProgramTitle.visibility = View.VISIBLE
                 
-                val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-                binding.nextProgramTime.text = timeSdf.format(Date(nextProg.start))
+                 val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                 val shiftMs = SP.epgShift * 3600_000L
+                 binding.nextProgramTime.text = timeSdf.format(Date(nextProg.start + shiftMs))
                 binding.nextProgramTime.visibility = View.VISIBLE
             } else {
                 binding.nextProgramLabel.visibility = View.GONE

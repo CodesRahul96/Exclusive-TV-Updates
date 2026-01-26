@@ -6,6 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
 import androidx.fragment.app.DialogFragment
+import com.codesrahul.exclusivetv.R
+import com.codesrahul.exclusivetv.ui.TvUiUtils
 
 class CategoryOptionsDialogFragment : DialogFragment() {
     private var listener: CategoryOptionsListener? = null
@@ -72,8 +74,26 @@ class CategoryOptionsDialogFragment : DialogFragment() {
             dismiss()
         }
 
+        val tvUiUtils = TvUiUtils(requireContext())
+        tvUiUtils.initSounds(R.raw.focus, R.raw.click)
+
+        val buttons = listOf(btnMove, btnRename, btnHide, btnCancel)
+        buttons.forEach { btn ->
+            btn.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) {
+                    v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start()
+                    tvUiUtils.playFocusSound()
+                } else {
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+                }
+            }
+        }
+
         builder.setView(view)
         val dialog = builder.create()
+        dialog.setOnShowListener {
+            btnMove.requestFocus()
+        }
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         return dialog
     }

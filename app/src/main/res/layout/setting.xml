@@ -633,6 +633,42 @@
                         android:textColor="#80FFFFFF"
                         android:textSize="12sp" />
                 </LinearLayout>
+ 
+                 <!-- Card: EPG Shift -->
+                 <LinearLayout
+                     android:id="@+id/card_epg_shift"
+                     android:layout_width="match_parent"
+                     android:layout_height="wrap_content"
+                     android:orientation="horizontal"
+                     android:padding="16dp"
+                     android:background="@drawable/bg_settings_card"
+                     android:layout_marginBottom="8dp"
+                     android:focusable="true"
+                     android:gravity="center_vertical">
+                     
+                     <ImageView
+                         android:layout_width="24dp"
+                         android:layout_height="24dp"
+                         android:src="@drawable/ic_time"
+                         android:tint="#FFD700" />
+                         
+                     <TextView
+                         android:layout_width="0dp"
+                         android:layout_weight="1"
+                         android:layout_height="wrap_content"
+                         android:text="EPG Time Shift (Hours)"
+                         android:textColor="#FFFFFF"
+                         android:layout_marginStart="12dp"
+                         android:textSize="14sp" />
+                         
+                     <TextView
+                         android:id="@+id/status_epg_shift"
+                         android:layout_width="wrap_content"
+                         android:layout_height="wrap_content"
+                         android:text="0h"
+                         android:textColor="#80FFFFFF"
+                         android:textSize="12sp" />
+                 </LinearLayout>
 
                 <!-- Card: Watermark -->
                 <LinearLayout

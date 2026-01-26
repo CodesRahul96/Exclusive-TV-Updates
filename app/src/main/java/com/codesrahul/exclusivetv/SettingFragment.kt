@@ -98,8 +98,9 @@ class SettingFragment : Fragment() {
         binding.statusBootStartup.text = if (SP.bootStartup) "ON" else "OFF"
         binding.statusConfigAutoLoad.text = if (SP.configAutoLoad) "ON" else "OFF"
         binding.statusChannelCheck.text = if (SP.channelCheck) "ON" else "OFF"
-        binding.statusEpg.text = if (SP.epgEnabled) "ON" else "OFF"
-        binding.statusWatermark.text = if (SP.watermarkEnabled) "ON" else "OFF"
+         binding.statusEpg.text = if (SP.epgEnabled) "ON" else "OFF"
+         binding.statusEpgShift.text = "${SP.epgShift}h"
+         binding.statusWatermark.text = if (SP.watermarkEnabled) "ON" else "OFF"
 
         // Set text colors based on state
         val activeColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
@@ -109,8 +110,9 @@ class SettingFragment : Fragment() {
             binding.statusChannelReversal, binding.statusChannelNum, binding.statusTime,
             binding.statusShowDateInInfo,
             binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
-            binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
-            binding.statusWatermark, binding.statusBufferMode, binding.statusAudioStabilizer
+             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
+             binding.statusEpgShift,
+             binding.statusWatermark, binding.statusBufferMode, binding.statusAudioStabilizer
         )
 
         statusViews.forEach { v ->
@@ -144,8 +146,9 @@ class SettingFragment : Fragment() {
             binding.cardConfigAutoLoad,
             binding.cardChannelCheck,
             binding.cardChannelCheck,
-            binding.cardEpg,
-            binding.cardWatermark,
+             binding.cardEpg,
+             binding.cardEpgShift,
+             binding.cardWatermark,
             binding.cardBufferMode,
             binding.cardAudioLanguage,
             binding.cardAudioLanguage,
@@ -195,8 +198,9 @@ class SettingFragment : Fragment() {
         binding.cardBootStartup.setOnClickListener { toggleSetting("bootStartup") }
         binding.cardConfigAutoLoad.setOnClickListener { toggleSetting("configAutoLoad") }
         binding.cardChannelCheck.setOnClickListener { toggleSetting("channelCheck") }
-        binding.cardEpg.setOnClickListener { toggleSetting("epgEnabled") }
-        binding.cardWatermark.setOnClickListener { toggleSetting("watermark") }
+         binding.cardEpg.setOnClickListener { toggleSetting("epgEnabled") }
+         binding.cardEpgShift.setOnClickListener { setupEpgShiftDialog() }
+         binding.cardWatermark.setOnClickListener { toggleSetting("watermark") }
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
         binding.cardAudioLanguage.setOnClickListener { setupAudioLanguageDialog() }
         binding.cardAudioStabilizer.setOnClickListener { toggleSetting("audioStabilizer") }
@@ -608,7 +612,33 @@ class SettingFragment : Fragment() {
         dialog.show()
     }
 
-    companion object {
+     private fun setupEpgShiftDialog() {
+         tvUiUtils?.playClickSound()
+         val options = (-12..12).map { if (it >= 0) "+${it}h" else "${it}h" }.toTypedArray()
+         val values = (-12..12).toList()
+         
+         val currentShift = SP.epgShift
+         var checkedItem = values.indexOf(currentShift)
+         if (checkedItem == -1) checkedItem = 12 // 0h index
+ 
+         android.app.AlertDialog.Builder(requireContext(), android.app.AlertDialog.THEME_HOLO_DARK)
+             .setTitle("Select EPG Time Shift")
+             .setSingleChoiceItems(options, checkedItem) { dialog, which ->
+                 val selectedShift = values[which]
+                 SP.epgShift = selectedShift
+                 
+                 // Refresh all EPG views
+                 TVList.listModel.forEach { it.updateEPG() }
+                 syncStatusUI()
+                 
+                 Toast.makeText(context, "EPG Shift set to: ${options[which]}", Toast.LENGTH_SHORT).show()
+                 dialog.dismiss()
+             }
+             .setNegativeButton("Cancel", null)
+             .show()
+     }
+ 
+     companion object {
         const val TAG = "SettingFragment"
         const val PERMISSION_READ = 30
         const val PERMISSIONS_REQUEST_CODE = 1

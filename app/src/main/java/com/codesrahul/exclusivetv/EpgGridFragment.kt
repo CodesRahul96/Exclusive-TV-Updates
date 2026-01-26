@@ -59,9 +59,9 @@ class EpgGridFragment : Fragment() {
         }, 500)
     }
     
-    private fun scrollToNow() {
-        val now = System.currentTimeMillis()
-        val guideStart = getGuideStartTime()
+     private fun scrollToNow() {
+         val now = Utils.getDateTimestamp() * 1000L
+         val guideStart = getGuideStartTime()
         val offsetMins = (now - guideStart) / 60000
         val scrollX = (offsetMins * PIXELS_PER_MINUTE).toInt() - 200 // Offset slightly to show a bit of past
         
@@ -164,18 +164,22 @@ class EpgGridFragment : Fragment() {
             val guideStart = getGuideStartTime()
             val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 
-            programs.forEach { prog ->
-                if (prog.stop < guideStart) return@forEach // Past program
-                
-                val view = LayoutInflater.from(context).inflate(R.layout.item_epg_program, holder.programContainer, false)
-                val title = view.findViewById<android.widget.TextView>(R.id.program_title)
-                val time = view.findViewById<android.widget.TextView>(R.id.program_time)
-                
-                title.text = prog.title
-                time.text = "${timeFormat.format(prog.start)} - ${timeFormat.format(prog.stop)}"
-                
-                val durationMins = (prog.stop - prog.start) / 60000
-                val startOffsetMins = (prog.start - guideStart) / 60000
+             programs.forEach { prog ->
+                 val shiftMs = SP.epgShift * 3600_000L
+                 val shiftedStart = prog.start + shiftMs
+                 val shiftedStop = prog.stop + shiftMs
+                 
+                 if (shiftedStop < guideStart) return@forEach // Past program
+                 
+                 val view = LayoutInflater.from(context).inflate(R.layout.item_epg_program, holder.programContainer, false)
+                 val title = view.findViewById<android.widget.TextView>(R.id.program_title)
+                 val time = view.findViewById<android.widget.TextView>(R.id.program_time)
+                 
+                 title.text = prog.title
+                 time.text = "${timeFormat.format(shiftedStart)} - ${timeFormat.format(shiftedStop)}"
+                 
+                 val durationMins = (shiftedStop - shiftedStart) / 60000
+                 val startOffsetMins = (shiftedStart - guideStart) / 60000
                 
                 // Ensure reasonable width
                 val finalWidth = if (durationMins < 5) 5 * PIXELS_PER_MINUTE else (durationMins * PIXELS_PER_MINUTE).toInt()
@@ -208,13 +212,14 @@ class EpgGridFragment : Fragment() {
         override fun getItemCount(): Int = channels.size
     }
 
-    private fun showFocusInfo(prog: com.codesrahul.exclusivetv.models.EPGProgram) {
-        binding.focusedProgramInfo.visibility = View.VISIBLE
-        binding.focusedTitle.text = prog.title
-        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        binding.focusedTime.text = "${timeFormat.format(prog.start)} - ${timeFormat.format(prog.stop)}"
-        binding.focusedDescription.text = prog.description
-    }
+     private fun showFocusInfo(prog: com.codesrahul.exclusivetv.models.EPGProgram) {
+         binding.focusedProgramInfo.visibility = View.VISIBLE
+         binding.focusedTitle.text = prog.title
+         val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+         val shiftMs = SP.epgShift * 3600_000L
+         binding.focusedTime.text = "${timeFormat.format(prog.start + shiftMs)} - ${timeFormat.format(prog.stop + shiftMs)}"
+         binding.focusedDescription.text = prog.description
+     }
 
     private fun getGuideStartTime(): Long {
         val cal = Calendar.getInstance()

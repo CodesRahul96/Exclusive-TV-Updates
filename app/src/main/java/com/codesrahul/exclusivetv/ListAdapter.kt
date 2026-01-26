@@ -473,20 +473,32 @@ class ListAdapter(
         }
     }
 
-    fun toPosition(position: Int) {
-        recyclerView.post {
-            (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
-                position,
-                0
-            )
-
-            recyclerView.postDelayed({
-                val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
-//                viewHolder?.itemView?.isSelected = true
-                viewHolder?.itemView?.requestFocus()
-            }, 0)
-        }
-    }
+     fun toPosition(position: Int) {
+         if (position < 0 || position >= itemCount) return
+         
+         recyclerView.post {
+             (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
+                 position,
+                 0
+             )
+ 
+             // Multiple attempts to ensure focus on recycled views
+             val focusRunnable = object : Runnable {
+                 var attempts = 0
+                 override fun run() {
+                     val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
+                     if (viewHolder != null) {
+                         viewHolder.itemView.requestFocus()
+                         viewHolder.itemView.isSelected = true 
+                     } else if (attempts < 5) {
+                         attempts++
+                         recyclerView.postDelayed(this, 30) // Retry after short delay
+                     }
+                 }
+             }
+             recyclerView.postDelayed(focusRunnable, 10)
+         }
+     }
 
     interface ItemListener {
         fun onItemFocusChange(tvModel: TVModel, hasFocus: Boolean)
@@ -533,11 +545,12 @@ class ListAdapter(
         notifyItemChanged(position)
     }
 
-    private fun stopMove() {
-        val prevPosition = movingPosition
-        movingPosition = -1
-        notifyItemChanged(prevPosition)
-    }
+     fun stopMove() {
+         val prevPosition = movingPosition
+         if (prevPosition == -1) return
+         movingPosition = -1
+         notifyItemChanged(prevPosition)
+     }
 
 
 
@@ -584,31 +597,25 @@ class ListAdapter(
         val currentOrder = getCurrentChannelOrder()
         val index = position
         
-        if (index > 0 && index < currentOrder.size) { // Validate index
-             // Correct index for swapping - listAdapter index matches order list index directly if no extra items
-            // Assuming currentOrder matches adapter position mapping (check getCurrentChannelOrder logic)
-            // getCurrentChannelOrder iterates tvListModel.
-            
-            Collections.swap(currentOrder, index, index - 1)
-            OrderPreferenceManager.saveChannelOrder(categoryName, currentOrder)
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
-            }
-            
-            // Get the updated model from the group model to ensure we have the fresh data
-            val updatedModel = com.codesrahul.exclusivetv.models.TVList.groupModel.getTVListModel(tvListModel.getIndex())
-            if (updatedModel != null) {
-                update(updatedModel)
-            } else {
-                // Fallback if model not found (shouldn't happen usually)
-                update(tvListModel)
-            }
-            
-            movingPosition = position - 1
-            recyclerView.post {
-                toPosition(position - 1)
-            }
-        }
+         if (index > 0 && index < currentOrder.size) {
+             Collections.swap(currentOrder, index, index - 1)
+             OrderPreferenceManager.saveChannelOrder(categoryName, currentOrder)
+             
+             // Update local list for immediate response
+             val newList = internalList.toMutableList()
+             Collections.swap(newList, index, index - 1)
+             internalList = newList
+             
+             notifyItemMoved(index, index - 1)
+             
+             movingPosition = index - 1
+             toPosition(index - 1)
+             
+             // Background sync after immediate UI feedback
+             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                 com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
+             }
+         }
     }
 
     private fun moveChannelDown(position: Int) {
@@ -621,31 +628,28 @@ class ListAdapter(
         val currentOrder = getCurrentChannelOrder()
         val index = position
 
-        if (index < currentOrder.size - 1) {
-            Collections.swap(currentOrder, index, index + 1)
-            OrderPreferenceManager.saveChannelOrder(categoryName, currentOrder)
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
-            }
-            
-            // Get the updated model from the group model to ensure we have the fresh data
-            val updatedModel = com.codesrahul.exclusivetv.models.TVList.groupModel.getTVListModel(tvListModel.getIndex())
-            if (updatedModel != null) {
-                update(updatedModel)
-            } else {
-                // Fallback if model not found (shouldn't happen usually)
-                update(tvListModel)
-            }
-
-            movingPosition = position + 1
-            recyclerView.post {
-                 toPosition(position + 1)
-            }
-        }
+         if (index < currentOrder.size - 1) {
+             Collections.swap(currentOrder, index, index + 1)
+             OrderPreferenceManager.saveChannelOrder(categoryName, currentOrder)
+ 
+             // Update local list
+             val newList = internalList.toMutableList()
+             Collections.swap(newList, index, index + 1)
+             internalList = newList
+ 
+             notifyItemMoved(index, index + 1)
+ 
+             movingPosition = index + 1
+             toPosition(index + 1)
+ 
+             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                 com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
+             }
+         }
     }
 
     companion object {
         private const val TAG = "ListAdapter"
     }
-}
 
+}

@@ -24,10 +24,17 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     private lateinit var groupAdapter: GroupAdapter
     private lateinit var listAdapter: ListAdapter
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        Log.i(TAG, "onViewCreated")
-    }
+     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+         super.onViewCreated(view, savedInstanceState)
+         Log.i(TAG, "onViewCreated")
+         
+         // Observe global model changes to keep menu in sync even when visible
+         TVList.groupModel.change.observe(viewLifecycleOwner) {
+             if (it == true) {
+                 update()
+             }
+         }
+     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -143,11 +150,21 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
     override fun onKey(keyCode: Int): Boolean {
         when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                if (listAdapter.itemCount == 0) {
-                    Toast.makeText(context, "No channel yet", Toast.LENGTH_LONG).show()
-                    return true
-                }
+             KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                 if (listAdapter.itemCount == 0) {
+                     // If update is pending (debounced), force it immediately if it contains channels
+                     val pendingSize = pendingTvListModel?.size() ?: 0
+                     if (pendingSize > 0) {
+                         updateHandler.removeCallbacks(updateRunnable)
+                         listAdapter.update(pendingTvListModel!!)
+                         // Note: listAdapter.itemCount still won't update until DiffUtil finishes,
+                         // but we can proceed with navigation assuming it will be ready shortly.
+                     } else {
+                         Toast.makeText(context, "No channel yet", Toast.LENGTH_LONG).show()
+                         return true
+                     }
+                 }
+                groupAdapter.stopMove() // End category move if active
                 groupAdapter.focusable(false)
                 listAdapter.focusable(true)
 
@@ -184,6 +201,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     override fun onKey(listAdapter: ListAdapter, keyCode: Int): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> {
+                listAdapter.stopMove() // End channel move if active
                 groupAdapter.focusable(true)
                 listAdapter.focusable(false)
                 listAdapter.clear()
@@ -245,6 +263,8 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 groupAdapter.toPosition(TVList.groupModel.position.value!!)
             }
         } else {
+            if (::groupAdapter.isInitialized) groupAdapter.stopMove()
+            if (::listAdapter.isInitialized) listAdapter.stopMove()
             view?.post {
                 if (::groupAdapter.isInitialized) groupAdapter.visible = false
                 if (::listAdapter.isInitialized) listAdapter.visible = false

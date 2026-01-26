@@ -28,6 +28,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import com.codesrahul.exclusivetv.models.TVList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.codesrahul.exclusivetv.models.TVModel
 import com.codesrahul.exclusivetv.RootCheckUtil
 
@@ -138,6 +141,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
 
         startRootMonitoring()
+        
+        // Sync network clock
+        CoroutineScope(Dispatchers.IO).launch { Utils.init() }
 
 //        requestWindowFeature(FEATURE_NO_TITLE)
         window.setFlags(
@@ -297,7 +303,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     if (!config.isNullOrEmpty() && config.startsWith("http")) {
                         TVList.update(this@MainActivity, config, silent = true)
                     }
-                    lastRefreshTime = System.currentTimeMillis()
+                    lastRefreshTime = Utils.getDateTimestamp() * 1000L
                 }
                 refreshHandler.postDelayed(this, refreshInterval)
             }
@@ -347,7 +353,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         super.onResume()
         if (!SecurityUtil.isAppOutdated) {
             // Check for refresh on resume
-            val now = System.currentTimeMillis()
+            val now = Utils.getDateTimestamp() * 1000L
             if (now - lastRefreshTime > resumeRefreshThreshold) {
                 Log.i(TAG, "Triggering resume refresh")
                 val config = SP.config
@@ -776,10 +782,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         when (fragment) {
             menuFragment -> {
                  menuActive()
+                 hideFragment(timeFragment)
                  if (infoFragment.isShowing()) infoFragment.dismiss()
             }
             settingFragment -> {
                  settingActive()
+                 hideFragment(timeFragment)
                  if (infoFragment.isShowing()) infoFragment.dismiss()
             }
             trackSelectionFragment -> trackSelectionActive()
@@ -1009,6 +1017,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         supportFragmentManager.beginTransaction()
             .hide(menuFragment)
             .commitAllowingStateLoss()
+        showTime()
         Log.i(TAG, "SP.time ${SP.time}")
     }
 

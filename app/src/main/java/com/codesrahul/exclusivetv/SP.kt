@@ -50,6 +50,8 @@ object SP {
     private const val KEY_WATERMARK_ENABLED = "watermark_enabled"
     private const val KEY_WATERMARK_OPACITY = "watermark_opacity"
     private const val KEY_WATERMARK_POSITION = "watermark_position"
+ 
+    private const val KEY_EPG_SHIFT = "epg_shift"
 
     private lateinit var sp: SharedPreferences
 
@@ -282,6 +284,13 @@ object SP {
     var watermarkPosition: String
         get() = sp.getString(KEY_WATERMARK_POSITION, "bottom_right") ?: "bottom_right"
         set(value) = sp.edit().putString(KEY_WATERMARK_POSITION, value).apply()
+ 
+    var epgShift: Int
+        get() = sp.getInt(KEY_EPG_SHIFT, 0)
+        set(value) {
+            sp.edit().putInt(KEY_EPG_SHIFT, value).apply()
+            notifyListeners(KEY_EPG_SHIFT)
+        }
 
     // Audio Stabilizer
     private const val KEY_AUDIO_STABILIZER = "audio_stabilizer"
