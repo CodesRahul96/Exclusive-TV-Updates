@@ -409,13 +409,18 @@ class SettingFragment : Fragment() {
     }
 
     private fun hideSelf() {
-        // Add slide-out animation logic or just hide
-        // Use commitAllowingStateLoss to prevent crashes if called after onSaveInstanceState
-        requireActivity().supportFragmentManager.beginTransaction()
-            .setCustomAnimations(0, R.anim.slide_out_right)
-            .hide(this)
-            .commitAllowingStateLoss()
-        (activity as MainActivity).showTime()
+        if (!isAdded || activity == null) return
+        
+        try {
+            parentFragmentManager.beginTransaction()
+                .setCustomAnimations(0, R.anim.slide_out_right)
+                .hide(this)
+                .commitAllowingStateLoss()
+            
+            (activity as? MainActivity)?.showTime()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error hiding fragment", e)
+        }
     }
 
     override fun onHiddenChanged(hidden: Boolean) {

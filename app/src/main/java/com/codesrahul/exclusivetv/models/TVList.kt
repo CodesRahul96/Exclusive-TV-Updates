@@ -27,6 +27,9 @@ import java.io.File
 import com.codesrahul.exclusivetv.models.JioTVChannel
 import com.codesrahul.exclusivetv.SecurityUtil
 import com.codesrahul.exclusivetv.StringObfuscator
+import java.io.BufferedReader
+import java.io.StringReader
+import java.io.Reader
 
 object TVList {
     fun clear() {
@@ -224,18 +227,39 @@ object TVList {
                            
                            client.newCall(request).execute().use { response ->
                                if (response.isSuccessful) {
-                                   val str = response.body()?.string() ?: ""
-                                   if (str.isNotBlank()) {
-                                       withContext(Dispatchers.Main) {
-                                            if (!silent) _importStatus.value = "Parsing data..."
+                                   val responseBody = response.body()
+                                   if (responseBody != null) {
+                                       val tempFile = File(ctx.cacheDir, "playlist_source_$index.tmp")
+                                       try {
+                                           // Download stream to file
+                                           responseBody.byteStream().use { input ->
+                                               tempFile.outputStream().use { output ->
+                                                   input.copyTo(output)
+                                               }
+                                           }
+                                           
+                                           // Process the file
+                                           val channels = parseUniversalFile(tempFile)
+                                           
+                                           if (channels.isNotEmpty()) {
+                                                Log.i(TAG, "Source $index parsed successfully: ${channels.size} channels")
+                                           }
+                                           
+                                           return@async channels
+                                           
+                                       } catch (e: Exception) {
+                                           Log.e(TAG, "Error processing file source $index", e)
+                                           return@async emptyList<TV>()
+                                       } finally {
+                                           // Cleanup
+                                           tempFile.delete() 
                                        }
-                                       parseUniversal(str)
                                    } else {
-                                       emptyList<TV>()
+                                       return@async emptyList<TV>()
                                    }
                                } else {
                                    Log.e(TAG, "Failed to fetch $url: ${response.code()}")
-                                   emptyList<TV>()
+                                   return@async emptyList<TV>()
                                }
                            }
                         } catch (e: Exception) {
@@ -402,13 +426,7 @@ object TVList {
         if (string.isBlank()) return emptyList()
         val decryptedContent = string
 
-        // LOGGING: Aid in debugging large payloads
-        Log.d(TAG, "Parsing universal content (Length: ${decryptedContent.length})")
-        Log.d(TAG, "Content Sample: ${decryptedContent.take(500)}")
-
         // 1. JSON Detection (PRIORITY)
-        // We try JSON first because our main API returns a JSON array that might contain M3U strings.
-        // If we check for M3U first, the presence of "EXTHTTP" in the JSON will trigger M3U parsing prematurely.
         val startIndex = string.indexOfFirst { it == '[' || it == '{' }
         if (startIndex != -1) {
              try {
@@ -421,18 +439,15 @@ object TVList {
                     when {
                         item.isJsonObject -> {
                             val obj = item.asJsonObject
-                            // A. Try Standard TV mapping
                             try {
                                 val tv = gson.fromJson(obj, TV::class.java)
                                 if (tv != null && !tv.uris.isNullOrEmpty()) {
                                     allChannels.add(tv)
                                 } else {
-                                    // B. Fallback to Generic Parser for this object
                                     val genericTv = GenericJsonParser.parseSingleObject(obj, allChannels.size)
                                     if (genericTv != null) allChannels.add(genericTv)
                                 }
                             } catch (e: Exception) {
-                                // C. Fallback for object-wrapped lists (like {"channels": [...]})
                                 val subList = GenericJsonParser.parse(obj.toString())
                                 if (subList.isNotEmpty()) allChannels.addAll(subList)
                             }
@@ -453,11 +468,10 @@ object TVList {
                 }
 
                 if (allChannels.isNotEmpty()) {
-                    Log.i(TAG, "Parsed ${allChannels.size} channels from JSON")
                     return allChannels
                 }
             } catch (e: Exception) {
-                Log.d(TAG, "Not a valid JSON or parsing failed, falling back to M3U")
+                Log.d(TAG, "Not a valid JSON, falling back")
             }
         }
 
@@ -471,32 +485,25 @@ object TVList {
         if (decryptedContent.contains("#EXTINF") || decryptedContent.contains("#EXTM3U") || 
             decryptedContent.contains("EXTHTTP") || decryptedContent.contains("#KODIPROP")) {
             
-            // Prefer KodiParser if KODIPROP present
             if (decryptedContent.contains("#KODIPROP")) {
                 try {
                     val kodiList = KodiParser.parse(decryptedContent)
-                    if (kodiList.isNotEmpty()) {
-                        Log.i(TAG, "Parsed Kodi M3U: ${kodiList.size}")
-                        return kodiList
-                    }
+                    if (kodiList.isNotEmpty()) return kodiList
                 } catch (e: Exception) {
                     Log.e(TAG, "Kodi parse error", e)
                 }
             }
 
             try {
-                val m3uList = M3UParser.parse(decryptedContent)
-                if (m3uList.isNotEmpty()) {
-                    Log.i(TAG, "Parsed M3U: ${m3uList.size}")
-                    return m3uList
-                }
+                // Use String Reader for M3UParser (compatible)
+                val m3uList = M3UParser.parse(java.io.BufferedReader(java.io.StringReader(decryptedContent)))
+                if (m3uList.isNotEmpty()) return m3uList
             } catch (e: Exception) {
                 Log.e(TAG, "M3U parse error", e)
             }
         }
 
-        // 4. Fallback: Try Simple List Parser (for raw URL lists)
-        // Only try if content has http links and wasn't parsed by others
+        // 4. Fallback: Try Simple List Parser (Original Logic Restored)
         if (string.contains("http://") || string.contains("https://")) {
             val simpleList = SimpleListParser.parse(string)
             if (simpleList.isNotEmpty()) {
@@ -504,6 +511,65 @@ object TVList {
             }
         }
 
+        return emptyList()
+    }
+
+    private fun parseUniversalFile(file: File): List<TV> {
+        // 1. Peek Header
+        val peekBuilder = StringBuilder()
+        try {
+            java.io.BufferedReader(java.io.FileReader(file)).use { br ->
+                val buffer = CharArray(1024)
+                val read = br.read(buffer)
+                if (read > 0) peekBuilder.append(buffer, 0, read)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error peeking file", e)
+        }
+        
+        val peekContent = peekBuilder.toString().trim()
+        
+        // 2. Strategy A: JSON
+        if (peekContent.startsWith("[") || peekContent.startsWith("{")) {
+            try {
+                // Open new Reader
+                val reader = java.io.BufferedReader(java.io.FileReader(file))
+                val result = GenericJsonParser.parse(reader)
+                reader.close() // Close explicitly
+                
+                if (result.isNotEmpty()) {
+                     Log.i(TAG, "Parsed ${result.size} channels from JSON File")
+                     return result
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "JSON File Parse failed, falling back")
+            }
+        }
+        
+        // 3. Strategy B: M3U / Universal Stream
+        try {
+            val reader = java.io.BufferedReader(java.io.FileReader(file))
+            val result = M3UParser.parse(reader)
+            reader.close()
+            
+            if (result.isNotEmpty()) {
+                 Log.i(TAG, "Parsed ${result.size} channels from M3U File")
+                 return result
+            }
+        } catch (e: Exception) {
+             Log.w(TAG, "M3U File Parse failed", e)
+        }
+        
+        // 4. Strategy C: Legacy String (Gua / Encrypted / Weird Encoded)
+        // If we failed above, maybe it's encrypted or weird format requiring full string.
+        try {
+            Log.i(TAG, "Falling back to Legacy String Parsing")
+            val str = file.readText()
+            return parseUniversal(str)
+        } catch (e: Exception) {
+            Log.e(TAG, "Legacy Parse failed", e)
+        }
+        
         return emptyList()
     }
 

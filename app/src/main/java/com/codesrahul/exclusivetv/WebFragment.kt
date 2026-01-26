@@ -136,11 +136,15 @@ class WebFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         // Initialize WakeLock
+        // Initialize WakeLock & Keep Screen On
         try {
+            playerView.keepScreenOn = true
+            activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-            wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ExclusiveTV:PlayerWakeLock")
+            wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ExclusiveTV:WakeLock")
         } catch (e: Exception) {
-            Log.e(TAG, "WakeLock Init Failed", e)
+            Log.e(TAG, "Failed to init WakeLock", e)
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -1362,14 +1366,19 @@ class WebFragment : Fragment() {
             else -> 1000 // Optimized default: 1s start (was 2000)
         }
         
+        // Calculate target buffer size (e.g., 20MB) to prevent OOM on low-end devices
+        val targetBufferBytes = 20 * 1024 * 1024 
+
         return DefaultLoadControl.Builder()
+            .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
                 minBuffer,
                 maxBuffer,
                 startBuffer,
-                2500 // Optimized rebuffer: 2.5s (was 5000)
+                2500 
             )
-            .setPrioritizeTimeOverSizeThresholds(true)
+            .setTargetBufferBytes(targetBufferBytes)
+            .setPrioritizeTimeOverSizeThresholds(false) // Enforce size limit to prevent OOM
             .build()
     }
 }

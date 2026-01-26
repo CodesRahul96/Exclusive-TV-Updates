@@ -8,15 +8,20 @@ import com.google.gson.JsonParser
 object GenericJsonParser {
     private const val TAG = "GenericJsonParser"
 
-    fun parse(jsonString: String): List<TV> {
+    fun parse(reader: java.io.Reader): List<TV> {
         val list = mutableListOf<TV>()
         try {
-            val element = JsonParser.parseString(jsonString)
+            val element = JsonParser.parseReader(reader)
             findAndProcessArrays(element, list)
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing generic JSON", e)
         }
         return list
+    }
+
+    // Overload for String compatibility
+    fun parse(jsonString: String): List<TV> {
+        return parse(java.io.StringReader(jsonString))
     }
 
     private fun findAndProcessArrays(element: com.google.gson.JsonElement, list: MutableList<TV>, depth: Int = 0) {
