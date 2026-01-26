@@ -70,6 +70,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
     }
 
+
+
     // Periodic Update Check
     private val updateHandler = Handler(Looper.getMainLooper())
     private val updateCheckInterval: Long = 15 * 60 * 1000 // 15 minutes
@@ -857,6 +859,27 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         }
         
+        if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+            // Handle right arrow for audio track selector (3s hold) when all fragments are hidden
+            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    if (event.repeatCount == 0) {
+                        // Start 3-second timer on first press
+                        isRightArrowPressed = true
+                        rightArrowHandler.postDelayed(rightArrowHoldRunnable, 3000)
+                    }
+                    return true
+                } else if (event.action == KeyEvent.ACTION_UP) {
+                    // Cancel timer on release
+                    if (isRightArrowPressed) {
+                        isRightArrowPressed = false
+                        rightArrowHandler.removeCallbacks(rightArrowHoldRunnable)
+                    }
+                    return true
+                }
+            }
+        }
+
         return super.dispatchKeyEvent(event)
     }
 
@@ -1190,17 +1213,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 
                 // 3. Handle right arrow for audio track selector (3s hold) when all fragments are hidden
                 if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
-                    if (event?.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                        // Start 3-second timer on first press
-                        isRightArrowPressed = true
-                        rightArrowHandler.postDelayed(rightArrowHoldRunnable, 3000)
-                        return true
-                    } else if (event?.action == KeyEvent.ACTION_UP) {
-                        // Cancel timer on release
-                        isRightArrowPressed = false
-                        rightArrowHandler.removeCallbacks(rightArrowHoldRunnable)
-                        return true
-                    }
+                    // Logic moved to dispatchKeyEvent()
                 }
                 
                 return false

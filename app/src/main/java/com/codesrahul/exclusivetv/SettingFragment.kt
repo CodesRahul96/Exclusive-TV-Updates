@@ -76,7 +76,7 @@ class SettingFragment : Fragment() {
             false
         }
 
-        binding.versionName.text = "v${com.codesrahul.exclusivetv.BuildConfig.VERSION_NAME}"
+        binding.versionName.text = com.codesrahul.exclusivetv.BuildConfig.VERSION_NAME
         
         // IP & MAC Address display
         val ip = Utils.getIPAddress(true)
@@ -410,10 +410,11 @@ class SettingFragment : Fragment() {
 
     private fun hideSelf() {
         // Add slide-out animation logic or just hide
+        // Use commitAllowingStateLoss to prevent crashes if called after onSaveInstanceState
         requireActivity().supportFragmentManager.beginTransaction()
             .setCustomAnimations(0, R.anim.slide_out_right)
             .hide(this)
-            .commit()
+            .commitAllowingStateLoss()
         (activity as MainActivity).showTime()
     }
 

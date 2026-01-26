@@ -108,7 +108,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     private fun hideSelf() {
         requireActivity().supportFragmentManager.beginTransaction()
             .hide(this)
-            .commit()
+            .commitAllowingStateLoss()
     }
 
     private val updateHandler = android.os.Handler(android.os.Looper.getMainLooper())

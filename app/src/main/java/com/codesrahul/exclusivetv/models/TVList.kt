@@ -41,6 +41,9 @@ object TVList {
         groupModel.setChange()
         _position.postValue(-1)
         
+        // Clear EPG Memory as well to free up significantly
+        EPGManager.clear()
+        
         try {
             if (::appDirectory.isInitialized) {
                 File(appDirectory, FILE_NAME).delete()
