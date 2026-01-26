@@ -24,7 +24,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.async
 import java.io.File
-import com.codesrahul.exclusivetv.models.JioTVChannel
 import com.codesrahul.exclusivetv.SecurityUtil
 import com.codesrahul.exclusivetv.StringObfuscator
 import java.io.BufferedReader
@@ -74,6 +73,8 @@ object TVList {
     private val _importProgress = MutableLiveData<Int>()
     val importProgress: LiveData<Int>
         get() = _importProgress
+        
+    private val initDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
 
     fun findChannelByName(query: String): TVModel? {
         val q = query.lowercase().trim()
@@ -105,22 +106,34 @@ object TVList {
 
         CoroutineScope(Dispatchers.IO).launch {
             val file = File(appDirectory, FILE_NAME)
-            val str = if (file.exists()) {
-                Log.i(TAG, "read $file")
-                file.readText()
-            } else {
-                Log.i(TAG, "read resource")
-                context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8)
-                    .use { it.readText() }
-            }
 
+            // OPTIMIZATION: Use streaming parser instead of readText() to avoid OOM
             try {
-                str2List(str)
-            } catch (e: Exception) {
-                Log.e(TAG, "error $e")
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Failed to read the channel, please set it in the menu", Toast.LENGTH_LONG).show()
+                if (file.exists()) {
+                    Log.i(TAG, "Parsing local file stream: $file")
+                    val result = parseUniversalFile(file)
+                    if (result.isNotEmpty()) {
+                        list = result
+                        refreshModels(MyTVApplication.getInstance())
+                    }
+                } else {
+                    Log.i(TAG, "Parsing default resource stream")
+                    context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8).use { reader ->
+                         // Use streaming parser for resource
+                         val result = parseUniversal(reader)
+                         if (result.isNotEmpty()) {
+                             list = result
+                             refreshModels(MyTVApplication.getInstance())
+                         }
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "error init parsing", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Failed to read channel configuration", Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                initDeferred.complete(Unit)
             }
 
             if (SP.config.isNullOrEmpty()) {
@@ -140,38 +153,13 @@ object TVList {
                  File(appDirectory, FILE_NAME).delete() // Clear old cache
             }
 
-            // Early version check to prevent data fetch if update available
-            try {
-                Log.i(TAG, "Performing early update check...")
-                val release = com.codesrahul.exclusivetv.requests.ReleaseRequest().getRelease()
-                if (release != null) {
-                    SecurityUtil.remoteRelease = release
-                    val remoteVersionCode = release.version_code ?: 0
-                    if (remoteVersionCode > currentVersion) {
-                        SecurityUtil.isAppOutdated = true
-                        Log.w(TAG, "Early update check: App is outdated (Remote: ${release.version_code}, Local: $currentVersion). Blocking load.")
-                        clear() // Delete cached channels.txt to make app "useless"
-                    } else {
-                        Log.i(TAG, "Early update check: App is up to date.")
-                    }
-                } else {
-                    Log.i(TAG, "Early update check: Check failed (No response).")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Early update check error", e)
-            }
+            // Early version check removed to prevent startup crash (moved to MainActivity)
+
 
 
             
 
 
-            // --- SANITIZATION: REMOVE PERSISTENT EAGLE PLAYLIST ---
-            val eagleUrlLegacy = "https://raw.githubusercontent.com/CodesRahul96/Live-TV/refs/heads/main/src/assets/eagle.m3u"
-            if (SP.playlistUrls.contains(eagleUrlLegacy)) {
-                Log.i(TAG, "Removing persistent legacy playlist: $eagleUrlLegacy")
-                SP.removePlaylistUrl(eagleUrlLegacy)
-            }
-            // ------------------------------------------------------
 
             val cfg = SP.config
             if (SP.configAutoLoad && !cfg.isNullOrEmpty()) {
@@ -193,21 +181,22 @@ object TVList {
     fun update(ctx: Context, silent: Boolean = false) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Ensure initialization is finished before updating
+                initDeferred.await()
+                
                 isUpdating = true
                 
                 // Get all URLs to fetch
                 val urls = SP.playlistUrls.toMutableSet()
                 
-                // Hide default API if custom sources exist
-                if (urls.any { it != DEFAULT_CONFIG_URL }) {
-                    urls.remove(DEFAULT_CONFIG_URL)
-                } else {
-                    if (urls.isEmpty()) {
-                         urls.add(DEFAULT_CONFIG_URL)
-                         SP.addPlaylistUrl(DEFAULT_CONFIG_URL)
-                    } else if (!urls.contains(DEFAULT_CONFIG_URL)) {
-                         urls.add(DEFAULT_CONFIG_URL)
-                    }
+                // Ensure default API is always present if preferred, or at least not auto-removed
+                if (!urls.contains(DEFAULT_CONFIG_URL)) {
+                    urls.add(DEFAULT_CONFIG_URL)
+                }
+                
+                // If the set changed (e.g. first run), save it
+                if (urls.size != SP.playlistUrls.size) {
+                    urls.forEach { SP.addPlaylistUrl(it) }
                 }
 
                 withContext(Dispatchers.Main) {
@@ -328,6 +317,7 @@ object TVList {
                      
                      withContext(Dispatchers.Main) {
                          refreshModels(MyTVApplication.getInstance())
+                         checkChannelsInBackground()
                          // Only show toast if using custom config (not default)
                          if (!silent && SP.config != DEFAULT_CONFIG_URL) {
                              "Channels updated from $successCount sources".showToast()
@@ -405,26 +395,75 @@ object TVList {
     }
 
     fun parseUri(context: Context, uri: Uri) {
-        try {
-            val content = context.contentResolver.openInputStream(uri)?.use { 
-                it.bufferedReader().readText() 
-            }
-            
-            if (!content.isNullOrBlank()) {
-                val parsed = parseUniversal(content)
-                if (parsed.isNotEmpty()) {
-                    list = parsed
-                    SP.addPlaylistUrl(uri.toString()) // Optional: Save URI? Maybe not readable later.
-                    refreshModels(context)
-                    Toast.makeText(context, "Loaded ${parsed.size} channels from file", Toast.LENGTH_SHORT).show()
-                } else {
-                     Toast.makeText(context, "No channels found in file", Toast.LENGTH_SHORT).show()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val content = context.contentResolver.openInputStream(uri)?.use { 
+                    it.bufferedReader().readText() 
+                }
+                
+                if (!content.isNullOrBlank()) {
+                    val parsed = parseUniversal(content)
+                    if (parsed.isNotEmpty()) {
+                        list = parsed
+                        SP.addPlaylistUrl(uri.toString()) // Optional: Save URI? Maybe not readable later.
+                        withContext(Dispatchers.Main) {
+                            refreshModels(context)
+                            Toast.makeText(context, "Loaded ${parsed.size} channels from file", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                         withContext(Dispatchers.Main) {
+                             Toast.makeText(context, "No channels found in file", Toast.LENGTH_SHORT).show()
+                         }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing ParseUri", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Error reading file", Toast.LENGTH_SHORT).show()
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error parsing ParseUri", e)
-            Toast.makeText(context, "Error reading file", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun parseUniversal(reader: BufferedReader): List<TV> {
+        // Use PushbackReader to peek at the first non-whitespace character 
+        // to decide between JSON and M3U without consuming the stream or relying on mark/reset.
+        val pushbackReader = java.io.PushbackReader(reader, 10)
+        
+        try {
+            var firstChar = -1
+            // Skip leading whitespace to find the first significant character
+            while (true) {
+                val c = pushbackReader.read()
+                if (c == -1) break
+                if (!Character.isWhitespace(c)) {
+                    firstChar = c
+                    pushbackReader.unread(c)
+                    break
+                }
+            }
+            
+            if (firstChar == '{'.toInt() || firstChar == '['.toInt()) {
+                Log.d(TAG, "Detected JSON format via peek")
+                return GenericJsonParser.parse(pushbackReader)
+            } else if (firstChar == '#'.toInt()) {
+                Log.d(TAG, "Detected M3U format via peek")
+                return M3UParser.parse(BufferedReader(pushbackReader))
+            } else if (firstChar >= 0x4D00 && firstChar <= 0x4DFF) {
+                Log.d(TAG, "Detected Gua encoded content via peek")
+                // Gua requires full string for decoding. 
+                // We read the rest of the stream into a string.
+                val remaining = BufferedReader(pushbackReader).readText()
+                val decoded = Gua().decode(remaining)
+                return parseUniversal(decoded)
+            } else {
+                Log.w(TAG, "Unknown format starting with '${firstChar.toChar()}' (0x${Integer.toHexString(firstChar)})")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during stream peeking", e)
+        }
+        
+        return emptyList()
     }
 
     private fun parseUniversal(content: String): List<TV> {
@@ -558,7 +597,20 @@ object TVList {
             }
         }
         
-        // 3. Strategy B: M3U / Universal Stream
+        // 3. Strategy B: Gua / Encrypted (Legacy String requirement)
+        if (peekContent.isNotEmpty() && (peekContent[0].toInt() >= 0x4D00 && peekContent[0].toInt() <= 0x4DFF)) {
+             try {
+                 Log.i(TAG, "Parsing Gua file: $file")
+                 val content = file.readText()
+                 val decoded = Gua().decode(content)
+                 val result = parseUniversal(decoded)
+                 if (result.isNotEmpty()) return result
+             } catch (e: Exception) {
+                 Log.e(TAG, "Gua File Parse failed", e)
+             }
+        }
+
+        // 4. Strategy C: M3U / Universal Stream
         try {
             val reader = java.io.BufferedReader(java.io.FileReader(file))
             val result = M3UParser.parse(reader)
@@ -572,12 +624,13 @@ object TVList {
              Log.w(TAG, "M3U File Parse failed", e)
         }
         
-        // 4. Strategy C: Legacy String (Gua / Encrypted / Weird Encoded)
-        // If we failed above, maybe it's encrypted or weird format requiring full string.
+        // 5. Strategy D: Legacy String Fallback
         try {
-            Log.i(TAG, "Falling back to Legacy String Parsing")
-            val str = file.readText()
-            return parseUniversal(str)
+            Log.i(TAG, "Falling back to Legacy String Parsing (Limited Stream)")
+            val reader = file.bufferedReader()
+            val result = parseUniversal(reader)
+            reader.close()
+            if (result.isNotEmpty()) return result
         } catch (e: Exception) {
             Log.e(TAG, "Legacy Parse failed", e)
         }
@@ -633,10 +686,15 @@ object TVList {
                          
                         // Execute blocking call inside IO async block
                         client.newCall(request).execute().use { response ->
-                            val content = response.body()?.string()
-                            if (response.isSuccessful && !content.isNullOrBlank()) {
-                                // Use UNIVERSAL parser
-                                val subChannels = parseUniversal(content)
+                            // FIX: Use streaming instead of .string() to avoid OOM
+                            val responseBody = response.body()
+                            if (response.isSuccessful && responseBody != null) {
+                                // Use UNIVERSAL parser with streaming
+                                // We use Reader helper
+                                val sourceStream = responseBody.byteStream()
+                                val reader = java.io.BufferedReader(java.io.InputStreamReader(sourceStream, Charsets.UTF_8))
+                                
+                                val subChannels = parseUniversal(reader)
                                 if (subChannels.isNotEmpty()) {
                                     Log.i(TAG, "Expanded ${tv.name}: ${subChannels.size} channels")
                                     subChannels.forEach { child ->

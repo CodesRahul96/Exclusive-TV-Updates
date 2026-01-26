@@ -46,7 +46,20 @@
             android:textColor="#CCFFFFFF"
             android:textSize="16sp"
             android:lineSpacingExtra="4dp"
-            android:layout_marginBottom="30dp"/>
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:id="@+id/tvChangelog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="start"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:maxLines="5"
+            android:ellipsize="end"
+            android:scrollbars="vertical"
+            android:layout_marginBottom="20dp"
+            android:visibility="gone"/>
 
         <LinearLayout
             android:layout_width="match_parent"

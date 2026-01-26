@@ -40,15 +40,8 @@ object EPGManager {
     }
     
     private val client = SecureHttpClient.client
-    private val dateFormats = object : ThreadLocal<List<SimpleDateFormat>>() {
-        override fun initialValue(): List<SimpleDateFormat> {
-            return listOf(
-                SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US),
-                SimpleDateFormat("yyyyMMddHHmmssZ", Locale.US),
-                SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
-            )
-        }
-    }
+
+    // Removed ThreadLocal to prevent NoSuchMethodError on older APIs (API < 26)
     
     var epgStatus = "Not Loaded"
 
@@ -88,12 +81,21 @@ object EPGManager {
     private var epgDataById = mutableMapOf<String, MutableList<EPGProgram>>() // New map for ID lookup
 
     private fun parseXML(inputStream: InputStream): Int {
+        val formats = listOf(
+            SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US),
+            SimpleDateFormat("yyyyMMddHHmmssZ", Locale.US),
+            SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+        )
+
         val parser = Xml.newPullParser()
         parser.setInput(inputStream, "UTF-8")
         
         var eventType = parser.eventType
         val channelIdToNames = mutableMapOf<String, MutableSet<String>>()
-        val rawPrograms = mutableListOf<Pair<String, EPGProgram>>()
+        
+        val newData = mutableMapOf<String, MutableList<EPGProgram>>()
+        val newDataById = mutableMapOf<String, MutableList<EPGProgram>>()
+        val now = System.currentTimeMillis()
 
         while (eventType != XmlPullParser.END_DOCUMENT) {
             if (eventType == XmlPullParser.START_TAG) {
@@ -101,7 +103,6 @@ object EPGManager {
                 if (tagName == "channel") {
                     val id = parser.getAttributeValue(null, "id")
                     if (id != null) {
-                        // Intern ID to save memory for repeated refs
                         val internedId = id.intern()
                         channelIdToNames.getOrPut(internedId) { mutableSetOf() }.add(internedId)
                         var depth = 1
@@ -114,7 +115,7 @@ object EPGManager {
                                 if (parser.name == "display-name") {
                                     val dn = try { parser.nextText() } catch (e: Exception) { "" }
                                     if (dn.isNotEmpty()) channelIdToNames[internedId]?.add(dn)
-                                    depth-- // nextText consumes END_TAG
+                                    depth--
                                 }
                             } else if (nextType == XmlPullParser.END_TAG) {
                                 depth--
@@ -123,10 +124,17 @@ object EPGManager {
                     }
                 } else if (tagName == "programme") {
                     val channelId = parser.getAttributeValue(null, "channel")?.intern()
-                    val start = parseDate(parser.getAttributeValue(null, "start"))
-                    val stop = parseDate(parser.getAttributeValue(null, "stop"))
+                    val start = parseDate(parser.getAttributeValue(null, "start"), formats)
+                    val stop = parseDate(parser.getAttributeValue(null, "stop"), formats)
                     
                     if (channelId != null && start != null && stop != null) {
+                        // OPTIMIZATION: Discard programs that ended more than 1 hour ago
+                        if (stop < (now - 3600_000L)) {
+                            parser.next() // Skip content
+                            eventType = parser.next()
+                            continue
+                        }
+
                         var title = ""
                         var desc = ""
                         var innerEvent = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
@@ -136,18 +144,26 @@ object EPGManager {
                                 if (parser.name == "title") title = try { parser.nextText() } catch (e: Exception) { "" }
                                 else if (parser.name == "desc") {
                                     desc = try { parser.nextText() } catch (e: Exception) { "" }
-                                    // Truncate description to save memory (max 300 chars)
-                                    if (desc.length > 300) {
-                                        desc = desc.substring(0, 300) + "..."
-                                    }
+                                    if (desc.length > 200) desc = desc.substring(0, 200) + "..."
                                 }
                             }
                             innerEvent = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
                         }
+                        
                         if (title.isNotEmpty()) {
-                            // Intern title if it's a common program? Maybe too aggressive.
-                            // But definitely add to list.
-                            rawPrograms.add(channelId to EPGProgram(title, start, stop, desc))
+                            val prog = EPGProgram(title, start, stop, desc)
+                            
+                            // Populate ID map directly
+                            newDataById.getOrPut(channelId) { mutableListOf() }.add(prog)
+                            
+                            // Populate Name maps directly using names collected so far
+                            // Note: If channel info follows programs (unlikely in XMLTV), this might miss some.
+                            // But XMLTV usually lists channels first.
+                            val names = channelIdToNames[channelId] ?: setOf(channelId)
+                            for (n in names) {
+                                val norm = normalizeName(n)
+                                newData.getOrPut(norm) { mutableListOf() }.add(prog)
+                            }
                         }
                     }
                 }
@@ -155,25 +171,6 @@ object EPGManager {
             eventType = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
         }
         
-        // Clear old data before allocating new maps to help GC?
-        // Actually we are inside a function, epgData is global.
-        // Let's create new maps and replace atomically.
-        
-        val newData = mutableMapOf<String, MutableList<EPGProgram>>()
-        val newDataById = mutableMapOf<String, MutableList<EPGProgram>>() // Populate ID map
-
-        for ((id, prog) in rawPrograms) {
-            // Populate ID map
-            newDataById.getOrPut(id) { mutableListOf() }.add(prog)
-            
-            // Populate Name map
-            val names = channelIdToNames[id] ?: setOf(id)
-            for (n in names) {
-                val norm = normalizeName(n)
-                newData.getOrPut(norm) { mutableListOf() }.add(prog)
-            }
-        }
-
         newData.forEach { (_, progs) -> progs.sortBy { it.start } }
         newDataById.forEach { (_, progs) -> progs.sortBy { it.start } }
         
@@ -229,10 +226,9 @@ object EPGManager {
         return epgData[normalized] ?: emptyList()
     }
 
-    private fun parseDate(dateStr: String?): Long? {
+    private fun parseDate(dateStr: String?, formats: List<SimpleDateFormat>): Long? {
         if (dateStr == null) return null
         val clean = dateStr.trim()
-        val formats = dateFormats.get() ?: return null
         for (format in formats) {
             try { return format.parse(clean)?.time } catch (e: Exception) {}
         }

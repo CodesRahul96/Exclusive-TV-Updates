@@ -80,7 +80,7 @@ class SettingFragment : Fragment() {
         
         // IP & MAC Address display
         val ip = Utils.getIPAddress(true)
-        val mac = Utils.getMacAddress()
+        val mac = Utils.getMacAddress(requireContext())
         
         val displayIp = if (ip.isEmpty()) "Unavailable" else ip
         val displayMac = if (mac.isEmpty() || mac == "02:00:00:00:00:00") "Unavailable" else mac
@@ -395,7 +395,7 @@ class SettingFragment : Fragment() {
         // Only update if server is not empty/offline (avoid redundancy with static IP display)
         if (server.isNotEmpty() && !server.contains("offline", ignoreCase = true)) {
             val ip = Utils.getIPAddress(true)
-            val mac = Utils.getMacAddress()
+            val mac = Utils.getMacAddress(requireContext())
             val displayMac = if (mac.isEmpty() || mac == "02:00:00:00:00:00") "Unavailable" else mac
             
             // Show full server link as it contains the port

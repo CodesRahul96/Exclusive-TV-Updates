@@ -30,7 +30,7 @@ class TVListModel(private val name: String, private val originalName: String, pr
         get() = _position
 
     fun setPosition(position: Int) {
-        _position.value = position
+        _position.postValue(position)
     }
 
     private val _change = MutableLiveData<Boolean>()
@@ -42,14 +42,14 @@ class TVListModel(private val name: String, private val originalName: String, pr
     }
 
     fun setTVListModel(tvListModel: List<TVModel>) {
-        _tvListModel.value = tvListModel
+        _tvListModel.postValue(tvListModel)
     }
 
     fun addTVModel(tvModel: TVModel) {
         val currentList = _tvListModel.value ?: emptyList()
         val newList = currentList.toMutableList()
         newList.add(tvModel)
-        _tvListModel.value = newList
+        _tvListModel.postValue(newList)
     }
 
     fun removeTVModel(id: Int) {
@@ -61,7 +61,7 @@ class TVListModel(private val name: String, private val originalName: String, pr
                 iterator.remove()
             }
         }
-        _tvListModel.value = newList
+        _tvListModel.postValue(newList)
     }
 
     fun replaceTVModel(tvModel: TVModel) {
@@ -83,11 +83,11 @@ class TVListModel(private val name: String, private val originalName: String, pr
         }
         
         // Always update the LiveData to trigger observers
-        _tvListModel.value = newList
+        _tvListModel.postValue(newList)
     }
 
     fun clear() {
-        _tvListModel.value = mutableListOf()
+        _tvListModel.postValue(mutableListOf())
         setPosition(0)
     }
 
@@ -105,7 +105,7 @@ class TVListModel(private val name: String, private val originalName: String, pr
     }
 
     init {
-        _position.value = 0
+        _position.postValue(0)
     }
 
     fun size(): Int {

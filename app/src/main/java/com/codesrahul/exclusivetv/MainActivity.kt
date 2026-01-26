@@ -254,6 +254,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         updateManager = UpdateManager(this, com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
         updateManager.checkAndUpdate()
         
+        // Initial channel list update
+        TVList.update(this, silent = true)
+        
         // Setup watermark
         setupWatermark()
         
@@ -804,7 +807,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val hideMenu = Runnable {
         if (!isFinishing && !supportFragmentManager.isStateSaved) {
             if (!menuFragment.isHidden) {
-                supportFragmentManager.beginTransaction().hide(menuFragment).commit()
+                supportFragmentManager.beginTransaction().hide(menuFragment).commitAllowingStateLoss()
             }
         }
     }
@@ -1005,14 +1008,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     fun hideMenuFragment() {
         supportFragmentManager.beginTransaction()
             .hide(menuFragment)
-            .commit()
+            .commitAllowingStateLoss()
         Log.i(TAG, "SP.time ${SP.time}")
     }
 
     private fun hideSettingFragment() {
         supportFragmentManager.beginTransaction()
             .hide(settingFragment)
-            .commit()
+            .commitAllowingStateLoss()
         showTime()
     }
 
