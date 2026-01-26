@@ -27,8 +27,8 @@ object UnsafeHttpClient {
         OkHttpClient.Builder()
             .sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
             .hostnameVerifier { _, _ -> true }
-            .connectTimeout(60, TimeUnit.SECONDS) // Liberal timeouts
-            .readTimeout(60, TimeUnit.SECONDS)
+            .connectTimeout(20, TimeUnit.SECONDS) // Reduced from 60s for faster failure
+            .readTimeout(20, TimeUnit.SECONDS)    // Reduced from 60s for faster failure
             .followRedirects(true)
             .followSslRedirects(true)
             .addInterceptor { chain ->
