@@ -1,248 +1,219 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_gravity="bottom"
-    android:layout_margin="24dp"
-    android:background="@drawable/bg_info_card"
-    android:elevation="16dp"
-    android:padding="20dp">
+    android:layout_height="match_parent"
+    android:gravity="bottom|center_horizontal"
+    android:paddingBottom="24dp">
 
-    <!-- Channel Logo -->
-    <ImageView
-        android:id="@+id/logo"
-        android:layout_width="100dp"
-        android:layout_height="60dp"
-        android:background="#1AFFFFFF"
-        android:contentDescription="Channel Logo"
-        android:padding="8dp"
-        android:scaleType="fitCenter"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:src="@android:drawable/ic_menu_gallery" />
-
-    <!-- Vertical Separator -->
-    <View
-        android:id="@+id/separator"
-        android:layout_width="1dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:background="#33FFFFFF"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/logo"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <!-- Channel Number & Title Row -->
-    <LinearLayout
-        android:id="@+id/header_container"
-        android:layout_width="0dp"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/info_card"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/separator"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_marginHorizontal="48dp"
+        android:background="@drawable/bg_info_card"
+        android:elevation="12dp"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/logo"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:contentDescription="@string/app_name"
+            android:scaleType="fitCenter"
+            android:background="@drawable/bg_channel_icon"
+            android:padding="6dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/date_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="#B3FFFFFF"
+            android:textSize="14sp"
+            android:drawableStart="@drawable/ic_time"
+            android:drawablePadding="6dp"
+            android:drawableTint="#B3FFFFFF"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Jan 17, 01:14 PM" />
 
         <TextView
             android:id="@+id/channel_number"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
+            android:layout_marginStart="16dp"
             android:background="@drawable/bg_channel_number"
-            android:backgroundTint="#00B0FF"
             android:fontFamily="sans-serif-black"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
             android:textColor="#FFFFFF"
-            android:textSize="16sp"
+            android:textSize="18sp"
+            app:layout_constraintBottom_toBottomOf="@+id/title"
+            app:layout_constraintStart_toEndOf="@+id/logo"
+            app:layout_constraintTop_toTopOf="@+id/title"
             tools:text="001" />
 
         <TextView
             android:id="@+id/title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ellipsize="end"
+            android:layout_marginStart="8dp"
             android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
             android:textColor="#FFFFFF"
             android:textSize="22sp"
-            tools:text="Discovery Science HD" />
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintBottom_toTopOf="@+id/program_title"
+            app:layout_constraintEnd_toStartOf="@+id/date_time"
+            app:layout_constraintStart_toEndOf="@+id/channel_number"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_chainStyle="packed" />
 
         <TextView
-            android:id="@+id/date_time"
-            android:layout_width="wrap_content"
+            android:id="@+id/program_title"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:drawableStart="@drawable/ic_time"
-            android:drawablePadding="6dp"
-            android:drawableTint="#CCFFFFFF"
+            android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toStartOf="@+id/quality_container"
+            app:layout_constraintStart_toStartOf="@+id/channel_number"
+            app:layout_constraintTop_toBottomOf="@+id/title"
+            tools:text="Current Program"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/program_time"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif"
+            android:textColor="#00B0FF"
+            android:textSize="14sp"
+            android:layout_marginEnd="16dp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toStartOf="@+id/quality_container"
+            app:layout_constraintStart_toStartOf="@+id/channel_number"
+            app:layout_constraintTop_toBottomOf="@+id/program_title"
+            tools:text="08:00 PM - 09:00 PM"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/desc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="16dp"
             android:fontFamily="sans-serif"
             android:textColor="#CCFFFFFF"
             android:textSize="14sp"
-            tools:text="Fri | Jan 19 | 08:30 PM" />
-    </LinearLayout>
-
-    <!-- Current Program Title -->
-    <TextView
-        android:id="@+id/program_title"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:ellipsize="end"
-        android:fontFamily="sans-serif-medium"
-        android:maxLines="1"
-        android:textColor="#E0E0E0"
-        android:textSize="18sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/header_container"
-        app:layout_constraintTop_toBottomOf="@+id/header_container"
-        tools:text="How It's Made: Supercars" />
-
-    <!-- Current Program Time & Progress -->
-    <TextView
-        android:id="@+id/program_time"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:fontFamily="sans-serif"
-        android:textColor="#00B0FF"
-        android:textSize="14sp"
-        app:layout_constraintStart_toStartOf="@+id/program_title"
-        app:layout_constraintTop_toBottomOf="@+id/program_title"
-        tools:text="08:00 PM - 09:00 PM" />
-
-    <ProgressBar
-        android:id="@+id/program_progress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="100dp"
-        android:layout_height="4dp"
-        android:layout_marginStart="12dp"
-        android:progressDrawable="@drawable/bg_progress"
-        app:layout_constraintBottom_toBottomOf="@+id/program_time"
-        app:layout_constraintStart_toEndOf="@+id/program_time"
-        app:layout_constraintTop_toTopOf="@+id/program_time"
-        tools:progress="50" />
-
-    <!-- Description -->
-    <TextView
-        android:id="@+id/desc"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:ellipsize="end"
-        android:fontFamily="sans-serif"
-        android:lineSpacingExtra="2dp"
-        android:maxLines="2"
-        android:textColor="#99FFFFFF"
-        android:textSize="13sp"
-        app:layout_constraintWidth_percent="0.55"
-        app:layout_constraintStart_toStartOf="@+id/program_title"
-        app:layout_constraintTop_toBottomOf="@+id/program_time"
-        tools:text="Documentary showing how luxury cars are manufactured from scratch, featuring behind the scenes footage." />
-
-    <!-- Next Program (Aligned Start-Bottom) -->
-    <LinearLayout
-        android:id="@+id/next_program_container"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:layout_marginEnd="16dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/badges_container"
-        app:layout_constraintStart_toStartOf="@+id/program_title"
-        app:layout_constraintTop_toBottomOf="@+id/desc">
+            android:maxLines="2"
+            android:ellipsize="end"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/quality_container"
+            app:layout_constraintStart_toStartOf="@+id/channel_number"
+            app:layout_constraintTop_toBottomOf="@+id/program_time" />
 
         <TextView
+            android:id="@+id/next_program_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_badge"
-            android:backgroundTint="#26A69A"
-            android:fontFamily="sans-serif-black"
-            android:paddingHorizontal="6dp"
-            android:paddingVertical="2dp"
-            android:text="NEXT"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp" />
+            android:layout_marginTop="8dp"
+            android:text="NEXT:"
+            android:textColor="#FFAC33"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:drawableStart="@drawable/ic_update"
+            android:drawablePadding="4dp"
+            android:drawableTint="#FFAC33"
+            android:gravity="center_vertical"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="@+id/channel_number"
+            app:layout_constraintTop_toBottomOf="@+id/desc"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/next_program_title"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:ellipsize="end"
+            android:layout_marginStart="4dp"
             android:fontFamily="sans-serif-medium"
+            android:textColor="#E0E0E0"
+            android:textSize="14sp"
             android:maxLines="1"
-            android:textColor="#B0BEC5"
-            android:textSize="13sp"
-            tools:text="Mega Factories" />
+            android:ellipsize="end"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@+id/next_program_label"
+            app:layout_constraintEnd_toStartOf="@+id/next_program_time"
+            app:layout_constraintStart_toEndOf="@+id/next_program_label"
+            app:layout_constraintTop_toTopOf="@+id/next_program_label"
+            tools:text="Upcoming Program Name"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/next_program_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            android:layout_marginEnd="24dp"
             android:fontFamily="sans-serif"
-            android:textColor="#78909C"
-            android:textSize="13sp"
-            tools:text="09:00 PM" />
-    </LinearLayout>
-
-    <!-- Tech Badges (Aligned End-Bottom) -->
-    <LinearLayout
-        android:id="@+id/badges_container"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/next_program_container">
-
-        <!-- Video Badge -->
-        <TextView
-            android:id="@+id/video_badge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_badge"
-            android:drawableStart="@drawable/ic_video_quality"
-            android:drawablePadding="4dp"
-            android:drawableTint="#FFFFFF"
-            android:gravity="center"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp"
-            android:textStyle="bold"
+            android:textColor="#B3FFFFFF"
+            android:textSize="12sp"
             android:visibility="gone"
-            tools:text="1920x1080 | FHD"
+            app:layout_constraintBottom_toBottomOf="@+id/next_program_label"
+            app:layout_constraintEnd_toStartOf="@+id/quality_container"
+            app:layout_constraintTop_toTopOf="@+id/next_program_label"
+            tools:text="09:00 PM"
             tools:visibility="visible" />
 
-        <!-- Audio Badge -->
-        <TextView
-            android:id="@+id/audio_badge"
+        <LinearLayout
+            android:id="@+id/quality_container"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_badge"
-            android:backgroundTint="#FF7043"
-            android:drawableStart="@drawable/ic_audio_track"
-            android:drawablePadding="4dp"
-            android:drawableTint="#FFFFFF"
-            android:gravity="center"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="4dp"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:visibility="gone"
-            tools:text="Dolby 5.1"
-            tools:visibility="visible" />
-    </LinearLayout>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+            <TextView
+                android:id="@+id/video_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_badge"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="1080p"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:drawableStart="@drawable/ic_video_quality"
+                android:drawablePadding="4dp"
+                android:drawableTint="#FFFFFF"
+                android:gravity="center_vertical"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/audio_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="5.1"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:drawableStart="@drawable/ic_audio_track"
+                android:drawablePadding="4dp"
+                android:drawableTint="#FFFFFF"
+                android:gravity="center_vertical"
+                android:visibility="gone" />
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

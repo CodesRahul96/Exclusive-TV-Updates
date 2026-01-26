@@ -136,11 +136,15 @@ class WebFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         // Initialize WakeLock
+        // Initialize WakeLock & Keep Screen On
         try {
+            playerView.keepScreenOn = true
+            activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-            wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ExclusiveTV:PlayerWakeLock")
+            wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ExclusiveTV:WakeLock")
         } catch (e: Exception) {
-            Log.e(TAG, "WakeLock Init Failed", e)
+            Log.e(TAG, "Failed to init WakeLock", e)
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -1067,7 +1071,6 @@ class WebFragment : Fragment() {
 
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                 super.onVideoSizeChanged(videoSize)
-                val width = videoSize.width
                 val height = videoSize.height
                 val label = when {
                     height >= 2160 -> "4K"
@@ -1076,9 +1079,7 @@ class WebFragment : Fragment() {
                     height >= 720 -> "HD"
                     else -> "SD"
                 }
-                // Construct detailed string: "1920x1080 | FHD"
-                val qualityString = "${width}x${height} | $label"
-                tvModel?.setVideoQuality(qualityString)
+                tvModel?.setVideoQuality(label)
             }
 
 
@@ -1091,47 +1092,28 @@ class WebFragment : Fragment() {
                     setAudioTrack(targetIndex)
                 }
 
-                var audioText = ""
+                var audioLabel = ""
                 for (group in tracks.groups) {
                     if (group.type == C.TRACK_TYPE_AUDIO && group.isSelected) {
                         val format = group.getTrackFormat(0)
                         val channels = format.channelCount
-                        
-                        // 1. Channel Config
-                        val channelStr = when (channels) {
+                        audioLabel = when (channels) {
                             1 -> "Mono"
                             2 -> "Stereo"
-                            6 -> "5.1"
-                            8 -> "7.1"
+                            6 -> "5.1ch"
+                            8 -> "7.1ch"
                             else -> if (channels > 0) "${channels}ch" else ""
                         }
-                        
-                        // 2. Codec (Simplified)
-                        val mime = format.sampleMimeType ?: ""
-                        val codec = when {
-                            mime.contains("ac-3") || mime.contains("ac3") -> "AC3"
-                            mime.contains("eac3") || mime.contains("e-ac-3") -> "E-AC3"
-                            mime.contains("avc") -> "AAC"
-                            mime.contains("mp4") -> "AAC"
-                            mime.contains("mpeg") -> "MP3"
-                            mime.contains("opus") -> "Opus"
-                            mime.contains("flac") -> "FLAC"
-                            else -> "AAC" // Fallback/Default for most streams
+                        // Optional: Check for Dolby
+                        val mime = format.sampleMimeType
+                        if (mime == androidx.media3.common.MimeTypes.AUDIO_AC3 || 
+                            mime == androidx.media3.common.MimeTypes.AUDIO_E_AC3) {
+                            audioLabel = if (audioLabel.isNotEmpty()) "$audioLabel Dolby" else "Dolby"
                         }
-
-                        audioText = if (channelStr.isNotEmpty()) "$codec | $channelStr" else codec
-                        
-                        // Special case for Dolby
-                        if (mime.contains("ac3") || mime.contains("eac3")) {
-                             // E.g. "Dolby 5.1"
-                             val surround = if(channels >= 6) " 5.1" else ""
-                             audioText = "Dolby$surround"
-                        }
-                        
-                        break
+                        break // Found the selected audio track
                     }
                 }
-                tvModel?.setAudioQuality(audioText)
+                tvModel?.setAudioQuality(audioLabel)
             }
         })
 
@@ -1141,8 +1123,7 @@ class WebFragment : Fragment() {
         
         // Force HLS MIME type for .php streams or any link detected as M3U8 but not ending in standard extensions
         if (videoUrl.contains(".m3u8", ignoreCase = true) || 
-            (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")) &&
-             !videoUrl.contains("extension=ts", ignoreCase = true) && !videoUrl.contains(".ts", ignoreCase = true))) {
+            (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))) {
              Log.i(TAG, "Forcing MIME type to HLS (APPLICATION_M3U8) for: $videoUrl")
              mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
         }
@@ -1156,9 +1137,7 @@ class WebFragment : Fragment() {
                 val sessionId = exoPlayer?.audioSessionId ?: 0
                 if (sessionId != 0) {
                      loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(sessionId)
-                     // Target Gain: 800mB = 8dB. 
-                     // This boosts the signal to make it perceived "louder" and more consistent.
-                     loudnessEnhancer?.setTargetGain(800) 
+                     loudnessEnhancer?.setTargetGain(800) // 800mB gain (approx +8dB boost for low volume)
                      loudnessEnhancer?.enabled = true
                      Log.i(TAG, "Audio Stabilizer Enabled (Session: $sessionId)")
                 }
@@ -1310,7 +1289,6 @@ class WebFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         releasePlayer()
-        _binding = null
     }
 
     companion object {
@@ -1366,35 +1344,41 @@ class WebFragment : Fragment() {
         val bufferMode = SP.bufferMode
         Log.i(TAG, "Initializing Player with Buffer Mode: $bufferMode")
         
-        // Optimize for RAM constrained devices (TV Boxes)
-        // Previous 60s buffer was too large (heap churn).
-        
+        // Mode 0: Default (Balanced)
+        // Mode 1: Max Stability (Large buffer for slow net)
+        // Mode 2: Low Latency (Small buffer for fast net)
+
         val minBuffer = when (bufferMode) {
-            1 -> 20000 // 20s
-            2 -> 3000  // 3s
-            else -> 10000 // 10s (was 15000)
+            1 -> 30000 // 30s
+            2 -> 5000  // 5s
+            else -> 15000 // Increased default to 15s to prevent pausing
         }
 
         val maxBuffer = when (bufferMode) {
-            1 -> 40000 // 40s
-            2 -> 10000 // 10s
-            else -> 20000 // 20s (was 60000 - too big!)
+            1 -> 60000 // 60s
+            2 -> 15000 // 15s
+            else -> 60000 // Increased default to 60s
         }
 
         val startBuffer = when (bufferMode) {
-            1 -> 3000 // 3s
-            2 -> 1000 // 1s
-            else -> 1500 // 1.5s - Balanced start (was 2500, caused long wait)
+            1 -> 2500 // 2.5s start
+            2 -> 1000 // 1s start
+            else -> 1000 // Optimized default: 1s start (was 2000)
         }
         
+        // Calculate target buffer size (e.g., 20MB) to prevent OOM on low-end devices
+        val targetBufferBytes = 20 * 1024 * 1024 
+
         return DefaultLoadControl.Builder()
+            .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
                 minBuffer,
                 maxBuffer,
                 startBuffer,
-                2500 // 2.5s rebuffer - Quick recovery (was 4000)
+                2500 
             )
-            .setPrioritizeTimeOverSizeThresholds(true)
+            .setTargetBufferBytes(targetBufferBytes)
+            .setPrioritizeTimeOverSizeThresholds(false) // Enforce size limit to prevent OOM
             .build()
     }
 }

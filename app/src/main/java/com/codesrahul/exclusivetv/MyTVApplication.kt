@@ -117,4 +117,12 @@ class MyTVApplication : MultiDexApplication() {
         super.attachBaseContext(base)
         MultiDex.install(this)
     }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // Release memory when system is under pressure
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
+            com.codesrahul.exclusivetv.EPGManager.clear()
+        }
+    }
 }

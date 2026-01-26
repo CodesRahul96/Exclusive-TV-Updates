@@ -168,17 +168,27 @@ object Utils {
     fun isTmallDevice() = Build.MANUFACTURER.equals("Tmall", ignoreCase = true)
 
     fun formatUrl(url: String): String {
-        // Check if the URL already starts with "http://" or "https://"
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-            return url
+        var formatted = url.trim()
+
+        // 1. GitHub Blob -> Raw Conversion
+        // Example: https://github.com/user/repo/blob/main/playlist.m3u -> https://raw.githubusercontent.com/user/repo/main/playlist.m3u
+        if (formatted.contains("github.com") && formatted.contains("/blob/")) {
+            formatted = formatted
+                .replace("github.com", "raw.githubusercontent.com")
+                .replace("/blob/", "/")
         }
 
-        // Check if the URL starts with "//"
-        if (url.startsWith("//")) {
-            return "http://$url"
+        // 2. Protocol Check
+        if (formatted.startsWith("http://") || formatted.startsWith("https://")) {
+            return formatted
         }
 
-        // Otherwise, add "http://" to the beginning of the URL
-        return "http://${url}"
+        // 3. Schema-less check
+        if (formatted.startsWith("//")) {
+            return "http:$formatted"
+        }
+
+        // 4. Default to http
+        return "http://$formatted"
     }
 }

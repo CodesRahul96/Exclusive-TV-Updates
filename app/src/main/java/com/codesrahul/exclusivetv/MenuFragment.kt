@@ -68,9 +68,9 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         listAdapter.setItemListener(this)
         listAdapter.attachItemTouchHelper()
 
-        binding.btnGridGuide.setOnClickListener {
-            (activity as? MainActivity)?.showEpgGrid()
-        }
+//        binding.btnGridGuide.setOnClickListener {
+//            (activity as? MainActivity)?.showEpgGrid()
+//        }
 
         binding.root.setOnClickListener {
             hideSelf()
@@ -108,7 +108,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     private fun hideSelf() {
         requireActivity().supportFragmentManager.beginTransaction()
             .hide(this)
-            .commit()
+            .commitAllowingStateLoss()
     }
 
     private val updateHandler = android.os.Handler(android.os.Looper.getMainLooper())

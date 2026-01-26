@@ -101,7 +101,9 @@ object EPGManager {
                 if (tagName == "channel") {
                     val id = parser.getAttributeValue(null, "id")
                     if (id != null) {
-                        channelIdToNames.getOrPut(id) { mutableSetOf() }.add(id)
+                        // Intern ID to save memory for repeated refs
+                        val internedId = id.intern()
+                        channelIdToNames.getOrPut(internedId) { mutableSetOf() }.add(internedId)
                         var depth = 1
                         while (depth > 0) {
                             val nextType = try { parser.next() } catch (e: Exception) { break }
@@ -111,7 +113,7 @@ object EPGManager {
                                 depth++
                                 if (parser.name == "display-name") {
                                     val dn = try { parser.nextText() } catch (e: Exception) { "" }
-                                    if (dn.isNotEmpty()) channelIdToNames[id]?.add(dn)
+                                    if (dn.isNotEmpty()) channelIdToNames[internedId]?.add(dn)
                                     depth-- // nextText consumes END_TAG
                                 }
                             } else if (nextType == XmlPullParser.END_TAG) {
@@ -120,7 +122,7 @@ object EPGManager {
                         }
                     }
                 } else if (tagName == "programme") {
-                    val channelId = parser.getAttributeValue(null, "channel")
+                    val channelId = parser.getAttributeValue(null, "channel")?.intern()
                     val start = parseDate(parser.getAttributeValue(null, "start"))
                     val stop = parseDate(parser.getAttributeValue(null, "stop"))
                     
@@ -132,11 +134,19 @@ object EPGManager {
                             if (innerEvent == XmlPullParser.END_TAG && parser.name == "programme") break
                             if (innerEvent == XmlPullParser.START_TAG) {
                                 if (parser.name == "title") title = try { parser.nextText() } catch (e: Exception) { "" }
-                                else if (parser.name == "desc") desc = try { parser.nextText() } catch (e: Exception) { "" }
+                                else if (parser.name == "desc") {
+                                    desc = try { parser.nextText() } catch (e: Exception) { "" }
+                                    // Truncate description to save memory (max 300 chars)
+                                    if (desc.length > 300) {
+                                        desc = desc.substring(0, 300) + "..."
+                                    }
+                                }
                             }
                             innerEvent = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
                         }
                         if (title.isNotEmpty()) {
+                            // Intern title if it's a common program? Maybe too aggressive.
+                            // But definitely add to list.
                             rawPrograms.add(channelId to EPGProgram(title, start, stop, desc))
                         }
                     }
@@ -144,6 +154,10 @@ object EPGManager {
             }
             eventType = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
         }
+        
+        // Clear old data before allocating new maps to help GC?
+        // Actually we are inside a function, epgData is global.
+        // Let's create new maps and replace atomically.
         
         val newData = mutableMapOf<String, MutableList<EPGProgram>>()
         val newDataById = mutableMapOf<String, MutableList<EPGProgram>>() // Populate ID map
@@ -223,5 +237,14 @@ object EPGManager {
             try { return format.parse(clean)?.time } catch (e: Exception) {}
         }
         return null
+    }
+
+    fun clear() {
+        epgData.clear()
+        epgDataById.clear()
+        normalizedCache.clear()
+        // Force GC hint? No, leave it to runtime.
+        epgStatus = "Cleared"
+        Log.i(TAG, "EPG Memory Cleared")
     }
 }

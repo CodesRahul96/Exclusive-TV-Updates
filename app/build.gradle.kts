@@ -17,6 +17,7 @@ android {
         applicationId = "com.codesrahul.exclusivetv"
         minSdk = 21
         targetSdk = 34
+        multiDexEnabled = true
         versionCode = if (project.hasProperty("versionCodeOverride")) {
             project.property("versionCodeOverride").toString().toInt()
         } else {
