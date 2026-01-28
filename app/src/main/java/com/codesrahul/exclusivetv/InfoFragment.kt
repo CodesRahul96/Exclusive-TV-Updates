@@ -100,6 +100,14 @@ class InfoFragment : Fragment() {
             }
         }
 
+        // Fix for symbols/icons not showing correctly on API < 23 (XML tint ignored)
+        binding.videoBadge.compoundDrawablesRelative.forEach { 
+            it?.setTint(android.graphics.Color.WHITE) 
+        }
+        binding.audioBadge.compoundDrawablesRelative.forEach { 
+            it?.setTint(android.graphics.Color.WHITE) 
+        }
+
         tvViewModel.videoQuality.observe(viewLifecycleOwner) {
             if (!it.isNullOrEmpty()) {
                 binding.videoBadge.text = it
