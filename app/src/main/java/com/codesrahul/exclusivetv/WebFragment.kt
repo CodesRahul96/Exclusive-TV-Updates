@@ -910,48 +910,65 @@ class WebFragment : Fragment() {
         
         Log.i(TAG, "ExoPlayer Headers: $requestHeaders (User-Agent: $userAgent)")
 
+        // HOTSTAR FIX: Ensure Origin/Referer are set if missing
+        if (url.contains("hotstar.com") || url.contains("livetv.hotstar")) {
+            if (!requestHeaders.containsKey("Origin")) {
+                requestHeaders["Origin"] = "https://www.hotstar.com"
+                Log.i(TAG, "Injected Hotstar Origin")
+            }
+            if (!requestHeaders.containsKey("Referer")) {
+                 requestHeaders["Referer"] = "https://www.hotstar.com/"
+            }
+            // Update factory with new headers
+            httpDataSourceFactory.setDefaultRequestProperties(requestHeaders)
+        }
+
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext())
             .setDataSourceFactory(httpDataSourceFactory)
 
-        // DRM Configuration
-        if (drmConfig != null) {
-            val schemeUuid = when (drmConfig.scheme.lowercase()) {
-                "widevine" -> C.WIDEVINE_UUID
-                "playready" -> C.PLAYREADY_UUID
-                "clearkey" -> C.CLEARKEY_UUID
-                else -> C.WIDEVINE_UUID // Default
+        // FIX: Configure DRM Provider to use our Cookie-enabled DataSource
+        mediaSourceFactory.setDrmSessionManagerProvider { mediaItem ->
+            // Use local variable capture for configuration
+            val schemeUuid = if (drmConfig != null) {
+                when (drmConfig?.scheme?.lowercase()) {
+                    "widevine" -> C.WIDEVINE_UUID
+                    "playready" -> C.PLAYREADY_UUID
+                    "clearkey" -> C.CLEARKEY_UUID
+                    else -> C.WIDEVINE_UUID
+                }
+            } else {
+                 val drmConf = mediaItem.localConfiguration?.drmConfiguration
+                 if (drmConf != null) drmConf.scheme else C.WIDEVINE_UUID
             }
 
-            val drmSessionManager = if (schemeUuid == C.CLEARKEY_UUID && !drmConfig.license.startsWith("http")) {
-                // Local ClearKey (Identity/JSON)
-                Log.d(TAG, "Configuring Local ClearKey DRM")
-                val drmCallback = LocalMediaDrmCallback(createClearKeyJson(drmConfig.license).toByteArray())
-                DefaultDrmSessionManager.Builder()
+            // Prepare DataSource for DRM (reuse main factory with headers)
+            val drmDataSourceFactory = DefaultHttpDataSource.Factory()
+                .setUserAgent(userAgent)
+                .setAllowCrossProtocolRedirects(true)
+                .setDefaultRequestProperties(requestHeaders)
+
+            // Logic for License URL
+            val licenseUrl = drmConfig?.license ?: mediaItem.localConfiguration?.drmConfiguration?.licenseUri?.toString() ?: ""
+
+            if (schemeUuid == C.CLEARKEY_UUID && !licenseUrl.startsWith("http")) {
+                 // Local ClearKey
+                 val drmCallback = LocalMediaDrmCallback(createClearKeyJson(licenseUrl).toByteArray())
+                 DefaultDrmSessionManager.Builder()
                     .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
                     .build(drmCallback)
-             } else {
-                // Remote License (Widevine/PlayReady or Remote ClearKey)
-                Log.d(TAG, "Configuring Remote DRM: ${drmConfig.scheme} @ ${drmConfig.license}")
-                
-                // Use a DataSourceFactory that mirrors the media request settings (UA, headers)
-                val drmDataSourceFactory = DefaultHttpDataSource.Factory()
-                    .setUserAgent(userAgent)
-                    .setAllowCrossProtocolRedirects(true)
-                    .setDefaultRequestProperties(requestHeaders)
-                
-                val drmCallback = HttpMediaDrmCallback(drmConfig.license, drmDataSourceFactory)
-                
-                // Pass headers to license request if needed (e.g. Auth tokens)
-                for ((k, v) in requestHeaders) {
-                    drmCallback.setKeyRequestProperty(k, v)
-                }
-                
-                DefaultDrmSessionManager.Builder()
+            } else {
+                 // Remote License (Widevine/PlayReady or Remote ClearKey)
+                 val drmCallback = HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory)
+                 
+                 // Pass specific headers if manually set (already in requestHeaders, but ensure)
+                 for ((k, v) in requestHeaders) {
+                     drmCallback.setKeyRequestProperty(k, v)
+                 }
+
+                 DefaultDrmSessionManager.Builder()
                     .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
                     .build(drmCallback)
             }
-            
-            mediaSourceFactory.setDrmSessionManagerProvider { drmSessionManager }
         }
         
         builder.setMediaSourceFactory(mediaSourceFactory)
