@@ -221,6 +221,27 @@ object KodiParser {
                                  }
                              }
                          }
+
+                         // STAR NETWORK FIX: Generate name from URL if #EXTINF is missing
+                         if (currentName.isEmpty()) {
+                             val namePart = when {
+                                 finalUrl.contains("/mp1/") -> finalUrl.substringAfter("/mp1/").substringBefore("/")
+                                 finalUrl.contains("/mp2/") -> finalUrl.substringAfter("/mp2/").substringBefore("/")
+                                 finalUrl.contains("/live/") -> {
+                                     val segment = finalUrl.substringAfter("/live/").substringAfter("/")
+                                     if (segment.contains("/")) segment.substringBefore("/") else segment.substringBefore(".")
+                                 }
+                                 else -> ""
+                             }
+                             
+                             if (namePart.isNotEmpty()) {
+                                 currentName = namePart.replace("-", " ").capitalizeWords()
+                                 if (currentGroup.isEmpty()) currentGroup = "Star Live"
+                             } else {
+                                 currentName = "Channel ${channelCount + 1}"
+                             }
+                         }
+
                          currentUris.add(finalUrl)
                     }
                 }
@@ -273,5 +294,9 @@ object KodiParser {
             catchupSource = catchupSource,
             child = listOf()
         )
+    }
+
+    private fun String.capitalizeWords(): String = split(" ").joinToString(" ") { 
+        it.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(java.util.Locale.getDefault()) else char.toString() } 
     }
 }

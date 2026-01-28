@@ -586,26 +586,17 @@ object TVList {
              if (plsList.isNotEmpty()) return plsList
         }
 
-        // 2.5 Star / Hotstar Playlist (Custom Parser)
-        if (decryptedContent.contains("EXTHTTP") && !decryptedContent.contains("#KODIPROP")) {
-             try {
-                 val starList = StarParser.parse(decryptedContent)
-                 if (starList.isNotEmpty()) return starList
-             } catch (e: Exception) {
-                 Log.e(TAG, "StarParser error", e)
-             }
-        }
-
-        // 3. M3U / M3U8 / Kodi Playlist
+        // 3. M3U / M3U8 / Kodi / Star Playlist
         if (decryptedContent.contains("#EXTINF") || decryptedContent.contains("#EXTM3U") || 
             decryptedContent.contains("EXTHTTP") || decryptedContent.contains("#KODIPROP")) {
             
-            if (decryptedContent.contains("#KODIPROP")) {
+            // Route to KodiParser if it contains Kodi properties or Star headers
+            if (decryptedContent.contains("#KODIPROP") || decryptedContent.contains("EXTHTTP")) {
                 try {
                     val kodiList = KodiParser.parse(decryptedContent)
                     if (kodiList.isNotEmpty()) return kodiList
                 } catch (e: Exception) {
-                    Log.e(TAG, "Kodi parse error", e)
+                    Log.e(TAG, "Kodi/Star parse error", e)
                 }
             }
 
