@@ -23,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import com.codesrahul.exclusivetv.SecurityUtil
 import com.codesrahul.exclusivetv.StringObfuscator
@@ -65,6 +67,7 @@ object TVList {
     val groupModel = TVGroupModel()
     
     private var isUpdating = false
+    private val refreshLock = kotlinx.coroutines.sync.Mutex()
 
     private val _position = MutableLiveData<Int>()
     val position: LiveData<Int>
@@ -147,10 +150,18 @@ object TVList {
                 Log.i(TAG, "Config mismatch. Resetting to default.")
                 SP.config = DEFAULT_CONFIG_URL
             }
-            // Update last version
+            // FIX: Only clear cache on MAJOR version changes (not every debug build)
             if (currentVersion != SP.lastVersion) {
+                 val lastMajorVersion = SP.lastVersion / 1000000
+                 val currentMajorVersion = currentVersion / 1000000
+                 
+                 if (currentMajorVersion != lastMajorVersion) {
+                     Log.i(TAG, "Major version change detected ($lastMajorVersion -> $currentMajorVersion), clearing cache")
+                     File(appDirectory, FILE_NAME).delete()
+                 } else {
+                     Log.i(TAG, "Minor version change detected, keeping cache")
+                 }
                  SP.lastVersion = currentVersion
-                 File(appDirectory, FILE_NAME).delete() // Clear old cache
             }
 
             // Early version check removed to prevent startup crash (moved to MainActivity)
@@ -186,6 +197,10 @@ object TVList {
             try {
                 // Ensure initialization is finished before updating
                 initDeferred.await()
+                
+                Log.i(TAG, "=== UPDATE STARTED ===")
+                Log.i(TAG, "Current channel count: ${if (::list.isInitialized) list.size else 0}")
+                Log.i(TAG, "Silent mode: $silent")
                 
                 isUpdating = true
                 
@@ -345,9 +360,36 @@ object TVList {
                      }
                 } else {
                     withContext(Dispatchers.Main) {
-                        if (!silent) "Failed to update channels".showToast()
+                        if (!silent) "Failed to update channels, using cached data".showToast()
                         _importProgress.value = 0
                         _importStatus.value = "Failed"
+                        
+                        // FIX: Try to load from cache if no channels in memory
+                        if (list.isEmpty()) {
+                            val file = File(ctx.filesDir, FILE_NAME)
+                            if (file.exists()) {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    try {
+                                        Log.i(TAG, "Loading channels from cache file")
+                                        val cached = parseUniversalFile(file)
+                                        if (cached.isNotEmpty()) {
+                                            list = cached
+                                            withContext(Dispatchers.Main) {
+                                                refreshModels(ctx)
+                                                "Loaded ${cached.size} channels from cache".showToast()
+                                            }
+                                            Log.i(TAG, "Successfully loaded ${cached.size} channels from cache")
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Failed to load cache", e)
+                                    }
+                                }
+                            } else {
+                                Log.w(TAG, "No cache file available")
+                            }
+                        } else {
+                            Log.i(TAG, "Keeping existing ${list.size} channels in memory")
+                        }
                     }
                 }
                 
@@ -360,6 +402,8 @@ object TVList {
                 }
             } finally {
                 isUpdating = false
+                Log.i(TAG, "=== UPDATE COMPLETED ===")
+                Log.i(TAG, "Final channel count: ${if (::list.isInitialized) list.size else 0}")
             }
         }
     }
@@ -735,10 +779,12 @@ object TVList {
 
     fun refreshModels(ctx: Context) {
         CoroutineScope(Dispatchers.IO).launch {
+            // FIX: Add synchronization to prevent race conditions
+            refreshLock.withLock {
             try {
                 if (!::list.isInitialized || list.isEmpty()) {
                     Log.w(TAG, "Cannot refresh models: list not initialized or empty")
-                    return@launch
+                    return@withLock
                 }
 
                 // Preparation Phase (Background)
@@ -875,6 +921,7 @@ object TVList {
             } catch (e: Exception) {
                 Log.e(TAG, "Error in refreshModels", e)
             }
+            } // End of refreshLock.withLock
         }
     }
 
@@ -941,26 +988,30 @@ object TVList {
         return try {
             val requestBuilder = Request.Builder().url(url)
             headers?.forEach { (k, v) -> requestBuilder.addHeader(k, v) }
-            // HEAD request is faster
-            val request = requestBuilder.head().build() 
             
-            // Use a short timeout client for checking
+            // FIX: Increased timeout and added GET fallback for servers that don't support HEAD
             val checkClient = UnsafeHttpClient.client.newBuilder()
-                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                .callTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
+                .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                 .build()
-
+            
+            // Try HEAD request first (faster)
+            var request = requestBuilder.head().build()
             checkClient.newCall(request).execute().use { response ->
-                if (response.isSuccessful) return true
+                if (response.isSuccessful) {
+                    return true
+                } else if (response.code() == 405) {
+                    // Method not allowed, try GET instead
+                    Log.d(TAG, "HEAD not supported for $url, trying GET")
+                    request = requestBuilder.get().build()
+                    checkClient.newCall(request).execute().use { getResponse ->
+                        return getResponse.isSuccessful
+                    }
+                }
+                return false
             }
-            // If HEAD fails (some servers reject it), try fast GET with limits? 
-            // Often 405 Method Not Allowed implies existence, but let's stick to success.
-            // 403/401 might mean alive but auth needed. We strictly check playability?
-            // If 403, we should probably keep it (user might have auth). 
-            // But usually we just check reachability. 
-            false 
         } catch (e: Exception) {
+            Log.w(TAG, "Check failed for $url: ${e.message}")
             false
         }
     }
