@@ -77,6 +77,12 @@ class CategoryOptionsDialogFragment : DialogFragment() {
         val tvUiUtils = TvUiUtils(requireContext())
         tvUiUtils.initSounds(R.raw.focus, R.raw.click)
 
+        // Symbols Fix: Explicitly tint icons for compatibility with Android API < 23
+        val iconColor = android.graphics.Color.parseColor("#80FFFFFF")
+        tvUiUtils.tintTextViewDrawable(btnMove, iconColor)
+        tvUiUtils.tintTextViewDrawable(btnRename, iconColor)
+        tvUiUtils.tintTextViewDrawable(btnHide, iconColor)
+
         val buttons = listOf(btnMove, btnRename, btnHide, btnCancel)
         buttons.forEach { btn ->
             btn.setOnFocusChangeListener { v, hasFocus ->

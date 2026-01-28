@@ -86,6 +86,15 @@ class SettingFragment : Fragment() {
         val displayMac = if (mac.isEmpty() || mac == "02:00:00:00:00:00") "Unavailable" else mac
         
         binding.deviceInfo.text = "IP: $displayIp  |  MAC: $displayMac"
+
+        // Symbols Fix: Explicitly tint icons for compatibility with Android API < 23
+        val iconColorSecondary = Color.parseColor("#80FFFFFF")
+        tvUiUtils?.tintTextViewDrawable(binding.confirmConfig, Color.WHITE)
+        tvUiUtils?.tintTextViewDrawable(binding.managePlaylists, iconColorSecondary)
+        tvUiUtils?.tintTextViewDrawable(binding.manageCategories, iconColorSecondary)
+        tvUiUtils?.tintTextViewDrawable(binding.clear, iconColorSecondary)
+        tvUiUtils?.tintTextViewDrawable(binding.checkVersion, iconColorSecondary)
+        tvUiUtils?.tintTextViewDrawable(binding.copyrightInfo, iconColorSecondary)
     }
 
     private fun syncStatusUI() {

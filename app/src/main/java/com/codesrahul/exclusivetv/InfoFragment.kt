@@ -20,6 +20,7 @@ import com.codesrahul.exclusivetv.models.TVModel
 import com.codesrahul.exclusivetv.models.EPGProgram
 import com.codesrahul.exclusivetv.models.TVList
 import com.codesrahul.exclusivetv.models.TVListModel
+import com.codesrahul.exclusivetv.ui.TvUiUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,6 +28,7 @@ import java.util.*
 class InfoFragment : Fragment() {
     private var _binding: InfoBinding? = null
     private val binding get() = _binding!!
+    private var tvUiUtils: TvUiUtils? = null
 
     private val handler = Handler()
     private val delay: Long = 5000
@@ -55,6 +57,7 @@ class InfoFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         _binding = InfoBinding.inflate(inflater, container, false)
+        tvUiUtils = TvUiUtils(requireContext())
 
         val application = requireActivity().applicationContext as MyTVApplication
 
@@ -101,12 +104,8 @@ class InfoFragment : Fragment() {
         }
 
         // Fix for symbols/icons not showing correctly on API < 23 (XML tint ignored)
-        binding.videoBadge.compoundDrawablesRelative.forEach { 
-            it?.setTint(android.graphics.Color.WHITE) 
-        }
-        binding.audioBadge.compoundDrawablesRelative.forEach { 
-            it?.setTint(android.graphics.Color.WHITE) 
-        }
+        tvUiUtils?.tintTextViewDrawable(binding.videoBadge, android.graphics.Color.WHITE)
+        tvUiUtils?.tintTextViewDrawable(binding.audioBadge, android.graphics.Color.WHITE)
 
         tvViewModel.videoQuality.observe(viewLifecycleOwner) {
             if (!it.isNullOrEmpty()) {

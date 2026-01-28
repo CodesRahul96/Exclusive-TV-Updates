@@ -96,6 +96,21 @@ class TvUiUtils(private val context: Context) {
     }
 
     // ------------------------------------------------------------
+    // ACCESSIBILITY / UI FIXES
+    // ------------------------------------------------------------
+    fun tintTextViewDrawable(textView: android.widget.TextView, color: Int) {
+        val drawables = textView.compoundDrawables
+        for (drawable in drawables) {
+            drawable?.let {
+                androidx.core.graphics.drawable.DrawableCompat.setTint(
+                    androidx.core.graphics.drawable.DrawableCompat.wrap(it).mutate(),
+                    color
+                )
+            }
+        }
+    }
+
+    // ------------------------------------------------------------
     // UTIL
     // ------------------------------------------------------------
     private fun dpToPx(context: Context, dp: Float): Float {
