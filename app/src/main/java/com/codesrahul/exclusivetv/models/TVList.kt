@@ -207,8 +207,11 @@ object TVList {
                 // Get all URLs to fetch
                 val urls = SP.playlistUrls.toMutableSet()
                 
-                // Ensure default API is always present if preferred, or at least not auto-removed
-                if (!urls.contains(DEFAULT_CONFIG_URL)) {
+                // Ensure default API is only added if no other sources are present
+                if (urls.size > 1 && urls.contains(DEFAULT_CONFIG_URL)) {
+                    urls.remove(DEFAULT_CONFIG_URL)
+                    Log.i(TAG, "Custom sources found. Disabling Main API.")
+                } else if (urls.isEmpty()) {
                     urls.add(DEFAULT_CONFIG_URL)
                 }
                 
