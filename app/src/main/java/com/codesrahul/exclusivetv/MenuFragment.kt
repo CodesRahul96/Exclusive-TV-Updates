@@ -139,8 +139,8 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
             updateHandler.removeCallbacks(updateRunnable)
             
             pendingTvListModel = tvListModel
-            // Debounce update by 250ms
-            updateHandler.postDelayed(updateRunnable, 250)
+            // Debounce update by 150ms
+            updateHandler.postDelayed(updateRunnable, 150)
         }
     }
 

@@ -223,6 +223,9 @@ class GroupAdapter(
             binding.title.setTextColor(if (hasFocus) colorWhite else colorBlur)
 
             // Animate root view scale, elevation, and background change
+            // IMPORTANT: Cancel pending animations to avoid glitches
+            binding.root.animate().cancel()
+            
             binding.root.animate()
                 .scaleX(if (hasFocus) 1.0f else 0.95f)
                 .scaleY(if (hasFocus) 1.0f else 0.95f)

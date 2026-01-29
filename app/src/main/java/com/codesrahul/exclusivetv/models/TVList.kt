@@ -221,10 +221,11 @@ object TVList {
                 }
 
                 withContext(Dispatchers.Main) {
-                    if (size() == 0 && !silent) {
+                    if (size() == 0) {
                          _importProgress.value = 5
                          _importStatus.value = "Initializing..."
-                    } else if (!silent) {
+                    } else {
+                         // Even for background updates, show the non-intrusive top-right card
                          _importProgress.value = 0
                          _importStatus.value = "Checking for updates..."
                     }
@@ -242,7 +243,7 @@ object TVList {
                     async {
                         try {
                            withContext(Dispatchers.Main) {
-                               if (!silent) _importStatus.value = "Loading source ${index + 1}/$totalSources..."
+                               _importStatus.value = "Loading source ${index + 1}/$totalSources..."
                            }
                            Log.i(TAG, "Fetching playlist: $url")
                            val request = Request.Builder().url(url).get().build()
@@ -291,7 +292,7 @@ object TVList {
                             completedSources++
                             val progress = ((completedSources.toFloat() / totalSources) * 80).toInt() + 10
                             withContext(Dispatchers.Main) {
-                                if (!silent) _importProgress.value = progress
+                                _importProgress.value = progress
                             }
                         }
                     }
@@ -308,7 +309,7 @@ object TVList {
                 
                 if (successCount > 0) {
                      withContext(Dispatchers.Main) {
-                          if (!silent) _importStatus.value = "Finalizing..."
+                          _importStatus.value = "Finalizing..."
                      }
                      
                      // UNROLL: If one channel contains multiple sources, show them all in the list
@@ -326,6 +327,11 @@ object TVList {
                              finalChannels.add(tv)
                          }
                      }
+                     
+                     // FIX: Re-index securely
+                     finalChannels.forEachIndexed { index, tv ->
+                         tv.id = index
+                     }
 
                      val gson = com.google.gson.Gson()
                      val jsonStr = gson.toJson(finalChannels)
@@ -339,12 +345,17 @@ object TVList {
                      withContext(Dispatchers.Main) {
                          refreshModels(MyTVApplication.getInstance())
                          checkChannelsInBackground()
-                         // Only show toast if using custom config (not default)
+                         
+                         refreshModels(MyTVApplication.getInstance())
+                         checkChannelsInBackground()
+                         
+                         // Always update status to "Complete" to trigger card completion animation
+                         _importProgress.value = 100
+                         _importStatus.value = "Complete"
+                         
                          if (!silent && SP.config != DEFAULT_CONFIG_URL) {
                              "Channels updated from $successCount sources".showToast()
                          }
-                         _importProgress.value = 100
-                         _importStatus.value = "Complete"
                          
                          // OPTIMIZATION: Defer EPG loading to avoid blocking startup
                          // Load EPG 10 seconds after channels are ready
