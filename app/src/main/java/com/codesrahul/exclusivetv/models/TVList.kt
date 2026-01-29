@@ -620,7 +620,7 @@ object TVList {
         return emptyList()
     }
 
-    private fun parseUniversalFile(file: File): List<TV> {
+    private suspend fun parseUniversalFile(file: File): List<TV> = withContext(Dispatchers.IO) {
         // 1. Peek Header
         val peekBuilder = StringBuilder()
         try {
@@ -645,7 +645,7 @@ object TVList {
                 
                 if (result.isNotEmpty()) {
                      Log.i(TAG, "Parsed ${result.size} channels from JSON File")
-                     return result
+                     return@withContext expandNestedPlaylists(result)
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "JSON File Parse failed, falling back")
@@ -657,9 +657,9 @@ object TVList {
              try {
                  Log.i(TAG, "Parsing Gua file: $file")
                  val content = file.readText()
-                 val decoded = Gua().decode(content)
+                  val decoded = Gua().decode(content)
                  val result = parseUniversal(decoded)
-                 if (result.isNotEmpty()) return result
+                 if (result.isNotEmpty()) return@withContext expandNestedPlaylists(result)
              } catch (e: Exception) {
                  Log.e(TAG, "Gua File Parse failed", e)
              }
@@ -673,7 +673,7 @@ object TVList {
             
             if (result.isNotEmpty()) {
                  Log.i(TAG, "Parsed ${result.size} channels from M3U File")
-                 return result
+                 return@withContext expandNestedPlaylists(result)
             }
         } catch (e: Exception) {
              Log.w(TAG, "M3U File Parse failed", e)
@@ -685,12 +685,12 @@ object TVList {
             val reader = file.bufferedReader()
             val result = parseUniversal(reader)
             reader.close()
-            if (result.isNotEmpty()) return result
+            if (result.isNotEmpty()) return@withContext expandNestedPlaylists(result)
         } catch (e: Exception) {
             Log.e(TAG, "Legacy Parse failed", e)
         }
         
-        return emptyList()
+        return@withContext emptyList<TV>()
     }
 
     private suspend fun expandNestedPlaylists(originalList: List<TV>, depth: Int = 0): List<TV> = withContext(Dispatchers.IO) {
@@ -749,12 +749,15 @@ object TVList {
                                 val sourceStream = responseBody.byteStream()
                                 val reader = java.io.BufferedReader(java.io.InputStreamReader(sourceStream, Charsets.UTF_8))
                                 
-                                val subChannels = parseUniversal(reader)
-                                if (subChannels.isNotEmpty()) {
-                                    Log.i(TAG, "Expanded ${tv.name}: ${subChannels.size} channels")
-                                    subChannels.forEach { child ->
-                                        if (child.group.isBlank()) child.group = tv.group
-                                    }
+                                 val subChannels = parseUniversal(reader)
+                                 if (subChannels.isNotEmpty()) {
+                                     Log.i(TAG, "Expanded ${tv.name}: ${subChannels.size} channels")
+                                     subChannels.forEach { child ->
+                                         // Inherit group from parent name if child has no group or is "Uncategorized"
+                                         if (child.group.isBlank() || child.group == "Uncategorized") {
+                                             child.group = tv.name
+                                         }
+                                     }
                                     // RECURSIVE: Expand if these items are also playlists
                                     expandNestedPlaylists(subChannels, depth + 1)
                                 } else {
