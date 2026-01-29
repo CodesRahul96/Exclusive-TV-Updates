@@ -95,6 +95,12 @@ class ListAdapter(
     }
 
     fun update(newTvListModel: TVListModel) {
+        // OPTIMIZATION: If it's the same model instance, we can check if it actually changed
+        // but for now, the simplest is to check if it's the exact same reference and we already have it.
+        if (this.tvListModel === newTvListModel && internalList === newTvListModel.getTVModelList()) {
+            return
+        }
+
         updateJob?.cancel()
         val oldList = internalList
         // Take snapshot on MAIN thread to avoid race conditions with model updates

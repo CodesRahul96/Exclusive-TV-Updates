@@ -4,17 +4,18 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 
-class TVListModel(private val name: String, private val originalName: String, private val index: Int) : ViewModel() {
-    fun getName(): String {
-        return name
-    }
+class TVListModel(name: String, originalName: String, index: Int) : ViewModel() {
+    private var _name: String = name
+    private val _originalName: String = originalName
+    private var _index: Int = index
 
-    fun getOriginalName(): String {
-        return originalName
-    }
+    fun getName(): String = _name
+    fun getOriginalName(): String = _originalName
+    fun getIndex(): Int = _index
 
-    fun getIndex(): Int {
-        return index
+    fun updateMetadata(newName: String, newIndex: Int) {
+        _name = newName
+        _index = newIndex
     }
 
     fun getTVModelList(): List<TVModel> {

@@ -863,29 +863,32 @@ object TVList {
 
                 // Update Phase (Main Thread)
                 withContext(Dispatchers.Main) {
-                    // Optimization: If current groupModel size matches and names match, 
-                    // we might avoid a full clear, but clear() is safer for now due to 
-                    // complex list indexing. However, we ensure listModel is updated atomically.
-                    
-                    val listModelSnapshot = listModel // Keep old for reference
+                    val listModelSnapshot = listModel 
                     val listModelNew: MutableList<TVModel> = mutableListOf()
                     val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
                     
                     var id = 0
-                    val newGroups = mutableListOf<TVListModel>()
+                    val currentGroupModels = groupModel.getTVListModelList()
+                    val oldGroupMap = currentGroupModels.associateBy { it.getOriginalName() }
                     
-                    // Keep "Special" groups logic from clear() but more explicit
-                    newGroups.add(groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0))
-                    newGroups.add(groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1))
+                    val newGroupList = mutableListOf<TVListModel>()
+                    
+                    // 1. Preserve/Create Special Groups (Collection, All)
+                    val collectionGroup = groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0)
+                    val allChannelsGroup = groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1)
+                    newGroupList.add(collectionGroup)
+                    newGroupList.add(allChannelsGroup)
 
+                    // 2. Process Prepared Groups
                     for ((itemOriginalName, itemDisplayName, idx, channels) in preparedGroups) {
-                        val tvListModel = TVListModel(itemDisplayName, itemOriginalName, idx)
+                        // REUSE existing TVListModel if found, otherwise create new
+                        val tvListModel = oldGroupMap[itemOriginalName] ?: TVListModel(itemDisplayName, itemOriginalName, idx)
+                        // Update metadata in case display name or index changed
+                        tvListModel.updateMetadata(itemDisplayName, idx)
+                        
                         val groupChannels = mutableListOf<TVModel>()
-
                         for (tv in channels) {
                              tv.id = id
-                             // Reuse existing TVModel if URL match to preserve observers if possible
-                             // (Though TVModel usually gets recreated on full refresh)
                              val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
                              tvModel.groupIndex = idx
                              tvModel.listIndex = groupChannels.size
@@ -896,16 +899,16 @@ object TVList {
                         }
 
                         tvListModel.setTVListModel(groupChannels)
-                        newGroups.add(tvListModel)
+                        newGroupList.add(tvListModel)
                     }
 
                     listModel = listModelNew
-                    groupModel.setTVListModelList(newGroups)
+                    groupModel.setTVListModelList(newGroupList)
                     
                     // All channels
-                    groupModel.getTVListModel(1)?.setTVListModel(listModel)
+                    allChannelsGroup.setTVListModel(listModel)
 
-                    Log.i(TAG, "groupModel refreshed: ${groupModel.size()} groups")
+                    Log.i(TAG, "groupModel refreshed: ${groupModel.size()} groups (Reused models where possible)")
                     groupModel.setChange()
                     
                     if (SP.epgEnabled) {

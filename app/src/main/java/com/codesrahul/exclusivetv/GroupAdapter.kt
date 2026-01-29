@@ -99,6 +99,11 @@ class GroupAdapter(
                     }
                 } else {
                     visible = true
+                    // FIX: Also update position on first focus to ensure initial list loads
+                    val currentPos = viewHolder.bindingAdapterPosition
+                    if (currentPos != RecyclerView.NO_POSITION) {
+                        tvGroupModel.setPosition(currentPos)
+                    }
                 }
             } else {
                 viewHolder.focus(false)

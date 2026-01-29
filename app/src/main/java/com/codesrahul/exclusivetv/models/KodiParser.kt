@@ -122,18 +122,48 @@ object KodiParser {
 
                 } else if (trimmedLine.startsWith("#EXTHTTP:") || trimmedLine.startsWith("# EXTHTTP:")) {
                     // Flush previous if URIs exist (meaning this tag belongs to a NEW block)
-                    saveAndReset()
+                    if (currentUris.isNotEmpty()) saveAndReset()
                     
                     // Parse JSON headers
                     val jsonStr = trimmedLine.substringAfter("HTTP:").trim()
                     try {
                         val jsonObject = org.json.JSONObject(jsonStr)
-                        val keys = jsonObject.keys()
-                        while (keys.hasNext()) {
-                            val key = keys.next()
-                            val value = jsonObject.getString(key)
-                            currentHeaders[key] = value
+                        
+                        // Handle standard headers object if exists
+                        val headers = jsonObject.optJSONObject("headers")
+                        if (headers != null) {
+                            val keys = headers.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                val value = headers.getString(key)
+                                currentHeaders[key] = value
+                            }
+                        } else {
+                            // Flat JSON headers (some providers use "cookie" directly at root)
+                            val keys = jsonObject.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                if (key != "payload" && key != "headers") {
+                                    val value = jsonObject.getString(key)
+                                    // Normalize key
+                                    val normKey = when(key.lowercase()) {
+                                        "cookie" -> "Cookie"
+                                        "user-agent" -> "User-Agent"
+                                        "referer" -> "Referer"
+                                        "origin" -> "Origin"
+                                        else -> key
+                                    }
+                                    currentHeaders[normKey] = value
+                                }
+                            }
                         }
+
+                        // Special Payload for Star license_key if provided in JSON
+                        val payload = jsonObject.optJSONObject("payload")
+                        if (payload != null && payload.has("license_key")) {
+                            currentDrmLicense = payload.getString("license_key")
+                        }
+                        
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to parse EXTHTTP JSON: $jsonStr", e)
                     }

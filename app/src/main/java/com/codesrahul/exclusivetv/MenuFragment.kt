@@ -98,7 +98,11 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         }
 
         if (tvListModel != null) {
-            (binding.list.adapter as ListAdapter).update(tvListModel)
+            val listAdapter = (binding.list.adapter as ListAdapter)
+            listAdapter.update(tvListModel)
+            
+            // Toggle empty state
+            binding.emptyState.visibility = if (tvListModel.size() == 0) View.VISIBLE else View.GONE
         }
     }
 
@@ -128,6 +132,9 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
     override fun onItemFocusChange(tvListModel: TVListModel, hasFocus: Boolean) {
         if (hasFocus) {
+            // Toggle empty state immediately for the focused category
+            binding.emptyState.visibility = if (tvListModel.size() == 0) View.VISIBLE else View.GONE
+
             // Cancel any pending update
             updateHandler.removeCallbacks(updateRunnable)
             

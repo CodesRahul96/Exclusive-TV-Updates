@@ -910,15 +910,25 @@ class WebFragment : Fragment() {
         
         Log.i(TAG, "ExoPlayer Headers: $requestHeaders (User-Agent: $userAgent)")
 
-        // HOTSTAR FIX: Ensure Origin/Referer are set if missing
+        // HOTSTAR FIX: Ensure Origin/Referer are set correctly
         if (url.contains("hotstar.com") || url.contains("livetv.hotstar")) {
-            if (!requestHeaders.containsKey("Origin")) {
-                requestHeaders["Origin"] = "https://www.hotstar.com"
-                Log.i(TAG, "Injected Hotstar Origin")
+            // Clean up Origin (Hotstar is picky about trailing slashes)
+            requestHeaders["Origin"] = "https://www.hotstar.com"
+            requestHeaders["Referer"] = "https://www.hotstar.com/"
+            
+            // Sync with WebView CookieManager if needed (Best Effort)
+            try {
+                val cookieManager = android.webkit.CookieManager.getInstance()
+                val cookies = cookieManager.getCookie(url)
+                if (!cookies.isNullOrEmpty() && !requestHeaders.containsKey("Cookie")) {
+                    requestHeaders["Cookie"] = cookies
+                    Log.i(TAG, "Synced cookies from WebView for Hotstar")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to sync cookies", e)
             }
-            if (!requestHeaders.containsKey("Referer")) {
-                 requestHeaders["Referer"] = "https://www.hotstar.com/"
-            }
+
+            Log.i(TAG, "Injected/Cleaned Hotstar headers")
             // Update factory with new headers
             httpDataSourceFactory.setDefaultRequestProperties(requestHeaders)
         }

@@ -102,4 +102,19 @@
         android:elevation="8dp">
     </androidx.recyclerview.widget.RecyclerView>
 
+    <TextView
+        android:id="@+id/empty_state"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="No channels in this category"
+        android:textColor="@color/description_blur"
+        android:textSize="18sp"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="@id/list"
+        app:layout_constraintEnd_toEndOf="@id/list"
+        app:layout_constraintTop_toTopOf="@id/list"
+        app:layout_constraintBottom_toBottomOf="@id/list"
+        android:elevation="10dp" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
