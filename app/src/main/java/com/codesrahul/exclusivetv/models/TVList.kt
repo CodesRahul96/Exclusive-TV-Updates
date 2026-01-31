@@ -194,9 +194,12 @@ object TVList {
 
     fun update(ctx: Context, silent: Boolean = false) {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
                 // Ensure initialization is finished before updating
                 initDeferred.await()
+                
+                val showUi = !silent || size() == 0
+                
+                try {
                 
                 Log.i(TAG, "=== UPDATE STARTED ===")
                 Log.i(TAG, "Current channel count: ${if (::list.isInitialized) list.size else 0}")
@@ -204,28 +207,28 @@ object TVList {
                 
                 isUpdating = true
                 
-                // Get all URLs to fetch
+                // Ensure all URLs from preferences are included
                 val urls = SP.playlistUrls.toMutableSet()
                 
-                // Ensure default API is only added if no other sources are present
-                if (urls.size > 1 && urls.contains(DEFAULT_CONFIG_URL)) {
-                    urls.remove(DEFAULT_CONFIG_URL)
-                    Log.i(TAG, "Custom sources found. Disabling Main API.")
-                } else if (urls.isEmpty()) {
+                // ALWAYS ensure default API is included if it's not already there
+                if (!urls.contains(DEFAULT_CONFIG_URL)) {
                     urls.add(DEFAULT_CONFIG_URL)
+                    Log.i(TAG, "Main API added to fetch list.")
                 }
+                
+                Log.i(TAG, "Fetching from ${urls.size} sources: $urls")
                 
                 // If the set changed (e.g. first run), save it
                 if (urls.size != SP.playlistUrls.size) {
                     urls.forEach { SP.addPlaylistUrl(it) }
                 }
 
+                
                 withContext(Dispatchers.Main) {
-                    if (size() == 0) {
+                    if (showUi) {
                          _importProgress.value = 5
                          _importStatus.value = "Initializing..."
                     } else {
-                         // Even for background updates, show the non-intrusive top-right card
                          _importProgress.value = 0
                          _importStatus.value = "Checking for updates..."
                     }
@@ -242,39 +245,45 @@ object TVList {
                 val deferredResults = urls.mapIndexed { index, url ->
                     async {
                         try {
-                           withContext(Dispatchers.Main) {
-                               _importStatus.value = "Loading source ${index + 1}/$totalSources..."
+                           if (showUi) {
+                               withContext(Dispatchers.Main) {
+                                   _importStatus.value = "Connecting: Source ${index + 1}/$totalSources"
+                               }
                            }
                            Log.i(TAG, "Fetching playlist: $url")
                            val request = Request.Builder().url(url).get().build()
                            
                            client.newCall(request).execute().use { response ->
                                if (response.isSuccessful) {
+                                   withContext(Dispatchers.Main) {
+                                       if (!silent || size() == 0) {
+                                           _importStatus.value = "Downloading: Source ${index + 1}/$totalSources"
+                                       }
+                                   }
                                    val responseBody = response.body()
                                    if (responseBody != null) {
                                        val tempFile = File(ctx.cacheDir, "playlist_source_$index.tmp")
                                        try {
-                                           // Download stream to file
                                            responseBody.byteStream().use { input ->
                                                tempFile.outputStream().use { output ->
                                                    input.copyTo(output)
                                                }
                                            }
                                            
-                                           // Process the file
-                                           val channels = parseUniversalFile(tempFile)
-                                           
-                                           if (channels.isNotEmpty()) {
-                                                Log.i(TAG, "Source $index parsed successfully: ${channels.size} channels")
+                                           if (showUi) {
+                                               withContext(Dispatchers.Main) {
+                                                   _importStatus.value = "Parsing: Source ${index + 1}/$totalSources"
+                                               }
                                            }
                                            
+                                           val channels = parseUniversalFile(tempFile)
+                                           Log.i(TAG, "Source $index parsed successfully: ${channels.size} channels")
                                            return@async channels
                                            
                                        } catch (e: Exception) {
                                            Log.e(TAG, "Error processing file source $index", e)
                                            return@async emptyList<TV>()
                                        } finally {
-                                           // Cleanup
                                            tempFile.delete() 
                                        }
                                    } else {
@@ -290,9 +299,11 @@ object TVList {
                            emptyList<TV>()
                         } finally {
                             completedSources++
-                            val progress = ((completedSources.toFloat() / totalSources) * 80).toInt() + 10
-                            withContext(Dispatchers.Main) {
-                                _importProgress.value = progress
+                            if (showUi) {
+                                val progress = ((completedSources.toFloat() / totalSources) * 80).toInt() + 10
+                                withContext(Dispatchers.Main) {
+                                    _importProgress.value = progress
+                                }
                             }
                         }
                     }
@@ -307,10 +318,12 @@ object TVList {
                     }
                 }
                 
-                if (successCount > 0) {
-                     withContext(Dispatchers.Main) {
-                          _importStatus.value = "Finalizing..."
-                     }
+                 if (successCount > 0) {
+                      if (showUi) {
+                           withContext(Dispatchers.Main) {
+                                _importStatus.value = "Finalizing..."
+                           }
+                      }
                      
                      // UNROLL: If one channel contains multiple sources, show them all in the list
                      val finalChannels = mutableListOf<TV>()
@@ -342,16 +355,15 @@ object TVList {
                      // Update memory
                      list = finalChannels
                      
-                     withContext(Dispatchers.Main) {
-                         refreshModels(MyTVApplication.getInstance())
-                         checkChannelsInBackground()
-                         
-                         refreshModels(MyTVApplication.getInstance())
-                         checkChannelsInBackground()
-                         
-                         // Always update status to "Complete" to trigger card completion animation
-                         _importProgress.value = 100
-                         _importStatus.value = "Complete"
+                      withContext(Dispatchers.Main) {
+                          refreshModels(ctx)
+                          checkChannelsInBackground()
+                          
+                          // Always update status to "Complete" only if we were showing progress
+                          if (showUi) {
+                             _importProgress.value = 100
+                             _importStatus.value = "Complete"
+                          }
                          
                          if (!silent && SP.config != DEFAULT_CONFIG_URL) {
                              "Channels updated from $successCount sources".showToast()
@@ -363,7 +375,9 @@ object TVList {
                              android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                                  EPGManager.init(ctx)
                                  CoroutineScope(Dispatchers.IO).launch {
-                                     withContext(Dispatchers.Main) { _importStatus.value = "Updating Guide..." } 
+                                      withContext(Dispatchers.Main) { 
+                                          if (showUi) _importStatus.value = "Updating Guide..." 
+                                      } 
                                      EPGManager.fetchEPG(force = false)
                                      withContext(Dispatchers.Main) {
                                          listModel.forEach { it.updateEPG() }
@@ -416,6 +430,17 @@ object TVList {
                 }
             } finally {
                 isUpdating = false
+                if (showUi) {
+                    withContext(Dispatchers.Main) {
+                        // If we didn't reach "Complete" or "Failed" yet, clear it after a delay
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            if (!isUpdating) {
+                                _importStatus.value = ""
+                                _importProgress.value = 0
+                            }
+                        }, 5000)
+                    }
+                }
                 Log.i(TAG, "=== UPDATE COMPLETED ===")
                 Log.i(TAG, "Final channel count: ${if (::list.isInitialized) list.size else 0}")
             }
@@ -706,8 +731,9 @@ object TVList {
 
     private suspend fun expandNestedPlaylists(originalList: List<TV>, depth: Int = 0): List<TV> = withContext(Dispatchers.IO) {
         // Prevent infinite recursion or excessive depth
-        if (depth > 3) {
-            Log.w(TAG, "Max playlist expansion depth reached, skipping nested content")
+        // Optimization: Don't auto-expand large lists. Big lists are usually final channel lists.
+        if (depth > 1 || originalList.size > 20) {
+            if (originalList.size > 20) Log.i(TAG, "Skipping auto-expansion for large list (${originalList.size} items)")
             return@withContext originalList
         }
 
@@ -727,10 +753,17 @@ object TVList {
                            url.contains(".ts", ignoreCase = true) ||
                            url.contains(".mkv", ignoreCase = true) ||
                            url.contains(".mp4", ignoreCase = true) ||
+                           url.contains(".m3u", ignoreCase = true) || // If it has .m3u, it's a playlist we WANT to expand, but wait...
                            url.startsWith("rtsp://", ignoreCase = true) ||
                            url.startsWith("rtmp://", ignoreCase = true) ||
                            url.contains("/manifest", ignoreCase = true) ||
-                           url.contains("playlist.m3u8", ignoreCase = true)
+                           url.contains("playlist.m3u8", ignoreCase = true) ||
+                           url.contains("stream/", ignoreCase = true) ||
+                           url.contains("/live/", ignoreCase = true) ||
+                           url.contains("/play/", ignoreCase = true) ||
+                           url.contains("token=", ignoreCase = true) ||
+                           url.contains("key=", ignoreCase = true) ||
+                           url.contains("?", ignoreCase = true) // Query params usually imply dynamic streams
 
             // If it has children already, it's a group, don't expand
             if (tv.child.isNotEmpty()) {
@@ -750,8 +783,13 @@ object TVList {
                         
                         val request = requestBuilder.build()
                          
-                        // Execute blocking call inside IO async block
-                        client.newCall(request).execute().use { response ->
+                        // Execute blocking call with shorter timeout for nested expansion
+                        val expansionClient = client.newBuilder()
+                            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                            .build()
+                        
+                        expansionClient.newCall(request).execute().use { response ->
                             // FIX: Use streaming instead of .string() to avoid OOM
                             val responseBody = response.body()
                             if (response.isSuccessful && responseBody != null) {

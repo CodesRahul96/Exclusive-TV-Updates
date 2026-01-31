@@ -147,7 +147,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     implementation("io.github.lizongying:gua64:1.4.5")
-
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 
     implementation("com.google.zxing:core:3.5.3")
