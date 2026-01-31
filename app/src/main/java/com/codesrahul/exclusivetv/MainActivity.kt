@@ -214,7 +214,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .show(loadingFragment)
                 .hide(timeFragment)
                 .hide(webFragment)
-                .commitNow()
+                .commit()
         } else {
              // restore fragments
              val fragments = supportFragmentManager.fragments
@@ -430,7 +430,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                  if (importProgressFragment.isHidden) {
                      supportFragmentManager.beginTransaction()
                          .show(importProgressFragment)
-                         .commitNowAllowingStateLoss()
+                         .commitAllowingStateLoss()
                  }
                 
                  importProgressFragment.setProgress(progress)
@@ -441,7 +441,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                           if (!importProgressFragment.isHidden) {
                               supportFragmentManager.beginTransaction()
                                   .hide(importProgressFragment)
-                                  .commitNowAllowingStateLoss()
+                                  .commitAllowingStateLoss()
                               importProgressFragment.setProgress(0) // Reset
                           }
                       }, 2000)
@@ -450,7 +450,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                  if (!importProgressFragment.isHidden) {
                      supportFragmentManager.beginTransaction()
                          .hide(importProgressFragment)
-                         .commitNowAllowingStateLoss()
+                         .commitAllowingStateLoss()
                  }
                  importProgressFragment.setProgress(0)
             }
@@ -777,7 +777,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         supportFragmentManager.beginTransaction()
             .show(fragment)
-            .commitNow()
+            .commit()
 
         when (fragment) {
             menuFragment -> {
@@ -804,7 +804,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         supportFragmentManager.beginTransaction()
             .hide(fragment)
-            .commitNowAllowingStateLoss()
+            .commitAllowingStateLoss()
     }
 
     fun menuActive() {
@@ -842,7 +842,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val hideTrackSelection = Runnable {
         if (!isFinishing && !supportFragmentManager.isStateSaved) {
             if (!trackSelectionFragment.isHidden) {
-                supportFragmentManager.beginTransaction().hide(trackSelectionFragment).commitNow()
+                supportFragmentManager.beginTransaction().hide(trackSelectionFragment).commitAllowingStateLoss()
             }
         }
     }
@@ -1054,7 +1054,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         
         supportFragmentManager.beginTransaction()
             .show(trackSelectionFragment)
-            .commitNow()
+            .commit()
         trackSelectionActive()
     }
 
@@ -1062,7 +1062,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (trackSelectionFragment.isHidden) return
         supportFragmentManager.beginTransaction()
             .hide(trackSelectionFragment)
-            .commitNow()
+            .commitAllowingStateLoss()
     }
 
     private fun showErrorFragment(msg: String) {
@@ -1073,7 +1073,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         supportFragmentManager.beginTransaction()
             .show(errorFragment)
-            .commitNow()
+            .commit()
     }
 
     private fun hideErrorFragment() {
@@ -1084,7 +1084,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         supportFragmentManager.beginTransaction()
             .hide(errorFragment)
-            .commitNow()
+            .commit()
     }
 
     fun onKey(keyCode: Int, event: KeyEvent?): Boolean {

@@ -79,14 +79,16 @@ class GroupAdapter(
         view.tag = position
 
         if (!defaultFocused && position == defaultFocus) {
-            view.requestFocus()
+            view.post {
+                view.requestFocus()
+            }
             defaultFocused = true
         }
 
         val onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
-            if (viewHolder.bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                 listener?.onItemFocusChange(tvListModel, hasFocus)
-            }
+            if (viewHolder.bindingAdapterPosition == RecyclerView.NO_POSITION) return@OnFocusChangeListener
+            
+            listener?.onItemFocusChange(tvListModel, hasFocus)
 
             if (hasFocus) {
                 viewHolder.focus(true)
@@ -444,6 +446,9 @@ class GroupAdapter(
 
         val currentOrder = getCurrentCategoryOrder()
         val index = position - 2
+        
+        // Cancel any pending updates to avoid race conditions with DiffUtil
+        updateJob?.cancel()
 
         if (index > 0) {
             val currentList = tvGroupModel.getTVListModelList().toMutableList()
@@ -475,6 +480,9 @@ class GroupAdapter(
 
         val currentOrder = getCurrentCategoryOrder()
         val index = position - 2
+
+        // Cancel any pending updates to avoid race conditions with DiffUtil
+        updateJob?.cancel()
 
         if (index < currentOrder.size - 1) {
             val currentList = tvGroupModel.getTVListModelList().toMutableList()
