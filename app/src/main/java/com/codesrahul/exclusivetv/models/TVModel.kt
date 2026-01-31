@@ -23,7 +23,7 @@ class TVModel(var tv: TV) : ViewModel() {
         get() = _errInfo
 
     fun setErrInfo(info: String) {
-        _errInfo.value = info
+        _errInfo.postValue(info)
     }
 
     private var _program = MutableLiveData<MutableList<Program>>()

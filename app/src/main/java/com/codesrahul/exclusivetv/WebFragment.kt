@@ -1096,6 +1096,19 @@ class WebFragment : Fragment() {
                  }
             }
 
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                super.onIsPlayingChanged(isPlaying)
+                if (isPlaying) {
+                    tvModel?.setErrInfo("")
+                }
+            }
+
+            override fun onRenderedFirstFrame() {
+                super.onRenderedFirstFrame()
+                Log.i(TAG, "First frame rendered - clearing loader")
+                tvModel?.setErrInfo("")
+            }
+
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                 super.onVideoSizeChanged(videoSize)
                 val height = videoSize.height
