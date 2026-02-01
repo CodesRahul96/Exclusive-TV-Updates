@@ -318,10 +318,15 @@ class ListAdapter(
             }
         }
 
+        private val likeObserver = androidx.lifecycle.Observer<Boolean> { liked ->
+            like(liked)
+        }
+
         fun bind(tvModel: TVModel, movingPosition: Int, position: Int) {
             // Unsubscribe from old model
             if (isAttached) {
                 currentTvModel?.currentProgram?.removeObserver(epgObserver)
+                currentTvModel?.like?.removeObserver(likeObserver)
             }
             
             currentTvModel = tvModel
@@ -329,6 +334,7 @@ class ListAdapter(
             // Subscribe to new model if attached
             if (isAttached) {
                 currentTvModel?.currentProgram?.observeForever(epgObserver)
+                currentTvModel?.like?.observeForever(likeObserver)
             }
             
             bindTitle(tvModel.tv.title)
@@ -353,12 +359,14 @@ class ListAdapter(
             isAttached = true
             SP.setOnSharedPreferenceChangeListener(this)
             currentTvModel?.currentProgram?.observeForever(epgObserver)
+            currentTvModel?.like?.observeForever(likeObserver)
         }
 
         fun detachListeners() {
             isAttached = false
             SP.removeOnSharedPreferenceChangeListener(this)
             currentTvModel?.currentProgram?.removeObserver(epgObserver)
+            currentTvModel?.like?.removeObserver(likeObserver)
         }
 
         fun bindTitle(text: String) {
@@ -537,7 +545,11 @@ class ListAdapter(
 
             override fun onFavoriteSelected() {
                  tvModel.setLike(!(tvModel.like.value ?: false))
-                 // Refresh handled by like observer in ViewHolder
+                 // Refresh handled by like observer in ViewHolder (UI only)
+                 // Trigger full model refresh to update "My Collection" group
+                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                     com.codesrahul.exclusivetv.models.TVList.refreshModels(context)
+                 }
             }
 
             override fun onCancelSelected() {

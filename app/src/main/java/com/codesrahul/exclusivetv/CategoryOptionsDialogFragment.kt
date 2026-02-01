@@ -103,4 +103,12 @@ class CategoryOptionsDialogFragment : DialogFragment() {
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         return dialog
     }
+
+    override fun onResume() {
+        super.onResume()
+        dialog?.window?.setLayout(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT
+        )
+    }
 }
