@@ -171,6 +171,11 @@ class ListAdapter(
             val currentLike = tvModel.like.value ?: false
             tvModel.setLike(!currentLike)
             viewHolder.like(!currentLike)
+            
+            // Trigger refresh to update "My Collection" group
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                com.codesrahul.exclusivetv.models.TVList.refreshModels(MyTVApplication.getInstance())
+            }
         }
 
         if (!defaultFocused && position == defaultFocus) {
