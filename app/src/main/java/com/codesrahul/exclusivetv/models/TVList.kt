@@ -876,9 +876,7 @@ object TVList {
                     val collectionGroup = groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0)
                     val allChannelsGroup = groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1)
                     
-                    // --- POPULATE "My Collection" ---
-                    val likedChannels = listModelNew.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
-                    collectionGroup.setTVListModel(likedChannels)
+
                     
                     newGroupList.add(collectionGroup)
                     newGroupList.add(allChannelsGroup)
@@ -905,6 +903,10 @@ object TVList {
                         tvListModel.setTVListModel(groupChannels)
                         newGroupList.add(tvListModel)
                     }
+
+                    // --- POPULATE "My Collection" (Correctly placed after list is built) ---
+                    val likedChannels = listModelNew.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
+                    collectionGroup.setTVListModel(likedChannels)
 
                     listModel = listModelNew
                     groupModel.setTVListModelList(newGroupList)
