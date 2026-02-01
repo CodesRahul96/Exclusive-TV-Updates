@@ -421,8 +421,8 @@ class ListAdapter(
 
             // Animate scale and elevation
             binding.root.animate()
-                .scaleX(if (hasFocus) 1.05f else 0.95f)
-                .scaleY(if (hasFocus) 1.05f else 1.0f)
+                .scaleX(if (hasFocus) 1.0f else 1.0f)
+                .scaleY(if (hasFocus) 1.0f else 1.0f)
                 .setDuration(200)
                 .start()
 
