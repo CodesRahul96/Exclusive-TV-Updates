@@ -1,15 +1,16 @@
 package com.codesrahul.exclusivetv.requests
 
 import com.codesrahul.exclusivetv.SecureHttpClient
+import com.codesrahul.exclusivetv.UnsafeHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 class ApiClient {
-    private var okHttpClient = SecureHttpClient.client
+    private var okHttpClient = UnsafeHttpClient.client
 
     val releaseService: ReleaseService by lazy {
         Retrofit.Builder()
-            .baseUrl(HOST)
+            .baseUrl(ensureTrailingSlash(HOST))
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build().create(ReleaseService::class.java)
@@ -17,7 +18,7 @@ class ApiClient {
 
     val releaseServiceFallback: ReleaseService by lazy {
         Retrofit.Builder()
-            .baseUrl(HOST_FALLBACK)
+            .baseUrl(ensureTrailingSlash(HOST_FALLBACK))
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build().create(ReleaseService::class.java)
@@ -35,6 +36,9 @@ class ApiClient {
         
         val HOST_FALLBACK: String get() = com.codesrahul.exclusivetv.SP.apiHostFallback.takeIf { it.isNotEmpty() } ?: DEFAULT_HOST_FALLBACK
         val DOWNLOAD_HOST_FALLBACK: String get() = com.codesrahul.exclusivetv.SP.apiDownloadHostFallback.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_HOST_FALLBACK
-    }
 
+        private fun ensureTrailingSlash(url: String): String {
+            return if (url.endsWith("/")) url else "$url/"
+        }
+    }
 }
