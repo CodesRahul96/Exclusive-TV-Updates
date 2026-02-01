@@ -19,5 +19,5 @@ This release significantly improves the stability and reliability of the in-app 
 *   **Visual Polish**: Compact buttons and smoother animations.
 
 ## Technical Details
-*   **Version Code**: 16791041
-*   **Build**: Debug
+*   **Version Code**: 16791552
+*   **Build**: Release
