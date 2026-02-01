@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.content.Context
 import android.graphics.Color
@@ -104,7 +104,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
             if (isVpnActive()) {
                 runOnUiThread {
-                    Log.d(TAG, "VPN detected via Callback. Exiting app.")
                     Toast.makeText(this@MainActivity, "VPN detected. Exiting app.", Toast.LENGTH_LONG).show()
                     finishAffinity() // Close all activities
                 }
@@ -128,7 +127,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     @RequiresApi(Build.VERSION_CODES.N)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate started")
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
@@ -274,13 +272,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             override fun onSharedPreferenceChanged(key: String) {
                 if (key == SP.KEY_EPG) {
                     if (SP.epgEnabled) {
-                        Log.i(TAG, "EPG URL changed, forcing refresh")
                         runOnUiThread {
                             com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
                         }
                     }
                 } else if (key == SP.KEY_EPG_ENABLED) {
-                    Log.i(TAG, "EPG toggle changed: ${SP.epgEnabled}")
                     runOnUiThread {
                         if (SP.epgEnabled) {
                             com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
@@ -292,87 +288,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 }
             }
         })
+
+        setupObservers()
     }
 
-    private fun startPeriodicRefresh() {
-        refreshHandler.postDelayed(object : Runnable {
-            override fun run() {
-                if (!SecurityUtil.isAppOutdated) {
-                    Log.i(TAG, "Triggering periodic background refresh")
-                    val config = SP.config
-                    if (!config.isNullOrEmpty() && config.startsWith("http")) {
-                        TVList.update(this@MainActivity, config, silent = true)
-                    }
-                    lastRefreshTime = Utils.getDateTimestamp() * 1000L
-                }
-                refreshHandler.postDelayed(this, refreshInterval)
-            }
-        }, refreshInterval)
-    }
-    
-    private fun setupWatermark() {
-        watermarkContainer = findViewById<FrameLayout>(R.id.watermarkContainer)
-        tvWatermark = findViewById<TextView>(R.id.tvWatermark)
-        
-        updateWatermarkVisibility()
-        updateWatermarkOpacity()
-        updateWatermarkPosition()
-    }
-    
-    private fun startPeriodicUpdateCheck() {
-        updateHandler.postDelayed(object : Runnable {
-            override fun run() {
-                Log.i(TAG, "Triggering periodic update check")
-                updateManager.checkAndUpdate()
-                updateHandler.postDelayed(this, updateCheckInterval)
-            }
-        }, updateCheckInterval)
-    }
-    
-    fun updateWatermarkVisibility() {
-        watermarkContainer.visibility = if (SP.watermarkEnabled) View.VISIBLE else View.GONE
-    }
-    
-    private fun updateWatermarkOpacity() {
-        val opacity = SP.watermarkOpacity
-        tvWatermark.alpha = opacity / 100f
-    }
-    
-    private fun updateWatermarkPosition() {
-        val layoutParams = watermarkContainer.layoutParams as FrameLayout.LayoutParams
-        when (SP.watermarkPosition) {
-            "bottom_right" -> layoutParams.gravity = Gravity.BOTTOM or Gravity.END
-            "bottom_left" -> layoutParams.gravity = Gravity.BOTTOM or Gravity.START
-            "top_right" -> layoutParams.gravity = Gravity.TOP or Gravity.END
-            "top_left" -> layoutParams.gravity = Gravity.TOP or Gravity.START
-        }
-        watermarkContainer.layoutParams = layoutParams
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (!SecurityUtil.isAppOutdated) {
-            // Check for refresh on resume
-            val now = Utils.getDateTimestamp() * 1000L
-            if (now - lastRefreshTime > resumeRefreshThreshold) {
-                Log.i(TAG, "Triggering resume refresh")
-                val config = SP.config
-                if (!config.isNullOrEmpty() && config.startsWith("http")) {
-                    TVList.update(this, config, silent = true)
-                    lastRefreshTime = now
-                }
-            }
-        }
-    }
-
-    override fun onResumeFragments() {
-        super.onResumeFragments()
-
-        Log.i(TAG, "Setting up observers")
+    private fun setupObservers() {
         
         // 1. Observe Group Changes (Initial Load or Update)
         TVList.groupModel.change.observe(this) { _ ->
-            Log.i(TAG, "groupModel changed")
             val currentGroup = TVList.groupModel.tvGroupModel.value
             if (currentGroup != null) {
                 val currentPlayingUrl = webFragment.getCurrentUrl() ?: ""
@@ -389,7 +312,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     // Find the new index of the current URL
                     val newIndex = com.codesrahul.exclusivetv.models.TVList.restorePosition() 
                     if (newIndex != -1 && newIndex != pos) {
-                        Log.i(TAG, "Updating index for current channel from $pos to $newIndex")
                         com.codesrahul.exclusivetv.models.TVList.setPosition(newIndex)
                     }
                 } else {
@@ -406,7 +328,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // 2. Observe Position Changes (Navigation)
         TVList.position.observe(this) { pos ->
             if (pos == null) return@observe
-            Log.i(TAG, "Position changed to $pos")
             val model = TVList.getTVModel(pos)
             if (model != null) {
                 // IMPORTANT: Only trigger playChannel if it's NOT already playing this URL
@@ -416,14 +337,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 if (targetUrl != currentUrl || currentUrl.isEmpty()) {
                     playChannel(model)
                 } else {
-                    Log.i(TAG, "Skipping playChannel - URL already playing")
                 }
             }
         }
-
-        // setupCollectionObservers() moved to groupModel.change observer
-
-        // TODO group position
 
         TVList.importProgress.observe(this) { progress ->
             if (progress > 0) {
@@ -459,15 +375,90 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         TVList.importStatus.observe(this) { status ->
              importProgressFragment.setStatus(status)
         }
+    }
 
-        val port = PortUtil.findFreePort()
-        if (port != -1) {
-            server = SimpleServer(this, port)
+    private fun startPeriodicRefresh() {
+        refreshHandler.postDelayed(object : Runnable {
+            override fun run() {
+                if (!SecurityUtil.isAppOutdated) {
+                    val config = SP.config
+                    if (!config.isNullOrEmpty() && config.startsWith("http")) {
+                        TVList.update(this@MainActivity, config, silent = true)
+                    }
+                    lastRefreshTime = Utils.getDateTimestamp() * 1000L
+                }
+                refreshHandler.postDelayed(this, refreshInterval)
+            }
+        }, refreshInterval)
+    }
+    
+    private fun setupWatermark() {
+        watermarkContainer = findViewById<FrameLayout>(R.id.watermarkContainer)
+        tvWatermark = findViewById<TextView>(R.id.tvWatermark)
+        
+        updateWatermarkVisibility()
+        updateWatermarkOpacity()
+        updateWatermarkPosition()
+    }
+    
+    private fun startPeriodicUpdateCheck() {
+        updateHandler.postDelayed(object : Runnable {
+            override fun run() {
+                updateManager.checkAndUpdate()
+                updateHandler.postDelayed(this, updateCheckInterval)
+            }
+        }, updateCheckInterval)
+    }
+    
+    fun updateWatermarkVisibility() {
+        watermarkContainer.visibility = if (SP.watermarkEnabled) View.VISIBLE else View.GONE
+    }
+    
+    private fun updateWatermarkOpacity() {
+        val opacity = SP.watermarkOpacity
+        tvWatermark.alpha = opacity / 100f
+    }
+    
+    private fun updateWatermarkPosition() {
+        val layoutParams = watermarkContainer.layoutParams as FrameLayout.LayoutParams
+        when (SP.watermarkPosition) {
+            "bottom_right" -> layoutParams.gravity = Gravity.BOTTOM or Gravity.END
+            "bottom_left" -> layoutParams.gravity = Gravity.BOTTOM or Gravity.START
+            "top_right" -> layoutParams.gravity = Gravity.TOP or Gravity.END
+            "top_left" -> layoutParams.gravity = Gravity.TOP or Gravity.START
+        }
+        watermarkContainer.layoutParams = layoutParams
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!SecurityUtil.isAppOutdated) {
+            // Check for refresh on resume
+            val now = Utils.getDateTimestamp() * 1000L
+            if (now - lastRefreshTime > resumeRefreshThreshold) {
+                val config = SP.config
+                if (!config.isNullOrEmpty() && config.startsWith("http")) {
+                    handler.post {
+                        TVList.update(this, config, silent = true)
+                    }
+                    lastRefreshTime = now
+                }
+            }
+        }
+    }
+
+    override fun onResumeFragments() {
+        super.onResumeFragments()
+        
+        if (server == null) {
+            val port = PortUtil.findFreePort()
+            if (port != -1) {
+                server = SimpleServer(this, port)
+            }
         }
     }
 
     fun ready(tag: String) {
-        Log.i(TAG, "ready $tag")
     }
 
     fun setServer(server: String) {
@@ -476,7 +467,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     fun playChannel(tvModel: TVModel) {
-        Log.i(TAG, "playChannel ${tvModel.tv.title}")
         
         // Hide error and show loader
         hideErrorFragment()
@@ -492,18 +482,15 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         tvModel.errInfo.observe(this) { info: String? ->
             if (info != null && tvModel.tv.id == currentPos) {
                 if (info == "" || info == "web ok") {
-                    Log.i(TAG, "${tvModel.tv.title} Playing")
                     hideFragment(loadingFragment)
                     hideErrorFragment()
                     showFragment(webFragment)
                 } else if (info.contains("Retrying", ignoreCase = true) || info.contains("Trying", ignoreCase = true)) {
-                    Log.i(TAG, "${tvModel.tv.title} Status: $info")
                     // Don't hide webFragment during retries, just show the error overlay on top
                     hideFragment(loadingFragment)
                     showFragment(webFragment) 
                     showErrorFragment(info)
                 } else {
-                    Log.i(TAG, "${tvModel.tv.title} Error: $info")
                     hideFragment(loadingFragment)
                     hideFragment(webFragment)
                     showErrorFragment(info)
@@ -533,7 +520,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private fun setupCollectionObservers() {
         if (observersSet) return // Avoid redundant setup
         
-        Log.i(TAG, "Setting up collection observers for ${com.codesrahul.exclusivetv.models.TVList.listModel.size} items")
         observersSet = true
         
         // Take a snapshot to avoid ConcurrentModificationException during iteration
@@ -616,7 +602,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 return true
             }
             
-            // Single tap anywhere → menu
+            // Single tap anywhere â†’ menu
             if (infoFragment.isShowing()) {
                 infoFragment.dismiss()
             }
@@ -706,7 +692,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             val newTvModel = TVList.getTVModel() ?: return
             val currentGroup = newTvModel.groupIndex
             if (currentGroup != prevGroup) {
-                Log.i(TAG, "group change")
                 menuFragment.updateList(currentGroup)
             }
         } else {
@@ -725,7 +710,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         val newTvModel = TVList.getTVModel() ?: return
         val currentGroup = newTvModel.groupIndex
         if (currentGroup != prevGroup) {
-            Log.i(TAG, "group change")
             menuFragment.updateList(currentGroup)
         }
     }
@@ -741,7 +725,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         val newTvModel = TVList.getTVModel() ?: return
         val currentGroup = newTvModel.groupIndex
         if (currentGroup != prevGroup) {
-            Log.i(TAG, "group change")
             menuFragment.updateList(currentGroup)
         }
     }
@@ -759,14 +742,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     fun showOfflineScreen() {
         if (offlineFragment.isHidden) {
             showFragment(offlineFragment)
-            Log.d(TAG, "Offline Screen Shown")
         }
     }
 
     fun hideOfflineScreen() {
         if (!offlineFragment.isHidden) {
             hideFragment(offlineFragment)
-            Log.d(TAG, "Offline Screen Hidden")
             webFragment.refreshPlayback()
         }
     }
@@ -776,9 +757,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             return
         }
 
+        if (supportFragmentManager.isStateSaved) {
+            return
+        }
+
         supportFragmentManager.beginTransaction()
             .show(fragment)
-            .commit()
+            .commitAllowingStateLoss()
 
         when (fragment) {
             menuFragment -> {
@@ -799,7 +784,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun hideFragment(fragment: Fragment) {
-        if (fragment.isHidden) {
+        if (fragment.isHidden || supportFragmentManager.isStateSaved) {
             return
         }
 
@@ -913,15 +898,25 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     fun showEpgGrid() {
-        hideMenuFragment()
-        hideSettingFragment()
-        hideFragment(webFragment) // Prevent focus escape
-        showFragment(epgGridFragment)
+        if (supportFragmentManager.isStateSaved) return
+        
+        supportFragmentManager.beginTransaction()
+            .hide(menuFragment)
+            .hide(settingFragment)
+            .hide(webFragment)
+            .show(epgGridFragment)
+            .commitAllowingStateLoss()
+            
+        showTime()
     }
 
     private fun hideEpgGrid() {
-        hideFragment(epgGridFragment)
-        showFragment(webFragment) // Restore content
+        if (supportFragmentManager.isStateSaved) return
+        
+        supportFragmentManager.beginTransaction()
+            .hide(epgGridFragment)
+            .show(webFragment)
+            .commitAllowingStateLoss()
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
@@ -1015,14 +1010,15 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     fun hideMenuFragment() {
+        if (supportFragmentManager.isStateSaved) return
         supportFragmentManager.beginTransaction()
             .hide(menuFragment)
             .commitAllowingStateLoss()
         showTime()
-        Log.i(TAG, "SP.time ${SP.time}")
     }
 
     private fun hideSettingFragment() {
+        if (supportFragmentManager.isStateSaved) return
         supportFragmentManager.beginTransaction()
             .hide(settingFragment)
             .commitAllowingStateLoss()
@@ -1053,14 +1049,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         })
         
+        if (supportFragmentManager.isStateSaved) return
+        
         supportFragmentManager.beginTransaction()
             .show(trackSelectionFragment)
-            .commit()
+            .commitAllowingStateLoss()
         trackSelectionActive()
     }
 
     private fun hideTrackSelectionFragment() {
-        if (trackSelectionFragment.isHidden) return
+        if (trackSelectionFragment.isHidden || supportFragmentManager.isStateSaved) return
         supportFragmentManager.beginTransaction()
             .hide(trackSelectionFragment)
             .commitAllowingStateLoss()
@@ -1072,9 +1070,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             return
         }
 
+        if (supportFragmentManager.isStateSaved) {
+            return
+        }
+
         supportFragmentManager.beginTransaction()
             .show(errorFragment)
-            .commit()
+            .commitAllowingStateLoss()
     }
 
     private fun hideErrorFragment() {
@@ -1083,13 +1085,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             return
         }
 
+        if (supportFragmentManager.isStateSaved) return
+
         supportFragmentManager.beginTransaction()
             .hide(errorFragment)
-            .commit()
+            .commitAllowingStateLoss()
     }
 
     fun onKey(keyCode: Int, event: KeyEvent?): Boolean {
-        Log.d(TAG, "onKey keyCode $keyCode, repeat ${event?.repeatCount}")
         when (keyCode) {
             KeyEvent.KEYCODE_0 -> {
                 showChannel("0")
@@ -1260,7 +1263,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (android.content.Intent.ACTION_SEARCH == intent.action) {
             val query = intent.getStringExtra(android.app.SearchManager.QUERY)
             if (!query.isNullOrEmpty()) {
-                Log.i(TAG, "Voice Search Query: $query")
                 handleVoiceSearch(query)
             }
         }
@@ -1311,7 +1313,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             override fun run() {
                 val isRooted = RootCheckUtil.isDeviceRooted()
                 if (isRooted && !wasRooted) {
-                    Log.d(TAG, "Root access detected. Exiting app.")
                     Toast.makeText(this@MainActivity, "Rooted device detected. App cannot run.", Toast.LENGTH_LONG).show()
                     finishAffinity()
                 }
@@ -1322,7 +1323,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     override fun onForceUpdate() {
-        Log.i(TAG, "Force update detected. Blocking app usage.")
         SecurityUtil.isAppOutdated = true
         com.codesrahul.exclusivetv.models.TVList.clear()
         

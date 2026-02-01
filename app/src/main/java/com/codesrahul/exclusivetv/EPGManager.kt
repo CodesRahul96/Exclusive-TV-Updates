@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.util.Log
 import android.util.Xml
@@ -74,7 +74,6 @@ object EPGManager {
             }
         } catch (e: Exception) {
             epgStatus = "Error: ${e.message}"
-            Log.e(TAG, "EPG Error", e)
         }
     }
 
@@ -241,6 +240,5 @@ object EPGManager {
         normalizedCache.clear()
         // Force GC hint? No, leave it to runtime.
         epgStatus = "Cleared"
-        Log.i(TAG, "EPG Memory Cleared")
     }
 }

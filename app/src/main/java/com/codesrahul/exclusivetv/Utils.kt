@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.content.res.Resources
 import android.os.Build
@@ -123,14 +123,13 @@ object Utils {
             val currentTimeMillis = getTimestampFromServer()
             between = System.currentTimeMillis() - currentTimeMillis
         } catch (e: Exception) {
-            Log.e("Utils", "Failed to retrieve timestamp from server: ${e.message}")
             // Keep 'between' at current value (default 0) to use system time
         }
     }
 
     /**
-     * 从服务器获取时间戳
-     * @return Long 时间戳
+     * ä»ŽæœåŠ¡å™¨èŽ·å–æ—¶é—´æˆ³
+     * @return Long æ—¶é—´æˆ³
      */
     private suspend fun getTimestampFromServer(): Long {
         return withContext(Dispatchers.IO) {

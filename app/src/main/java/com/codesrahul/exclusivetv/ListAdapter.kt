@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -421,7 +421,7 @@ class ListAdapter(
                 .setDuration(200)
                 .start()
 
-            // Set elevation (not animated—applied directly)
+            // Set elevation (not animatedâ€”applied directly)
             binding.root.elevation = if (hasFocus) 10f else 0f
         }
 
@@ -450,7 +450,6 @@ class ListAdapter(
         }
 
         override fun onSharedPreferenceChanged(key: String) {
-            Log.i(TAG, "$key changed")
             when (key) {
                 SP.KEY_EPG -> {
                     if (SP.epg.isNullOrEmpty()) {

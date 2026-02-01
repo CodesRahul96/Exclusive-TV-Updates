@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.content.Context
 import android.os.Environment
@@ -53,10 +53,8 @@ object CrashLogger {
                 writer.append(logEntry)
             }
             
-            Log.e(TAG, "Crash log saved to: ${logFile.absolutePath}")
             
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save crash log", e)
         }
     }
 }

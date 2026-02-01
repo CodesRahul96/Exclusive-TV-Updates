@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv.models
+﻿package com.codesrahul.exclusivetv.models
 
 import android.content.Context
 import android.net.Uri
@@ -53,7 +53,6 @@ object TVList {
                 File(appDirectory, FILE_NAME).delete()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete secret file", e)
         }
     }
     private const val TAG = "TVList"
@@ -113,14 +112,12 @@ object TVList {
             // OPTIMIZATION: Use streaming parser instead of readText() to avoid OOM
             try {
                 if (file.exists()) {
-                    Log.i(TAG, "Parsing local file stream: $file")
                     val result = parseUniversalFile(file)
                     if (result.isNotEmpty()) {
                         list = result
                         refreshModels(MyTVApplication.getInstance())
                     }
                 } else {
-                    Log.i(TAG, "Parsing default resource stream")
                     context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8).use { reader ->
                          // Use streaming parser for resource
                          val result = parseUniversal(reader)
@@ -131,7 +128,6 @@ object TVList {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "error init parsing", e)
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Failed to read channel configuration", Toast.LENGTH_LONG).show()
                 }
@@ -147,7 +143,6 @@ object TVList {
             val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
             // Force update to new API if different
             if (SP.config != DEFAULT_CONFIG_URL) {
-                Log.i(TAG, "Config mismatch. Resetting to default.")
                 SP.config = DEFAULT_CONFIG_URL
             }
             // FIX: Only clear cache on MAJOR version changes (not every debug build)
@@ -156,10 +151,8 @@ object TVList {
                  val currentMajorVersion = currentVersion / 1000000
                  
                  if (currentMajorVersion != lastMajorVersion) {
-                     Log.i(TAG, "Major version change detected ($lastMajorVersion -> $currentMajorVersion), clearing cache")
                      File(appDirectory, FILE_NAME).delete()
                  } else {
-                     Log.i(TAG, "Minor version change detected, keeping cache")
                  }
                  SP.lastVersion = currentVersion
             }
@@ -179,7 +172,6 @@ object TVList {
                 if (!SecurityUtil.isAppOutdated) {
                     update(context, cfg)
                 } else {
-                    Log.i(TAG, "Skipping channel load - update required")
                 }
             }
             */
@@ -201,9 +193,6 @@ object TVList {
                 
                 try {
                 
-                Log.i(TAG, "=== UPDATE STARTED ===")
-                Log.i(TAG, "Current channel count: ${if (::list.isInitialized) list.size else 0}")
-                Log.i(TAG, "Silent mode: $silent")
                 
                 isUpdating = true
                 
@@ -213,10 +202,8 @@ object TVList {
                 // ALWAYS ensure default API is included if it's not already there
                 if (!urls.contains(DEFAULT_CONFIG_URL)) {
                     urls.add(DEFAULT_CONFIG_URL)
-                    Log.i(TAG, "Main API added to fetch list.")
                 }
                 
-                Log.i(TAG, "Fetching from ${urls.size} sources: $urls")
                 
                 // If the set changed (e.g. first run), save it
                 if (urls.size != SP.playlistUrls.size) {
@@ -250,7 +237,6 @@ object TVList {
                                    _importStatus.value = "Connecting: Source ${index + 1}/$totalSources"
                                }
                            }
-                           Log.i(TAG, "Fetching playlist: $url")
                            val request = Request.Builder().url(url).get().build()
                            
                            client.newCall(request).execute().use { response ->
@@ -277,11 +263,9 @@ object TVList {
                                            }
                                            
                                            val channels = parseUniversalFile(tempFile)
-                                           Log.i(TAG, "Source $index parsed successfully: ${channels.size} channels")
                                            return@async channels
                                            
                                        } catch (e: Exception) {
-                                           Log.e(TAG, "Error processing file source $index", e)
                                            return@async emptyList<TV>()
                                        } finally {
                                            tempFile.delete() 
@@ -290,12 +274,10 @@ object TVList {
                                        return@async emptyList<TV>()
                                    }
                                } else {
-                                   Log.e(TAG, "Failed to fetch $url: ${response.code()}")
                                    return@async emptyList<TV>()
                                }
                            }
                         } catch (e: Exception) {
-                           Log.e(TAG, "Error fetching $url", e)
                            emptyList<TV>()
                         } finally {
                             completedSources++
@@ -398,7 +380,6 @@ object TVList {
                             if (file.exists()) {
                                 CoroutineScope(Dispatchers.IO).launch {
                                     try {
-                                        Log.i(TAG, "Loading channels from cache file")
                                         val cached = parseUniversalFile(file)
                                         if (cached.isNotEmpty()) {
                                             list = cached
@@ -406,23 +387,18 @@ object TVList {
                                                 refreshModels(ctx)
                                                 "Loaded ${cached.size} channels from cache".showToast()
                                             }
-                                            Log.i(TAG, "Successfully loaded ${cached.size} channels from cache")
                                         }
                                     } catch (e: Exception) {
-                                        Log.e(TAG, "Failed to load cache", e)
                                     }
                                 }
                             } else {
-                                Log.w(TAG, "No cache file available")
                             }
                         } else {
-                            Log.i(TAG, "Keeping existing ${list.size} channels in memory")
                         }
                     }
                 }
                 
             } catch (e: Exception) {
-                Log.e(TAG, "Update failed", e)
                 withContext(Dispatchers.Main) {
                      if (!silent) "Update error: ${e.message}".showToast()
                      _importProgress.value = 0
@@ -441,8 +417,6 @@ object TVList {
                         }, 5000)
                     }
                 }
-                Log.i(TAG, "=== UPDATE COMPLETED ===")
-                Log.i(TAG, "Final channel count: ${if (::list.isInitialized) list.size else 0}")
             }
         }
     }
@@ -457,7 +431,6 @@ object TVList {
                 emptyList()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error in parseContentHelper", e)
             emptyList()
         }
     }
@@ -507,7 +480,6 @@ object TVList {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error parsing ParseUri", e)
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Error reading file", Toast.LENGTH_SHORT).show()
                 }
@@ -534,23 +506,18 @@ object TVList {
             }
             
             if (firstChar == '{'.toInt() || firstChar == '['.toInt()) {
-                Log.d(TAG, "Detected JSON format via peek")
                 return GenericJsonParser.parse(pushbackReader)
             } else if (firstChar == '#'.toInt()) {
-                Log.d(TAG, "Detected M3U format via peek")
                 return M3UParser.parse(BufferedReader(pushbackReader))
             } else if (firstChar >= 0x4D00 && firstChar <= 0x4DFF) {
-                Log.d(TAG, "Detected Gua encoded content via peek")
                 // Gua requires full string for decoding. 
                 // We read the rest of the stream into a string.
                 val remaining = BufferedReader(pushbackReader).readText()
                 val decoded = Gua().decode(remaining)
                 return parseUniversal(decoded)
             } else {
-                Log.w(TAG, "Unknown format starting with '${firstChar.toChar()}' (0x${Integer.toHexString(firstChar)})")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error during stream peeking", e)
         }
         
         return emptyList()
@@ -560,7 +527,6 @@ object TVList {
         var string = content.trim()
         val g = Gua()
         if (g.verify(string)) {
-            Log.i(TAG, "Content verified with Gua")
             string = g.decode(string)
         }
         
@@ -612,7 +578,6 @@ object TVList {
                     return allChannels
                 }
             } catch (e: Exception) {
-                Log.d(TAG, "Not a valid JSON, falling back")
             }
         }
 
@@ -632,7 +597,6 @@ object TVList {
                     val kodiList = KodiParser.parse(decryptedContent)
                     if (kodiList.isNotEmpty()) return kodiList
                 } catch (e: Exception) {
-                    Log.e(TAG, "Kodi/Star parse error", e)
                 }
             }
 
@@ -641,7 +605,6 @@ object TVList {
                 val m3uList = M3UParser.parse(java.io.BufferedReader(java.io.StringReader(decryptedContent)))
                 if (m3uList.isNotEmpty()) return m3uList
             } catch (e: Exception) {
-                Log.e(TAG, "M3U parse error", e)
             }
         }
 
@@ -666,7 +629,6 @@ object TVList {
                 if (read > 0) peekBuilder.append(buffer, 0, read)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error peeking file", e)
         }
         
         val peekContent = peekBuilder.toString().trim()
@@ -680,24 +642,20 @@ object TVList {
                 reader.close() // Close explicitly
                 
                 if (result.isNotEmpty()) {
-                     Log.i(TAG, "Parsed ${result.size} channels from JSON File")
                      return@withContext expandNestedPlaylists(result)
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "JSON File Parse failed, falling back")
             }
         }
         
         // 3. Strategy B: Gua / Encrypted (Legacy String requirement)
         if (peekContent.isNotEmpty() && (peekContent[0].toInt() >= 0x4D00 && peekContent[0].toInt() <= 0x4DFF)) {
              try {
-                 Log.i(TAG, "Parsing Gua file: $file")
                  val content = file.readText()
                   val decoded = Gua().decode(content)
                  val result = parseUniversal(decoded)
                  if (result.isNotEmpty()) return@withContext expandNestedPlaylists(result)
              } catch (e: Exception) {
-                 Log.e(TAG, "Gua File Parse failed", e)
              }
         }
 
@@ -708,22 +666,18 @@ object TVList {
             reader.close()
             
             if (result.isNotEmpty()) {
-                 Log.i(TAG, "Parsed ${result.size} channels from M3U File")
                  return@withContext expandNestedPlaylists(result)
             }
         } catch (e: Exception) {
-             Log.w(TAG, "M3U File Parse failed", e)
         }
         
         // 5. Strategy D: Legacy String Fallback
         try {
-            Log.i(TAG, "Falling back to Legacy String Parsing (Limited Stream)")
             val reader = file.bufferedReader()
             val result = parseUniversal(reader)
             reader.close()
             if (result.isNotEmpty()) return@withContext expandNestedPlaylists(result)
         } catch (e: Exception) {
-            Log.e(TAG, "Legacy Parse failed", e)
         }
         
         return@withContext emptyList<TV>()
@@ -733,7 +687,6 @@ object TVList {
         // Prevent infinite recursion or excessive depth
         // Optimization: Don't auto-expand large lists. Big lists are usually final channel lists.
         if (depth > 1 || originalList.size > 20) {
-            if (originalList.size > 20) Log.i(TAG, "Skipping auto-expansion for large list (${originalList.size} items)")
             return@withContext originalList
         }
 
@@ -774,7 +727,6 @@ object TVList {
                 async {
                     semaphore.acquire()
                     try {
-                        Log.i(TAG, "Checking nested content: ${tv.name}")
                         val requestBuilder = Request.Builder().url(url).get()
                         
                         // FIX: Do NOT propagate parent headers to the nested playlist fetch.
@@ -800,7 +752,6 @@ object TVList {
                                 
                                  val subChannels = parseUniversal(reader)
                                  if (subChannels.isNotEmpty()) {
-                                     Log.i(TAG, "Expanded ${tv.name}: ${subChannels.size} channels")
                                      subChannels.forEach { child ->
                                          // Inherit group from parent name if child has no group or is "Uncategorized"
                                          if (child.group.isBlank() || child.group == "Uncategorized") {
@@ -817,7 +768,6 @@ object TVList {
                             }
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error fetching nested playlist ${tv.name}", e)
                         listOf(tv)
                     } finally {
                         semaphore.release()
@@ -839,7 +789,6 @@ object TVList {
             refreshLock.withLock {
             try {
                 if (!::list.isInitialized || list.isEmpty()) {
-                    Log.w(TAG, "Cannot refresh models: list not initialized or empty")
                     return@withLock
                 }
 
@@ -960,7 +909,6 @@ object TVList {
                     // All channels
                     allChannelsGroup.setTVListModel(listModel)
 
-                    Log.i(TAG, "groupModel refreshed: ${groupModel.size()} groups (Reused models where possible)")
                     groupModel.setChange()
                     
                     if (SP.epgEnabled) {
@@ -972,13 +920,11 @@ object TVList {
                                     listModel.forEach { it.updateEPG() }
                                 }
                             } catch (e: Exception) {
-                                Log.e(TAG, "Error fetching EPG in refreshModels", e)
                             }
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error in refreshModels", e)
             }
             } // End of refreshLock.withLock
         }
@@ -992,7 +938,6 @@ object TVList {
                 if (!::list.isInitialized || list.isEmpty()) return@launch
 
                 val initialSize = list.size
-                Log.i(TAG, "Starting background channel check. Total: $initialSize")
 
                 // Use concurrent collection for thread safety if needed, 
                 // but map + filter is safer.
@@ -1035,10 +980,8 @@ object TVList {
                         "$removedCount not working channels removed".showToast(Toast.LENGTH_LONG)
                     }
                 } else {
-                    Log.i(TAG, "No dead channels found")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error in checkChannelsInBackground", e)
             }
         }
     }
@@ -1061,7 +1004,6 @@ object TVList {
                     return true
                 } else if (response.code() == 405) {
                     // Method not allowed, try GET instead
-                    Log.d(TAG, "HEAD not supported for $url, trying GET")
                     request = requestBuilder.get().build()
                     checkClient.newCall(request).execute().use { getResponse ->
                         return getResponse.isSuccessful
@@ -1070,7 +1012,6 @@ object TVList {
                 return false
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Check failed for $url: ${e.message}")
             false
         }
     }
@@ -1090,7 +1031,6 @@ object TVList {
 
     fun setPosition(position: Int): Boolean {
         if (position < 0 || position >= size()) {
-            Log.w(TAG, "setPosition invalid: $position (size: ${size()})")
             return false
         }
 

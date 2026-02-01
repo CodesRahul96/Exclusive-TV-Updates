@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv.models
+﻿package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import java.io.BufferedReader
@@ -193,7 +193,6 @@ object M3UParser {
                                 currentHeaders[key] = value
                             }
                         } catch (e: Exception) {
-                            Log.e(TAG, "Failed to parse EXTHTTP JSON: $jsonStr", e)
                         }
 
                     } else if (trimmedLine.startsWith("#KODIPROP:")) {
@@ -278,11 +277,9 @@ object M3UParser {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error parsing line", e)
                 }
             }
         } catch (e: Exception) {
-             Log.e(TAG, "Error reading stream", e)
         }
 
         // Add last channel
@@ -290,13 +287,11 @@ object M3UParser {
 
         // Fallback for plain lists (no M3U headers found but URLs present)
         if (channels.isEmpty() && !isM3U && plainUrls.isNotEmpty()) {
-            Log.d(TAG, "No M3U structure found, using plain list fallback")
             for ((index, l) in plainUrls.withIndex()) {
                 channels.add(createTV(index, "", "", "", "", listOf(l), mapOf(), null, null, null, null, null))
             }
         }
 
-        Log.i(TAG, "Parsed ${channels.size} channels from Stream")
         return channels
     }
 
@@ -336,7 +331,6 @@ object M3UParser {
                  }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to extract name from URI", e)
         }
         return ""
     }

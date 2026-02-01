@@ -12,5 +12,4 @@ def decode(encoded_str):
     except Exception as e:
         return str(e)
 
-print("Primary: " + decode("LQwXHAZJRlkCPSIqDCFBBwoefSIHEQlKZCQQFgBMRUYzHTc6NwoqGQFIJwRMKSU8FkQgFAYNBhYaWQE7ISwVLA4ASg=="))
-print("Fallback: " + decode("LQwXHAZJRlkCPSIqDCFBBwoefSIHEQlKZCQQFgBMRUYzHTc6NwoqGQFIJwRMPQUIWEIgC0weEB8MFxYxJW0dLBgKCRwzBUc="))
+

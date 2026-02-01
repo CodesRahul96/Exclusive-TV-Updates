@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 
 import android.content.Context
@@ -25,7 +25,6 @@ class SimpleServer(private val context: Context, port: Int) : NanoHTTPD(port) {
             start()
             val host = PortUtil.lan()
             (context as MainActivity).setServer("$host:$port")
-            Log.d("SimpleServer", "Server running on $host:$port")
         } catch (e: IOException) {
             e.printStackTrace()
         }
@@ -97,7 +96,6 @@ class SimpleServer(private val context: Context, port: Int) : NanoHTTPD(port) {
             map["postData"]?.let {
                 val url = Utils.formatUrl(Gson().fromJson(it, UriResponse::class.java).uri)
                 val uri = Uri.parse(url)
-                Log.i(TAG, "uri $uri")
                 handler.post {
                     TVList.parseUri(context, uri)
                 }

@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv.models
+﻿package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import java.io.BufferedReader
@@ -69,10 +69,8 @@ object PlsParser {
                 }
             }
             
-            Log.i(TAG, "Parsed PLS: ${list.size}")
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsng PLS", e)
         }
         
         return list

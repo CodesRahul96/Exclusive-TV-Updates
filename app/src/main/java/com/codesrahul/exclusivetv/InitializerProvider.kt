@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.content.ContentProvider
 import android.content.ContentValues
@@ -13,7 +13,6 @@ internal class InitializerProvider : ContentProvider() {
             SP.init(context!!)
             TVList.init(context!!)
         } catch (e: Exception) {
-            android.util.Log.e("InitializerProvider", "Error initializing", e)
         }
         return true
     }

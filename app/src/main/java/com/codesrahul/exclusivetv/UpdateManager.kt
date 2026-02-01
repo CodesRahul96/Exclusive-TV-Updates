@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.app.DownloadManager
 import android.app.DownloadManager.Request
@@ -39,7 +39,6 @@ class UpdateManager(
     private var checkingDialog: android.app.Dialog? = null
 
     fun checkAndUpdate(isManualCheck: Boolean = false) {
-        Log.i(TAG, "checkAndUpdate")
         CoroutineScope(Dispatchers.Main).launch {
             if (isManualCheck) {
                 try {
@@ -66,7 +65,6 @@ class UpdateManager(
             // Check if we already have the release info from TVList's early check
             val cachedRelease = SecurityUtil.remoteRelease
             if (cachedRelease != null && !isManualCheck) {
-                Log.i(TAG, "Using cached release info from SecurityUtil")
                 release = cachedRelease
                 if (SecurityUtil.isAppOutdated) {
                     val text = "New version available: ${release?.version_name}\n\nPlease update to continue using the app."
@@ -93,7 +91,6 @@ class UpdateManager(
                     kotlinx.coroutines.delay(1000 - duration)
                 }
 
-                Log.i(TAG, "versionCode $versionCode ${release?.version_code}")
                 if (release?.version_code != null) {
                     // Update only if remote version code is STRICTLY GREATER than current
                     if (release?.version_code!! > versionCode) {
@@ -111,7 +108,6 @@ class UpdateManager(
             } catch (e: Exception) {
                 text = "Connection Error"
                 error = true
-                Log.e(TAG, "Error occurred: ${e.message}", e)
                 if (isManualCheck) {
                     val duration = System.currentTimeMillis() - startTime
                     if (duration < 1000) kotlinx.coroutines.delay(1000 - duration)
@@ -132,7 +128,6 @@ class UpdateManager(
         if (context is FragmentActivity) {
             val activity = context as FragmentActivity
             if (activity.isFinishing || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed)) {
-                Log.w(TAG, "Activity is finishing/destroyed, skipping updateUI dialog")
                 return
             }
 
@@ -187,10 +182,7 @@ class UpdateManager(
         val downloadUrl = "$downloadHost${release.version_name}/$apkName-${release.version_name}.apk"
         val request = Request(Uri.parse(downloadUrl))
         
-        Log.i(TAG, "Download URL: $downloadUrl")
-        Log.i(TAG, "Using ${if (releaseRequest.usedFallback) "FALLBACK" else "PRIMARY"} download source")
         context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.mkdirs()
-        Log.i(TAG, "save dir ${Environment.DIRECTORY_DOWNLOADS}")
         request.setDestinationInExternalFilesDir(
             context,
             Environment.DIRECTORY_DOWNLOADS,
@@ -201,7 +193,7 @@ class UpdateManager(
         request.setAllowedOverRoaming(false)
         request.setMimeType("application/vnd.android.package-archive")
 
-        // 获取下载任务的引用
+        // èŽ·å–ä¸‹è½½ä»»åŠ¡çš„å¼•ç”¨
         val downloadReference = downloadManager.enqueue(request)
 
         downloadReceiver = DownloadReceiver(context, apkFileName, downloadReference)
@@ -226,7 +218,6 @@ class UpdateManager(
         }
 
         getDownloadProgress(context, downloadReference) { progress ->
-            Log.d(TAG, "Download progress: $progress%")
         }
     }
 
@@ -241,7 +232,6 @@ class UpdateManager(
 
         handler.post(object : Runnable {
             override fun run() {
-                Log.i(TAG, "search")
                 val query = DownloadManager.Query().setFilterById(downloadId)
                 val cursor: Cursor = downloadManager.query(query)
                 cursor.use {
@@ -279,7 +269,6 @@ class UpdateManager(
     ) : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val reference = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-            Log.i(TAG, "reference $reference")
 
             if (reference == downloadReference) {
                 val downloadManager =
@@ -289,7 +278,6 @@ class UpdateManager(
                 if (cursor != null && cursor.moveToFirst()) {
                     val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                     if (statusIndex < 0) {
-                        Log.i(TAG, "Download failure")
                         return
                     }
                     val status = cursor.getInt(statusIndex)
@@ -297,7 +285,6 @@ class UpdateManager(
                     val progressIndex =
                         cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
                     if (progressIndex < 0) {
-                        Log.i(TAG, "Download failure")
                         return
                     }
                     val progress = cursor.getInt(progressIndex)
@@ -315,13 +302,11 @@ class UpdateManager(
 
                         DownloadManager.STATUS_FAILED -> {
                             // Handle download failure
-                            Log.i(TAG, "Download failure")
                         }
 
                         else -> {
                             // Update UI with download progress
                             val percentage = progress * 100 / totalSize
-                            Log.i(TAG, "Download progress: $percentage%")
                         }
                     }
                 }
@@ -340,7 +325,6 @@ class UpdateManager(
                         context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
                         apkFileName
                     )
-                    Log.i(TAG, "Fallback to FileProvider: $apkFile")
                     if (apkFile.exists()) {
                         apkUri = androidx.core.content.FileProvider.getUriForFile(
                             context,
@@ -351,7 +335,6 @@ class UpdateManager(
                 }
 
                 if (apkUri != null) {
-                    Log.i(TAG, "Install URI: $apkUri")
                     val installIntent = Intent(Intent.ACTION_VIEW).apply {
                         setDataAndType(apkUri, "application/vnd.android.package-archive")
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -360,11 +343,9 @@ class UpdateManager(
                     }
                     context.startActivity(installIntent)
                 } else {
-                    Log.e(TAG, "Failed to get APK URI")
                     Toast.makeText(context, "Install failed: File not found", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Install error: ${e.message}", e)
                 Toast.makeText(context, "Install Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
@@ -375,7 +356,6 @@ class UpdateManager(
     }
 
     override fun onConfirm() {
-        Log.i(TAG, "onConfirm $release")
         release?.let { startDownload(it) }
     }
 
@@ -395,7 +375,6 @@ class UpdateManager(
             } catch (e: IllegalArgumentException) {
                 // Receiver not registered or already unregistered
             }
-            Log.i(TAG, "destroy downloadReceiver")
         }
     }
 }

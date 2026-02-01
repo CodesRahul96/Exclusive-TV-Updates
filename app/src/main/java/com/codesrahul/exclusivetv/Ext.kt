@@ -1,4 +1,4 @@
-@file:Suppress("DEPRECATION")
+﻿@file:Suppress("DEPRECATION")
 
 package com.codesrahul.exclusivetv
 
@@ -79,7 +79,6 @@ private fun hashSignature(signature: Signature): String {
         val digest = md.digest()
         digest.let { it -> it.joinToString("") { "%02x".format(it) } }
     } catch (e: Exception) {
-        Log.e(TAG, "Error hashing signature", e)
         ""
     }
 }

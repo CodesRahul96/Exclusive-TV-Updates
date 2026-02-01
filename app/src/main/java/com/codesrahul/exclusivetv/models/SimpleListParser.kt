@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv.models
+﻿package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import java.io.BufferedReader
@@ -44,7 +44,6 @@ object SimpleListParser {
         }
 
         if (list.isNotEmpty()) {
-            Log.i(TAG, "Parsed Simple List: ${list.size} channels")
         }
         return list
     }

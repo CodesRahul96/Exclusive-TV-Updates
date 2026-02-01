@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv.tis
+﻿package com.codesrahul.exclusivetv.tis
 
 import android.app.Activity
 import android.content.ComponentName
@@ -59,12 +59,10 @@ class TvInputSetupActivity : Activity() {
                 // Logo insertion omitted for V1 simplicity to avoid Channel object reconstruction issues
                 // This is sufficient for the "Sync Sources" menu to show the text "Exclusive TV"
                 
-                Log.i("TvInputSetup", "Channel registered: $channelUri")
                 Toast.makeText(this, "Exclusive TV Source Added", Toast.LENGTH_SHORT).show()
             }
             
         } catch (e: Exception) {
-            Log.e("TvInputSetup", "Error registering channel", e)
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -371,7 +371,6 @@ class SettingFragment : Fragment() {
             }, 1000)
 
         } catch (e: Exception) {
-            Log.e(TAG, "Reset failed", e)
             Toast.makeText(requireContext(), "Reset failed: ${e.message}", Toast.LENGTH_SHORT).show()
             // Try to crash/restart anyway to clear state
             System.exit(0) 
@@ -413,7 +412,6 @@ class SettingFragment : Fragment() {
             
             // Show full server link as it contains the port
             binding.deviceInfo.text = "Server: http://$server  |  MAC: $displayMac"
-            Log.i(TAG, "Server UI Updated: http://$server")
         }
     }
 
@@ -432,7 +430,6 @@ class SettingFragment : Fragment() {
             
             (activity as? MainActivity)?.showTime()
         } catch (e: Exception) {
-            Log.e(TAG, "Error hiding fragment", e)
         }
     }
 

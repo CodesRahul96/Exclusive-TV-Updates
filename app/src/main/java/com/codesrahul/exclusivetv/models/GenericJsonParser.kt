@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv.models
+﻿package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import com.google.gson.JsonArray
@@ -14,7 +14,6 @@ object GenericJsonParser {
             val element = JsonParser.parseReader(reader)
             findAndProcessArrays(element, list)
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing generic JSON", e)
         }
         return list
     }

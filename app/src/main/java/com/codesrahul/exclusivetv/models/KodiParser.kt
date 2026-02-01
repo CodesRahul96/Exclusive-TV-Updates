@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv.models
+﻿package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import java.io.BufferedReader
@@ -165,7 +165,6 @@ object KodiParser {
                         }
                         
                     } catch (e: Exception) {
-                        Log.e(TAG, "Failed to parse EXTHTTP JSON: $jsonStr", e)
                     }
 
                 } else if (trimmedLine.startsWith("#KODIPROP:")) {
@@ -276,14 +275,12 @@ object KodiParser {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error parsing line: $line", e)
             }
         }
 
         // Add last channel
         saveAndReset()
 
-        Log.i(TAG, "Parsed ${channels.size} channels from Kodi M3U")
         return channels
     }
 

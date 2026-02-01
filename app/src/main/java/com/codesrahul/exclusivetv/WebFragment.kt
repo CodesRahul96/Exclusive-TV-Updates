@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.graphics.Bitmap
 import android.net.Uri
@@ -144,7 +144,6 @@ class WebFragment : Fragment() {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
             wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ExclusiveTV:WakeLock")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to init WakeLock", e)
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -154,13 +153,11 @@ class WebFragment : Fragment() {
 
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
                 if (consoleMessage != null) {
-//                    Log.e(
 //                        "WebViewConsole",
 //                        "Message: ${consoleMessage.message()}, Source: ${consoleMessage.sourceId()}, Line: ${consoleMessage.lineNumber()}"
 //                    )
 
                     if (consoleMessage.message() == "success") {
-                        Log.e(TAG, "success")
                         tvModel?.setErrInfo("web ok")
                     }
                 }
@@ -271,7 +268,6 @@ class WebFragment : Fragment() {
                     return WebResourceResponse("text/plain", "utf-8", null)
                 }
 
-//                Log.i(TAG, "${request?.method} ${uri.toString()} ${request?.requestHeaders}")
                 return null
             }
 
@@ -289,13 +285,11 @@ class WebFragment : Fragment() {
                 webView.loadUrl(fillCss)
 
                 val uri = Uri.parse(url)
-                Log.e(TAG, "uri ${uri.host}")
                 when (uri.host) {
                     "tv.cctv.com" -> webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
                         .bufferedReader()
                         .use { it.readText() }) { value ->
                         if (value == "success") {
-                            Log.e(TAG, "success")
                         }
                     }
 
@@ -303,7 +297,6 @@ class WebFragment : Fragment() {
                         .bufferedReader()
                         .use { it.readText() }) { value ->
                         if (value == "success") {
-                            Log.e(TAG, "success")
                         }
                     }
 
@@ -314,7 +307,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -324,7 +316,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -334,7 +325,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -344,7 +334,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -354,7 +343,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -363,7 +351,6 @@ class WebFragment : Fragment() {
 //                            .bufferedReader()
 //                            .use { it.readText() }) { value ->
 //                            if (value == "success") {
-//                                Log.e(TAG, "success")
 //                            }
 //                        }
 //                    }
@@ -372,7 +359,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -382,7 +368,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -392,7 +377,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -402,7 +386,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -412,7 +395,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -422,7 +404,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -432,7 +413,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -466,7 +446,6 @@ class WebFragment : Fragment() {
                                     .bufferedReader()
                                     .use { it.readText() }) { value ->
                                     if (value == "success") {
-                                        Log.e(TAG, "success")
                                     }
                                 }
                             }, 1000) // Ensure the page is loaded
@@ -479,7 +458,6 @@ class WebFragment : Fragment() {
 //                            .bufferedReader()
 //                            .use { it.readText() }) { value ->
 //                            if (value == "success") {
-//                                Log.e(TAG, "success")
 //                            }
 //                        }
 //                    }
@@ -489,7 +467,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "{}") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -499,7 +476,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "{}") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -509,7 +485,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "{}") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -519,7 +494,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "{}") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -529,7 +503,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -539,7 +512,6 @@ class WebFragment : Fragment() {
 //                            .bufferedReader()
 //                            .use { it.readText() }) { value ->
 //                            if (value == "success") {
-//                                Log.e(TAG, "success")
 //                            }
 //                        }
                     }
@@ -549,7 +521,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -559,7 +530,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -569,7 +539,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -579,7 +548,6 @@ class WebFragment : Fragment() {
 //                            .bufferedReader()
 //                            .use { it.readText() }) { value ->
 //                            if (value == "success") {
-//                                Log.e(TAG, "success")
 //                            }
 //                        }
 //                    }
@@ -589,7 +557,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -599,7 +566,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -609,7 +575,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -619,7 +584,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -629,7 +593,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -639,7 +602,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -649,7 +611,6 @@ class WebFragment : Fragment() {
 //                            .bufferedReader()
 //                            .use { it.readText() }) { value ->
 //                            if (value == "success") {
-//                                Log.e(TAG, "success")
 //                            }
 //                        }
 //                    }
@@ -659,7 +620,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -669,7 +629,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -679,7 +638,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -689,7 +647,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -699,7 +656,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -709,7 +665,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -719,7 +674,6 @@ class WebFragment : Fragment() {
                             .bufferedReader()
                             .use { it.readText() }) { value ->
                             if (value == "success") {
-                                Log.e(TAG, "success")
                             }
                         }
                     }
@@ -729,7 +683,6 @@ class WebFragment : Fragment() {
     }
 
     fun stop() {
-        Log.i(TAG, "stop")
         webView.loadUrl("about:blank")
         releasePlayer()
         retryCount = 0 // Stop retrying
@@ -745,10 +698,8 @@ class WebFragment : Fragment() {
         val url = tvModel.videoUrl.value ?: return
         this.currentVideoUrl = url
 
-        Log.i(TAG, "play ${tvModel.tv.title} $url")
         
         savedAudioTrackToApply = SP.getAudioTrack(url)
-        Log.i(TAG, "Saved audio track to apply: $savedAudioTrackToApply")
 
         // Check if explicit type forces Player, or if URL detected as stream
         val isStreamType = tvModel.tv.type == com.codesrahul.exclusivetv.models.Type.STREAM || 
@@ -773,7 +724,6 @@ class WebFragment : Fragment() {
             try {
                 initializePlayer(url)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize player for $url", e)
                 tvModel.setErrInfo("Player Init Failed")
             }
             return
@@ -787,7 +737,6 @@ class WebFragment : Fragment() {
 
 
         val uri = Uri.parse(url)
-        Log.e(TAG, "uri ${uri.host}")
         when (uri.host) {
             "tv.cctv.com" -> {
                 webView.evaluateJavascript(
@@ -802,7 +751,6 @@ class WebFragment : Fragment() {
 
     fun refreshPlayback() {
         val currentTv = tvModel ?: return
-        Log.i(TAG, "Refreshing playback (Network Restored)")
         // Cancel any pending retries first
         playbackHandler.removeCallbacksAndMessages(null)
         // Use a short delay to ensure network stacks are fully ready
@@ -815,7 +763,6 @@ class WebFragment : Fragment() {
         try {
             doInitializePlayer(url)
         } catch (e: Exception) {
-            Log.e(TAG, "Fatal error during initializePlayer", e)
             tvModel?.setErrInfo("Playback Error")
             releasePlayer()
         }
@@ -890,7 +837,6 @@ class WebFragment : Fragment() {
         val titleLower = currentTv?.title?.lowercase() ?: ""
         if (nameLower.contains("sony") || nameLower.contains("liv") || 
             titleLower.contains("sony") || titleLower.contains("liv")) {
-             Log.i(TAG, "Enforcing clean headers for Sony/LIV channel")
              userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
              requestHeaders.remove("Cookie")
              requestHeaders.remove("Authorization")
@@ -908,7 +854,6 @@ class WebFragment : Fragment() {
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(requestHeaders)
         
-        Log.i(TAG, "ExoPlayer Headers: $requestHeaders (User-Agent: $userAgent)")
 
         // HOTSTAR FIX: Ensure Origin/Referer are set correctly
         if (url.contains("hotstar.com") || url.contains("livetv.hotstar")) {
@@ -922,13 +867,10 @@ class WebFragment : Fragment() {
                 val cookies = cookieManager.getCookie(url)
                 if (!cookies.isNullOrEmpty() && !requestHeaders.containsKey("Cookie")) {
                     requestHeaders["Cookie"] = cookies
-                    Log.i(TAG, "Synced cookies from WebView for Hotstar")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to sync cookies", e)
             }
 
-            Log.i(TAG, "Injected/Cleaned Hotstar headers")
             // Update factory with new headers
             httpDataSourceFactory.setDefaultRequestProperties(requestHeaders)
         }
@@ -1019,16 +961,13 @@ class WebFragment : Fragment() {
                     .setPreferredAudioLanguages(defaultLang)
                     .build()
                  exoPlayer!!.trackSelectionParameters = newParams
-                 Log.i(TAG, "Applied preferred audio language: $defaultLang")
              } catch (e: Exception) {
-                 Log.e(TAG, "Failed to apply audio language", e)
              }
         }
         
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
-                Log.e(TAG, "ExoPlayer Error: ${error.message}", error)
                 
                 // AUTO RETRY LOGIC
                 if (retryCount < maxRetries) {
@@ -1047,7 +986,6 @@ class WebFragment : Fragment() {
                     
                     playbackHandler.postDelayed({
                         if (retryCount > 0 && currentVideoUrl.isNotEmpty()) { 
-                            Log.i(TAG, "Retrying playback (Re-initializing)...")
                             initializePlayer(currentVideoUrl)
                         }
                     }, delay)
@@ -1056,7 +994,6 @@ class WebFragment : Fragment() {
                     currentUrlIndex++
                     retryCount = 0
                     val nextUrl = currentTv.uris[currentUrlIndex]
-                    Log.i(TAG, "Falling back to next URL ($currentUrlIndex): $nextUrl")
                     tvModel?.setErrInfo("Trying Backup Link...")
                     
                     playbackHandler.post {
@@ -1065,7 +1002,6 @@ class WebFragment : Fragment() {
                 } else {
                      // Check if we should fallback to WebView (Universal Support)
                      // If we are in "Stream" mode but it failed repeatedly, maybe it's a web link?
-                     Log.i(TAG, "Native playback failed after retries. Attempting fallback to WebView.")
                      tvModel?.setErrInfo("Switching to Web Mode...")
                      
                      // Switch to WebView
@@ -1105,7 +1041,6 @@ class WebFragment : Fragment() {
 
             override fun onRenderedFirstFrame() {
                 super.onRenderedFirstFrame()
-                Log.i(TAG, "First frame rendered - clearing loader")
                 tvModel?.setErrInfo("")
             }
 
@@ -1164,7 +1099,6 @@ class WebFragment : Fragment() {
         // Force HLS MIME type for .php streams or any link detected as M3U8 but not ending in standard extensions
         if (videoUrl.contains(".m3u8", ignoreCase = true) || 
             (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))) {
-             Log.i(TAG, "Forcing MIME type to HLS (APPLICATION_M3U8) for: $videoUrl")
              mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
         }
 
@@ -1179,10 +1113,8 @@ class WebFragment : Fragment() {
                      loudnessEnhancer = android.media.audiofx.LoudnessEnhancer(sessionId)
                      loudnessEnhancer?.setTargetGain(800) // 800mB gain (approx +8dB boost for low volume)
                      loudnessEnhancer?.enabled = true
-                     Log.i(TAG, "Audio Stabilizer Enabled (Session: $sessionId)")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to init Audio Stabilizer", e)
             }
         }
         
@@ -1291,7 +1223,6 @@ class WebFragment : Fragment() {
                 loudnessEnhancer = null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error releasing audio effects", e)
         }
 
         if (wakeLock?.isHeld == true) {
@@ -1372,7 +1303,6 @@ class WebFragment : Fragment() {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error during the API call: ${e.message}")
         }
         return null
     }
@@ -1383,7 +1313,6 @@ class WebFragment : Fragment() {
 
     private fun getLoadControl(): androidx.media3.exoplayer.LoadControl {
         val bufferMode = SP.bufferMode
-        Log.i(TAG, "Initializing Player with Buffer Mode: $bufferMode")
         
         // Mode 0: Default (Balanced)
         // Mode 1: Max Stability (Large buffer for slow net)

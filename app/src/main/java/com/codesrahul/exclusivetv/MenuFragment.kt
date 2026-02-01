@@ -1,4 +1,4 @@
-package com.codesrahul.exclusivetv
+﻿package com.codesrahul.exclusivetv
 
 import android.os.Bundle
 import android.util.Log
@@ -26,7 +26,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
      override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
          super.onViewCreated(view, savedInstanceState)
-         Log.i(TAG, "onViewCreated")
          
          // Observe global model changes to keep menu in sync even when visible
          TVList.groupModel.change.observe(viewLifecycleOwner) {
@@ -59,7 +58,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         
         if (tvListModel == null) {
             // This should ideally never happen as group 0 is local, but we must protect it
-            Log.e(TAG, "Initialization failed: No categories available")
             return binding.root 
         }
 
@@ -110,7 +108,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         TVList.groupModel.setPosition(position)
         SP.positionGroup = position
         val tvListModel = TVList.groupModel.getTVListModel()
-        Log.i(TAG, "updateList tvListModel $position ${tvListModel?.size()}")
         if (tvListModel != null) {
             (binding.list.adapter as ListAdapter).update(tvListModel)
         }
@@ -181,7 +178,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
                     val currentGroupPosition = TVList.groupModel.position.value ?: 0
                     if (tvModel.groupIndex == currentGroupPosition) {
-                        Log.i(
                             TAG,
                             "list on show toPosition ${tvModel.tv.title} ${tvModel.listIndex}/${listAdapter.tvListModel.size()}"
                         )
@@ -212,7 +208,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 groupAdapter.focusable(true)
                 listAdapter.focusable(false)
                 listAdapter.clear()
-                Log.i(TAG, "group toPosition on left")
                 groupAdapter.toPosition(TVList.groupModel.position.value ?: 0)
                 return true
             }
@@ -221,7 +216,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 //                groupAdapter.focusable(true)
 //                listAdapter.focusable(false)
 //                listAdapter.clear()
-//                Log.i(TAG, "group toPosition on left")
 //                groupAdapter.toPosition(TVList.groupModel.position.value!!)
 //                return true
 //            }
@@ -241,7 +235,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 if (currentTvModel != null) {
                     val groupIndex = currentTvModel.groupIndex
                     val currentGroupPosition = TVList.groupModel.position.value ?: 0
-                    Log.i(
                         TAG,
                         "groupIndex $groupIndex $currentGroupPosition"
                     )
@@ -251,7 +244,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                             updateList(groupIndex)
                         }
 
-                        Log.i(
                             TAG,
                             "list on show toPosition ${currentTvModel.tv.title} ${currentTvModel.listIndex}/${listAdapter.tvListModel.size()}"
                         )
@@ -263,7 +255,6 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
             }
             if (binding.group.isVisible) {
                 val currentGroupPosition = TVList.groupModel.position.value ?: 0
-                Log.i(
                     TAG,
                     "group on show toPosition ${TVList.groupModel.position.value!!}/${TVList.groupModel.size()}"
                 )
