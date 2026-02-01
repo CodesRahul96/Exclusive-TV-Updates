@@ -36,7 +36,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyTV1"
         android:hardwareAccelerated="true"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

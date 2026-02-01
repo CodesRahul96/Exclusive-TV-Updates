@@ -351,7 +351,26 @@ class UpdateManager(
     }
 
     override fun onConfirm() {
-        release?.let { startDownload(it) }
+        // Option 1: Direct Download (Current)
+        // release?.let { startDownload(it) }
+
+        // Option 2: Open in Browser (Safer for Play Protect)
+        release?.let { rel ->
+            val downloadHost = if (releaseRequest.usedFallback) {
+                ApiClient.DOWNLOAD_HOST_FALLBACK
+            } else {
+                ApiClient.DOWNLOAD_HOST
+            }
+            val downloadUrl = "$downloadHost${rel.version_name}/ExclusiveTV-${rel.version_name}.apk"
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                // If browser fails, fallback to direct download as last resort
+                startDownload(rel)
+            }
+        }
     }
 
     override fun onCancel() {
