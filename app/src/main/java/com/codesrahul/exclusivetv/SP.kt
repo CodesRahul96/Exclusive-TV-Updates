@@ -52,6 +52,13 @@ object SP {
     private const val KEY_WATERMARK_POSITION = "watermark_position"
  
     private const val KEY_EPG_SHIFT = "epg_shift"
+    
+    // Dynamic API & Update URLs
+    private const val KEY_API_HOST = "api_host"
+    private const val KEY_API_DOWNLOAD_HOST = "api_download_host"
+    private const val KEY_API_HOST_FALLBACK = "api_host_fallback"
+    private const val KEY_API_DOWNLOAD_HOST_FALLBACK = "api_download_host_fallback"
+
 
     private lateinit var sp: SharedPreferences
 
@@ -284,6 +291,24 @@ object SP {
     var watermarkPosition: String
         get() = sp.getString(KEY_WATERMARK_POSITION, "bottom_right") ?: "bottom_right"
         set(value) = sp.edit().putString(KEY_WATERMARK_POSITION, value).apply()
+
+    // Dynamic URL Properties
+    var apiHost: String
+        get() = sp.getString(KEY_API_HOST, "") ?: ""
+        set(value) = sp.edit().putString(KEY_API_HOST, value).apply()
+
+    var apiDownloadHost: String
+        get() = sp.getString(KEY_API_DOWNLOAD_HOST, "") ?: ""
+        set(value) = sp.edit().putString(KEY_API_DOWNLOAD_HOST, value).apply()
+
+    var apiHostFallback: String
+        get() = sp.getString(KEY_API_HOST_FALLBACK, "") ?: ""
+        set(value) = sp.edit().putString(KEY_API_HOST_FALLBACK, value).apply()
+
+    var apiDownloadHostFallback: String
+        get() = sp.getString(KEY_API_DOWNLOAD_HOST_FALLBACK, "") ?: ""
+        set(value) = sp.edit().putString(KEY_API_DOWNLOAD_HOST_FALLBACK, value).apply()
+
  
     var epgShift: Int
         get() = sp.getInt(KEY_EPG_SHIFT, 0)

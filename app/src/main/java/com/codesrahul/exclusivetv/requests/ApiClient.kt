@@ -24,12 +24,17 @@ class ApiClient {
     }
 
     companion object {
-        // Primary source (will be private)
-        const val HOST = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-APP/"
-        const val DOWNLOAD_HOST = "https://github.com/CodesRahul96/Exclusive-TV-APP/releases/download/"
+        private const val DEFAULT_HOST = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-APP/"
+        private const val DEFAULT_DOWNLOAD_HOST = "https://github.com/CodesRahul96/Exclusive-TV-APP/releases/download/"
         
-        // Fallback source (public updates repository)
-        const val HOST_FALLBACK = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-Updates/"
-        const val DOWNLOAD_HOST_FALLBACK = "https://github.com/CodesRahul96/Exclusive-TV-Updates/releases/download/"
+        private const val DEFAULT_HOST_FALLBACK = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-Updates/"
+        private const val DEFAULT_DOWNLOAD_HOST_FALLBACK = "https://github.com/CodesRahul96/Exclusive-TV-Updates/releases/download/"
+
+        val HOST: String get() = com.codesrahul.exclusivetv.SP.apiHost.takeIf { it.isNotEmpty() } ?: DEFAULT_HOST
+        val DOWNLOAD_HOST: String get() = com.codesrahul.exclusivetv.SP.apiDownloadHost.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_HOST
+        
+        val HOST_FALLBACK: String get() = com.codesrahul.exclusivetv.SP.apiHostFallback.takeIf { it.isNotEmpty() } ?: DEFAULT_HOST_FALLBACK
+        val DOWNLOAD_HOST_FALLBACK: String get() = com.codesrahul.exclusivetv.SP.apiDownloadHostFallback.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_HOST_FALLBACK
     }
+
 }

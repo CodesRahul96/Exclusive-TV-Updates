@@ -439,17 +439,26 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
         remoteConfig.setConfigSettingsAsync(configSettings)
         
-        // Set defaults from current config or obfuscated default
+        // Set defaults
         val defaults = mapOf("main_api_url" to TVList.DEFAULT_CONFIG_URL)
         remoteConfig.setDefaultsAsync(defaults)
 
         remoteConfig.fetchAndActivate()
             .addOnCompleteListener(this) { task ->
-                val apiUrl = if (task.isSuccessful) {
-                    remoteConfig.getString("main_api_url")
-                } else {
-                    remoteConfig.getString("main_api_url") // Still try to get from cache
-                }
+                // Update dynamic URLs in SP
+                val host = remoteConfig.getString("api_host")
+                if (host.isNotBlank()) SP.apiHost = host
+                
+                val downloadHost = remoteConfig.getString("api_download_host")
+                if (downloadHost.isNotBlank()) SP.apiDownloadHost = downloadHost
+                
+                val hostFallback = remoteConfig.getString("api_host_fallback")
+                if (hostFallback.isNotBlank()) SP.apiHostFallback = hostFallback
+                
+                val downloadHostFallback = remoteConfig.getString("api_download_host_fallback")
+                if (downloadHostFallback.isNotBlank()) SP.apiDownloadHostFallback = downloadHostFallback
+
+                val apiUrl = remoteConfig.getString("main_api_url")
                 
                 if (apiUrl.isNotBlank()) {
                     val currentConfig = SP.config
@@ -468,6 +477,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 }
             }
     }
+
 
     override fun onResume() {
         super.onResume()
