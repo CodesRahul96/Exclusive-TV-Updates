@@ -9,11 +9,8 @@ This release significantly improves the stability and reliability of the in-app 
 *   **Direct Update Restored**: Re-implemented the direct download and install mechanism for in-app updates.
 *   **Progress Feedback**: Enabled real-time download progress updates.
 
-## 🚀 Key Features (from v1.0.55/56)
+## 🚀 Key Features
 *   **Update Server Connection**: Improved compatibility with older Android TV boxes using `UnsafeHttpClient`.
-*   **Mobile UI Optimization**: Redesigned dialogs and list items for better mobile compatibility.
-
-## 🚀 Key Features (from v1.0.54)
 *   **Mobile UI Optimization**: Redesigned dialogs and list items for better mobile compatibility.
 *   **Favorites System**: Fixed "My Collection" persistence and display logic.
 *   **Visual Polish**: Compact buttons and smoother animations.
