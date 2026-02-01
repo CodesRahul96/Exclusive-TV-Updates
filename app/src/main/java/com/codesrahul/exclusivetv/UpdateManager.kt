@@ -46,15 +46,10 @@ class UpdateManager(
                         !(context as FragmentActivity).isFinishing && 
                         (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || !(context as FragmentActivity).isDestroyed)) {
                         
-                        val builder = android.app.AlertDialog.Builder(context)
-                        val inflater = android.view.LayoutInflater.from(context)
-                        val view = inflater.inflate(R.layout.dialog_checking, null)
-                        
-                        builder.setView(view)
-                        builder.setCancelable(false)
-                        
-                        checkingDialog = builder.create()
+                        checkingDialog = android.app.Dialog(context, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
+                        checkingDialog?.setContentView(R.layout.dialog_checking)
                         checkingDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
+                        checkingDialog?.setCancelable(false)
                         checkingDialog?.show()
                     }
                 } catch (e: Exception) {

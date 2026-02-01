@@ -25,6 +25,7 @@ class ConfirmationFragment(
             val view = inflater.inflate(R.layout.dialog_update, null)
             dialog.setContentView(view)
             dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+            dialog.window?.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
 
             val tvMessage = view.findViewById<TextView>(R.id.tvMessage)
             val btnUpdate = view.findViewById<Button>(R.id.btnUpdate)

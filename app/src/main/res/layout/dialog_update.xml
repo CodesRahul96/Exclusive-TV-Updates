@@ -16,9 +16,9 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintWidth_default="percent"
-        app:layout_constraintWidth_percent="0.9"
-        app:layout_constraintWidth_max="400dp">
+
+        app:layout_constrainedWidth="true"
+        app:layout_constraintWidth_max="380dp">
 
         <ImageView
             android:layout_width="64dp"
@@ -33,9 +33,9 @@
             android:layout_height="wrap_content"
             android:text="Update Available"
             android:textColor="@android:color/white"
-            android:textSize="22sp"
+            android:textSize="20sp"
             android:textStyle="bold"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="12dp"/>
 
         <TextView
             android:id="@+id/tvMessage"
@@ -44,9 +44,9 @@
             android:gravity="center"
             android:text="A new version of the app is available. Please update to continue."
             android:textColor="#CCFFFFFF"
-            android:textSize="16sp"
-            android:lineSpacingExtra="4dp"
-            android:layout_marginBottom="10dp"/>
+            android:textSize="14sp"
+            android:lineSpacingExtra="3dp"
+            android:layout_marginBottom="12dp"/>
 
         <TextView
             android:id="@+id/tvChangelog"
@@ -65,32 +65,35 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
 
             <Button
                 android:id="@+id/btnCancel"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="10dp"
+                android:layout_width="wrap_content"
+                android:minWidth="100dp"
+                android:layout_height="38dp"
+                android:layout_marginEnd="8dp"
                 android:background="@drawable/selector_item_focus"
                 android:text="Later"
                 android:textColor="@android:color/white"
                 android:textAllCaps="false"
+                android:textSize="14sp"
                 android:focusable="true"
                 android:focusableInTouchMode="true" 
                 android:visibility="gone"/>
 
             <Button
                 android:id="@+id/btnUpdate"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
+                android:layout_width="wrap_content"
+                android:minWidth="100dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/selector_item_focus"
                 android:text="Update Now"
                 android:textColor="@android:color/white"
                 android:textAllCaps="false"
+                android:textSize="14sp"
                 android:focusable="true"
                 android:focusableInTouchMode="true" />
         </LinearLayout>
