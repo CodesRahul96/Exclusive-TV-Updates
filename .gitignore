@@ -19,6 +19,8 @@ keystore.properties
 *.jks
 *.apk
 *.apks
+*.m3u
+*.m3u8
 
 # Exclude testing folder
 testing/
@@ -26,5 +28,6 @@ testing
 Testing
 debug_build_log_*.txt
 *.log
+*.logs
 
 firebase_remote_config_reference.txt
