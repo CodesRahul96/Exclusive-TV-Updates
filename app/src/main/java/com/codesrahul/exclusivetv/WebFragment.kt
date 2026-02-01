@@ -1005,21 +1005,23 @@ class WebFragment : Fragment() {
                      tvModel?.setErrInfo("Switching to Web Mode...")
                      
                      // Switch to WebView
-                     android.os.Handler(android.os.Looper.getMainLooper()).post {
-                         playerView.visibility = View.GONE
-                         webView.visibility = View.VISIBLE
-                         releasePlayer()
-                         
-                         // Re-apply WebView settings if needed
-                         val url = currentVideoUrl
-                         val uri = Uri.parse(url)
-                         
-                         // Some site-specifics might need re-triggering (copy from play() logic if needed)
-                         if (uri.host == "tv.cctv.com") {
-                             webView.evaluateJavascript("localStorage.setItem('cctv_live_resolution', '720');", null)
+                     playbackHandler.post {
+                         _binding?.let { b ->
+                             b.playerView.visibility = View.GONE
+                             b.webView.visibility = View.VISIBLE
+                             releasePlayer()
+                             
+                             // Re-apply WebView settings if needed
+                             val url = currentVideoUrl
+                             val uri = Uri.parse(url)
+                             
+                             // Some site-specifics might need re-triggering
+                             if (uri.host == "tv.cctv.com") {
+                                 b.webView.evaluateJavascript("localStorage.setItem('cctv_live_resolution', '720');", null)
+                             }
+ 
+                             b.webView.loadUrl(url)
                          }
-
-                         webView.loadUrl(url)
                      }
                 }
             }

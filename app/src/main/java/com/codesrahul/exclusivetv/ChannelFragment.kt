@@ -84,19 +84,28 @@ class ChannelFragment : Fragment() {
     }
 
     private val hideRunnable = Runnable {
-        binding.content.text = ""
-        view?.visibility = View.GONE
+        _binding?.let {
+            it.content.text = ""
+            view?.visibility = View.GONE
+        }
     }
 
+
     private val playRunnable = Runnable {
-        (activity as MainActivity).play(channel - 1)
-        handler.postDelayed(hideRunnable, delay)
+        val currentActivity = activity as? MainActivity
+        if (currentActivity != null && _binding != null) {
+            currentActivity.play(channel - 1)
+            handler.postDelayed(hideRunnable, delay)
+        }
     }
+
 
     override fun onDestroyView() {
         super.onDestroyView()
+        handler.removeCallbacksAndMessages(null)
         _binding = null
     }
+
 
     companion object {
         private const val TAG = "ChannelFragment"

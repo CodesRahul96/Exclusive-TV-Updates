@@ -122,10 +122,12 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     private val updateHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var pendingTvListModel: TVListModel? = null
     private val updateRunnable = Runnable {
+        val binding = _binding ?: return@Runnable
         pendingTvListModel?.let {
             (binding.list.adapter as ListAdapter).update(it)
         }
     }
+
 
     override fun onItemFocusChange(tvListModel: TVListModel, hasFocus: Boolean) {
         if (hasFocus) {
@@ -262,8 +264,10 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
     override fun onDestroyView() {
         super.onDestroyView()
+        updateHandler.removeCallbacksAndMessages(null)
         _binding = null
     }
+
 
     companion object {
         private const val TAG = "MenuFragment"

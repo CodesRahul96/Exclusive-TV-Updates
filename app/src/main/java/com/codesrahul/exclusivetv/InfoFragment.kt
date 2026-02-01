@@ -68,8 +68,9 @@ class InfoFragment : Fragment() {
     }
 
     fun show(tvViewModel: TVModel) {
-        binding.channelNumber.text = String.format("%03d", tvViewModel.tv.id + 1)
-        binding.title.text = tvViewModel.tv.title
+        val b = _binding ?: return
+        b.channelNumber.text = String.format("%03d", tvViewModel.tv.id + 1)
+        b.title.text = tvViewModel.tv.title
 
         when (tvViewModel.tv.title) {
             else -> {
@@ -80,11 +81,12 @@ class InfoFragment : Fragment() {
                     val canvas = Canvas(bitmap)
 
                     val paint = Paint().apply {
-                        val ctx = context ?: return
+                        val ctx = context ?: return@apply
                         color = ContextCompat.getColor(ctx, R.color.blur)
                         textSize = 100f
                         textAlign = Paint.Align.CENTER
                     }
+
                     val text = "${tvViewModel.tv.id + 1}"
                     val x = width / 2f
                     val y = height / 2f - (paint.descent() + paint.ascent()) / 2
@@ -93,45 +95,45 @@ class InfoFragment : Fragment() {
                     Glide.with(this)
                         .load(BitmapDrawable(context?.resources, bitmap))
 //                        .centerInside()
-                        .into(binding.logo)
+                        .into(b.logo)
                 } else {
                     Glide.with(this)
                         .load(tvViewModel.tv.logo)
 //                        .centerInside()
-                        .into(binding.logo)
+                        .into(b.logo)
                 }
             }
         }
 
         // Fix for symbols/icons not showing correctly on API < 23 (XML tint ignored)
-        tvUiUtils?.tintTextViewDrawable(binding.videoBadge, android.graphics.Color.WHITE)
-        tvUiUtils?.tintTextViewDrawable(binding.audioBadge, android.graphics.Color.WHITE)
+        tvUiUtils?.tintTextViewDrawable(b.videoBadge, android.graphics.Color.WHITE)
+        tvUiUtils?.tintTextViewDrawable(b.audioBadge, android.graphics.Color.WHITE)
 
         tvViewModel.videoQuality.observe(viewLifecycleOwner) {
             if (!it.isNullOrEmpty()) {
-                binding.videoBadge.text = it
-                binding.videoBadge.visibility = View.VISIBLE
+                _binding?.videoBadge?.text = it
+                _binding?.videoBadge?.visibility = View.VISIBLE
             } else {
-                binding.videoBadge.visibility = View.GONE
+                _binding?.videoBadge?.visibility = View.GONE
             }
         }
 
         tvViewModel.audioQuality.observe(viewLifecycleOwner) {
             if (!it.isNullOrEmpty()) {
-                binding.audioBadge.text = it
-                binding.audioBadge.visibility = View.VISIBLE
+                _binding?.audioBadge?.text = it
+                _binding?.audioBadge?.visibility = View.VISIBLE
             } else {
-                binding.audioBadge.visibility = View.GONE
+                _binding?.audioBadge?.visibility = View.GONE
             }
         }
 
         // --- Date and Time ---
         if (SP.showDateInInfo) {
-            binding.dateTime.visibility = View.VISIBLE
+            b.dateTime.visibility = View.VISIBLE
             handler.removeCallbacks(timeRunnable)
             handler.post(timeRunnable)
         } else {
-            binding.dateTime.visibility = View.GONE
+            b.dateTime.visibility = View.GONE
             handler.removeCallbacks(timeRunnable)
         }
 
@@ -140,48 +142,48 @@ class InfoFragment : Fragment() {
             // Current Program
             val program: EPGProgram? = tvViewModel.currentProgram.value
             if (program != null) {
-                binding.programTitle.text = program.title
-                binding.programTitle.visibility = View.VISIBLE
+                b.programTitle.text = program.title
+                b.programTitle.visibility = View.VISIBLE
                 
                  val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
                  val shiftMs = SP.epgShift * 3600_000L
                  val timeRange = "${timeSdf.format(Date(program.start + shiftMs))} - ${timeSdf.format(Date(program.stop + shiftMs))}"
-                binding.programTime.text = timeRange
-                binding.programTime.visibility = View.VISIBLE
+                b.programTime.text = timeRange
+                b.programTime.visibility = View.VISIBLE
                 
-                binding.desc.text = program.description
-                binding.desc.visibility = if (program.description.isNotEmpty()) View.VISIBLE else View.GONE
+                b.desc.text = program.description
+                b.desc.visibility = if (program.description.isNotEmpty()) View.VISIBLE else View.GONE
             } else {
-                binding.programTitle.visibility = View.GONE
-                binding.programTime.visibility = View.GONE
-                binding.desc.text = "No current program info\nStatus: ${EPGManager.epgStatus}"
-                binding.desc.visibility = View.VISIBLE
+                b.programTitle.visibility = View.GONE
+                b.programTime.visibility = View.GONE
+                b.desc.text = "No current program info\nStatus: ${EPGManager.epgStatus}"
+                b.desc.visibility = View.VISIBLE
             }
 
             // Upcoming Program
             val nextProg: EPGProgram? = tvViewModel.upcomingProgram.value
             if (nextProg != null) {
-                binding.nextProgramLabel.visibility = View.VISIBLE
-                binding.nextProgramTitle.text = nextProg.title
-                binding.nextProgramTitle.visibility = View.VISIBLE
+                b.nextProgramLabel.visibility = View.VISIBLE
+                b.nextProgramTitle.text = nextProg.title
+                b.nextProgramTitle.visibility = View.VISIBLE
                 
                  val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
                  val shiftMs = SP.epgShift * 3600_000L
-                 binding.nextProgramTime.text = timeSdf.format(Date(nextProg.start + shiftMs))
-                binding.nextProgramTime.visibility = View.VISIBLE
+                 b.nextProgramTime.text = timeSdf.format(Date(nextProg.start + shiftMs))
+                b.nextProgramTime.visibility = View.VISIBLE
             } else {
-                binding.nextProgramLabel.visibility = View.GONE
-                binding.nextProgramTitle.visibility = View.GONE
-                binding.nextProgramTime.visibility = View.GONE
+                b.nextProgramLabel.visibility = View.GONE
+                b.nextProgramTitle.visibility = View.GONE
+                b.nextProgramTime.visibility = View.GONE
             }
         } else {
-            binding.programTitle.visibility = View.GONE
-            binding.programTime.visibility = View.GONE
-            binding.desc.text = tvViewModel.tv.group
-            binding.desc.visibility = View.VISIBLE
-            binding.nextProgramLabel.visibility = View.GONE
-            binding.nextProgramTitle.visibility = View.GONE
-            binding.nextProgramTime.visibility = View.GONE
+            b.programTitle.visibility = View.GONE
+            b.programTime.visibility = View.GONE
+            b.desc.text = tvViewModel.tv.group
+            b.desc.visibility = View.VISIBLE
+            b.nextProgramLabel.visibility = View.GONE
+            b.nextProgramTitle.visibility = View.GONE
+            b.nextProgramTime.visibility = View.GONE
         }
         // -------------------
 
@@ -189,6 +191,7 @@ class InfoFragment : Fragment() {
         view?.visibility = View.VISIBLE
         handler.postDelayed(removeRunnable, delay)
     }
+
 
     override fun onResume() {
         super.onResume()
@@ -209,6 +212,7 @@ class InfoFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
+
 
     companion object {
         private const val TAG = "InfoFragment"

@@ -34,13 +34,16 @@ class ErrorFragment : Fragment() {
     }
 
     fun show(msg: String) {
-        binding.msg.text = msg
+        _binding?.let { it.msg.text = msg }
     }
+
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
+
+
 
     companion object {
         private const val TAG = "ErrorFragment"
