@@ -199,13 +199,8 @@ class UpdateManager(
                 IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
                 Context.RECEIVER_EXPORTED
             )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.registerReceiver(
-                downloadReceiver,
-                IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-                Context.RECEIVER_NOT_EXPORTED,
-            )
         } else {
+            // Use 2-arg registerReceiver for API < 33 to prevent NoSuchMethodError
             context.registerReceiver(
                 downloadReceiver,
                 IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
@@ -252,7 +247,7 @@ class UpdateManager(
                     }
                 }
 
-//                handler.postDelayed(this, intervalMillis)
+                handler.postDelayed(this, intervalMillis)
             }
         })
     }
@@ -351,26 +346,7 @@ class UpdateManager(
     }
 
     override fun onConfirm() {
-        // Option 1: Direct Download (Current)
-        // release?.let { startDownload(it) }
-
-        // Option 2: Open in Browser (Safer for Play Protect)
-        release?.let { rel ->
-            val downloadHost = if (releaseRequest.usedFallback) {
-                ApiClient.DOWNLOAD_HOST_FALLBACK
-            } else {
-                ApiClient.DOWNLOAD_HOST
-            }
-            val downloadUrl = "$downloadHost${rel.version_name}/ExclusiveTV-${rel.version_name}.apk"
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-            } catch (e: Exception) {
-                // If browser fails, fallback to direct download as last resort
-                startDownload(rel)
-            }
-        }
+        release?.let { startDownload(it) }
     }
 
     override fun onCancel() {

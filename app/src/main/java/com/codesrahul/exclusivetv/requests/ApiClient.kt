@@ -32,10 +32,10 @@ class ApiClient {
         private const val DEFAULT_DOWNLOAD_HOST_FALLBACK = "https://github.com/CodesRahul96/Exclusive-TV-Updates/releases/download/"
 
         val HOST: String get() = com.codesrahul.exclusivetv.SP.apiHost.takeIf { it.isNotEmpty() } ?: DEFAULT_HOST
-        val DOWNLOAD_HOST: String get() = com.codesrahul.exclusivetv.SP.apiDownloadHost.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_HOST
+        val DOWNLOAD_HOST: String get() = ensureTrailingSlash(com.codesrahul.exclusivetv.SP.apiDownloadHost.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_HOST)
         
         val HOST_FALLBACK: String get() = com.codesrahul.exclusivetv.SP.apiHostFallback.takeIf { it.isNotEmpty() } ?: DEFAULT_HOST_FALLBACK
-        val DOWNLOAD_HOST_FALLBACK: String get() = com.codesrahul.exclusivetv.SP.apiDownloadHostFallback.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_HOST_FALLBACK
+        val DOWNLOAD_HOST_FALLBACK: String get() = ensureTrailingSlash(com.codesrahul.exclusivetv.SP.apiDownloadHostFallback.takeIf { it.isNotEmpty() } ?: DEFAULT_DOWNLOAD_HOST_FALLBACK)
 
         private fun ensureTrailingSlash(url: String): String {
             return if (url.endsWith("/")) url else "$url/"

@@ -94,12 +94,11 @@ else {
 
 # 5. Create GitHub Release
 Write-Host "--> Checking for GitHub CLI..."
-if (Test-Path "C:\Program Files\GitHub CLI\gh.exe") {
+$ghPath = Get-Command gh -ErrorAction SilentlyContinue
+if ($ghPath) {
     Write-Host "Creating GitHub Release..."
 
     $notes = ""
-    # Optional history generation notes...
-    
     if (Test-Path "RELEASE_NOTES.md") {
         $notes = Get-Content "RELEASE_NOTES.md" -Raw
     }
@@ -108,15 +107,23 @@ if (Test-Path "C:\Program Files\GitHub CLI\gh.exe") {
         $notes = "Release $Version"
     }
 
-    & "C:\Program Files\GitHub CLI\gh.exe" release create "$Version" "$targetName" --title "$Version" --notes "$notes"
+    & gh release create "$Version" "$targetName" --title "$Version" --notes "$notes"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to create release on main repo."
+        exit 1
+    }
     
     Write-Host "Releasing to Updates Repo..."
     # Explicitly specify repo for the second release
-    & "C:\Program Files\GitHub CLI\gh.exe" release create "$Version" "$targetName" --repo "CodesRahul96/Exclusive-TV-Updates" --title "$Version" --notes "$notes"
+    & gh release create "$Version" "$targetName" --repo "CodesRahul96/Exclusive-TV-Updates" --title "$Version" --notes "$notes"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to create release on updates repo."
+        exit 1
+    }
     
     Write-Host "Release $Version published to GitHub (Both Repos)!"
 }
 else {
-    Write-Host "GitHub CLI (gh) not found."
+    Write-Host "GitHub CLI (gh) not found in PATH."
     Write-Host "DONE. Please manually upload '$targetName' to GitHub Releases."
 }
