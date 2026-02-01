@@ -1,16 +1,22 @@
-# ExclusiveTV App v1.0.52
+# ExclusiveTV App v1.0.54
 
-This release brings major improvements to live TV playback compatibility, specifically for Star/Hotstar network channels.
+This release focuses on significant UI/UX polish for mobile devices and critical fixes to the Favorites functionality.
 
 ## 🚀 New Features & Improvements
-*   **Robust Star Playlist Support**: Enhanced the core `KodiParser` to natively handle Star network playlists. It now automatically extracts authentication headers (cookies) and generates readable channel names from nested URL patterns.
-*   **Enhanced Playback Compatibility**: Added automatic injection of `Origin` and `Referer` headers for Hotstar streams to prevent "403 Forbidden" errors.
-*   **UI Symbol Fix**: Resolved an issue where Audio and Video quality icons were invisible on some Android versions (fixed drawable tint compatibility).
+*   **Mobile UI Optimization**: Redesigned key user interfaces for better compatibility with smaller screens.
+    *   **Responsive Dialogs**: Copyright and Factory Reset dialogs now adapt to screen width.
+    *   **Refined Cards**: Optimized font sizes (16sp/12sp) and margins in the channel list to prevent text cutoff.
+*   **Visual Polish**:
+    *   **Compact design**: Adjusted button sizes (Favorites: 30dp, Channel Icon: 40dp, Reset Buttons: 38dp) for a balanced, premium look.
+    *   **Smoother Animations**: Removed aggressive focus zoom effects for a cleaner navigation experience.
+*   **Remote Config**: Fully integrated Firebase Remote Config for dynamic API URL management.
 
 ## 🐛 Bug Fixes
-*   **Critical DRM Fix**: Resolved an issue where Hotstar channels would fail to play because DRM license requests were missing the required session cookies. 
-*   **Build Optimization**: Consolidated parsing logic for better performance and smaller app size.
+*   **Favorites System Overhaul**:
+    *   **Fixed Persistence**: Favorites now correctly save to storage and persist after restart.
+    *   **"My Collection" Fixed**: Resolved the bug where the "My Collection" group remained empty; it now correctly populates with favorited channels.
+    *   **Instant Updates**: Clicking the favorite button now immediately refreshes the list headers.
 
 ## Technical Details
-*   **Version Code**: 16790528
-*   **Build**: Release
+*   **Version Code**: 16790530
+*   **Build**: Debug/Release
