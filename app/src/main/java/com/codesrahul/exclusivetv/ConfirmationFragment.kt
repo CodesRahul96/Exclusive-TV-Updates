@@ -9,15 +9,42 @@ import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.TextView
 
-class ConfirmationFragment(
-    private val listener: ConfirmationListener,
-    private val message: String,
-    private val changelog: String = "",
-    private val update: Boolean,
-    private val force: Boolean = false
-) : DialogFragment() {
+class ConfirmationFragment : DialogFragment() {
+
+    private var listener: ConfirmationListener? = null
+
+    companion object {
+        private const val ARG_MESSAGE = "message"
+        private const val ARG_CHANGELOG = "changelog"
+        private const val ARG_UPDATE = "update"
+        private const val ARG_FORCE = "force"
+
+        fun newInstance(
+            listener: ConfirmationListener,
+            message: String,
+            changelog: String = "",
+            update: Boolean,
+            force: Boolean = false
+        ): ConfirmationFragment {
+            val fragment = ConfirmationFragment()
+            fragment.listener = listener
+            val args = Bundle().apply {
+                putString(ARG_MESSAGE, message)
+                putString(ARG_CHANGELOG, changelog)
+                putBoolean(ARG_UPDATE, update)
+                putBoolean(ARG_FORCE, force)
+            }
+            fragment.arguments = args
+            return fragment
+        }
+    }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val message = arguments?.getString(ARG_MESSAGE) ?: ""
+        val changelog = arguments?.getString(ARG_CHANGELOG) ?: ""
+        val update = arguments?.getBoolean(ARG_UPDATE) ?: false
+        val force = arguments?.getBoolean(ARG_FORCE) ?: false
+
         return activity?.let {
             val dialog = Dialog(it, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
             
@@ -50,7 +77,7 @@ class ConfirmationFragment(
                 tvTitle.text = "Update Available"
                 btnUpdate.text = "Update Now"
                 btnUpdate.setOnClickListener {
-                    listener.onConfirm()
+                    listener?.onConfirm()
                     if (!force) dismiss() // Only dismiss if not forced (wait for download)
                 }
                 
@@ -58,7 +85,7 @@ class ConfirmationFragment(
                     btnCancel.visibility = android.view.View.GONE
                 } else {
                     btnCancel.setOnClickListener {
-                        listener.onCancel()
+                        listener?.onCancel()
                         dismiss()
                     }
                 }
@@ -70,7 +97,7 @@ class ConfirmationFragment(
                     dismiss()
                 }
             }
-            // Focus handling (Optional logic if needed, previously commented out or simple animation)
+            // Focus handling
              val focusListener = android.view.View.OnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
                     v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(120).start()

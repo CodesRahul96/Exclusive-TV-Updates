@@ -128,7 +128,7 @@ class UpdateManager(
 
             if (update) {
                 val changelog = release?.changelog ?: "Bug fixes and performance improvements."
-                val dialog = ConfirmationFragment(this@UpdateManager, text, changelog, update, force)
+                val dialog = ConfirmationFragment.newInstance(this@UpdateManager, text, changelog, update, force)
                 if (!activity.supportFragmentManager.isStateSaved) {
                     dialog.show(activity.supportFragmentManager, TAG)
                 }
@@ -139,7 +139,7 @@ class UpdateManager(
                 }
             } else if (isManualCheck) {
                 // Use ConfirmationFragment for "Up to Date" style too
-                val dialog = ConfirmationFragment(this@UpdateManager, text, "", false, false)
+                val dialog = ConfirmationFragment.newInstance(this@UpdateManager, text, "", false, false)
                 if (!activity.supportFragmentManager.isStateSaved) {
                     dialog.show(activity.supportFragmentManager, TAG)
                 }
