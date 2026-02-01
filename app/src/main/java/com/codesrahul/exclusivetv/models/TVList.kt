@@ -27,7 +27,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import com.codesrahul.exclusivetv.SecurityUtil
-import com.codesrahul.exclusivetv.StringObfuscator
 import java.io.BufferedReader
 import java.io.StringReader
 import java.io.Reader
@@ -57,9 +56,9 @@ object TVList {
     }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    val DEFAULT_CONFIG_URL: String
-        get() = StringObfuscator.getConfigUrl()
+    const val DEFAULT_CONFIG_URL = "https://exclusive-tv-app-api.vercel.app/"
     private lateinit var appDirectory: File
+
     private lateinit var serverUrl: String
     private lateinit var list: List<TV>
     var listModel: List<TVModel> = listOf()
@@ -135,17 +134,14 @@ object TVList {
                 initDeferred.complete(Unit)
             }
 
+            // Initial config setup
             if (SP.config.isNullOrEmpty()) {
                 SP.config = DEFAULT_CONFIG_URL
             }
 
-            // Check for App Update or Stale Config
             val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
-            // Force update to new API if different
-            if (SP.config != DEFAULT_CONFIG_URL) {
-                SP.config = DEFAULT_CONFIG_URL
-            }
             // FIX: Only clear cache on MAJOR version changes (not every debug build)
+
             if (currentVersion != SP.lastVersion) {
                  val lastMajorVersion = SP.lastVersion / 1000000
                  val currentMajorVersion = currentVersion / 1000000
@@ -199,10 +195,12 @@ object TVList {
                 // Ensure all URLs from preferences are included
                 val urls = SP.playlistUrls.toMutableSet()
                 
-                // ALWAYS ensure default API is included if it's not already there
-                if (!urls.contains(DEFAULT_CONFIG_URL)) {
-                    urls.add(DEFAULT_CONFIG_URL)
+                // ALWAYS ensure primary API is included
+                val mainUrl = SP.config ?: DEFAULT_CONFIG_URL
+                if (mainUrl.isNotEmpty() && !urls.contains(mainUrl)) {
+                    urls.add(mainUrl)
                 }
+
                 
                 
                 // If the set changed (e.g. first run), save it

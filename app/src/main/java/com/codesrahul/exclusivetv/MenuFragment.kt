@@ -174,17 +174,13 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
                 val tvModel = TVList.getTVModel()
                 if (tvModel != null) {
-                    listAdapter.toPosition(tvModel.listIndex)
-
                     val currentGroupPosition = TVList.groupModel.position.value ?: 0
                     if (tvModel.groupIndex == currentGroupPosition) {
-                            TAG,
-                            "list on show toPosition ${tvModel.tv.title} ${tvModel.listIndex}/${listAdapter.tvListModel.size()}"
-                        )
                         listAdapter.toPosition(tvModel.listIndex)
                     } else {
                         listAdapter.toPosition(0)
                     }
+
                 } else {
                     listAdapter.toPosition(0)
                 }
@@ -235,18 +231,10 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                 if (currentTvModel != null) {
                     val groupIndex = currentTvModel.groupIndex
                     val currentGroupPosition = TVList.groupModel.position.value ?: 0
-                        TAG,
-                        "groupIndex $groupIndex $currentGroupPosition"
-                    )
-
                     if (groupIndex == currentGroupPosition) {
                         if (listAdapter.tvListModel.getIndex() != currentTvModel.groupIndex) {
                             updateList(groupIndex)
                         }
-
-                            TAG,
-                            "list on show toPosition ${currentTvModel.tv.title} ${currentTvModel.listIndex}/${listAdapter.tvListModel.size()}"
-                        )
                         listAdapter.toPosition(currentTvModel.listIndex)
                     } else {
                         listAdapter.toPosition(0)
@@ -255,10 +243,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
             }
             if (binding.group.isVisible) {
                 val currentGroupPosition = TVList.groupModel.position.value ?: 0
-                    TAG,
-                    "group on show toPosition ${TVList.groupModel.position.value!!}/${TVList.groupModel.size()}"
-                )
-                groupAdapter.toPosition(TVList.groupModel.position.value!!)
+                groupAdapter.toPosition(currentGroupPosition)
             }
         } else {
             if (::groupAdapter.isInitialized) groupAdapter.stopMove()

@@ -33,6 +33,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.codesrahul.exclusivetv.models.TVModel
 import com.codesrahul.exclusivetv.RootCheckUtil
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.remoteConfigSettings
 
 
 class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
@@ -258,11 +260,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         updateManager = UpdateManager(this, com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
         updateManager.checkAndUpdate()
         
-        // Initial channel list update
-        TVList.update(this, silent = true)
-        
-        // Setup watermark
+        // Initialize watermark
         setupWatermark()
+        
+        // Initialize Firebase Remote Config
+        initRemoteConfig()
         
         startPeriodicRefresh()
         startPeriodicUpdateCheck()
@@ -428,6 +430,43 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             "top_left" -> layoutParams.gravity = Gravity.TOP or Gravity.START
         }
         watermarkContainer.layoutParams = layoutParams
+    }
+
+    private fun initRemoteConfig() {
+        val remoteConfig = FirebaseRemoteConfig.getInstance()
+        val configSettings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = if (BuildConfig.DEBUG) 0 else 3600 // 0 for debug, 1 hour for prod
+        }
+        remoteConfig.setConfigSettingsAsync(configSettings)
+        
+        // Set defaults from current config or obfuscated default
+        val defaults = mapOf("main_api_url" to TVList.DEFAULT_CONFIG_URL)
+        remoteConfig.setDefaultsAsync(defaults)
+
+        remoteConfig.fetchAndActivate()
+            .addOnCompleteListener(this) { task ->
+                val apiUrl = if (task.isSuccessful) {
+                    remoteConfig.getString("main_api_url")
+                } else {
+                    remoteConfig.getString("main_api_url") // Still try to get from cache
+                }
+                
+                if (apiUrl.isNotBlank()) {
+                    val currentConfig = SP.config
+                    if (apiUrl != currentConfig) {
+                        SP.config = apiUrl
+                        SP.addPlaylistUrl(apiUrl)
+                        // Trigger update with the new URL
+                        TVList.update(this, silent = true)
+                    } else {
+                        // Even if it's the same, trigger initial update if not already done
+                        TVList.update(this, silent = true)
+                    }
+                } else {
+                    // Fallback to initial update
+                    TVList.update(this, silent = true)
+                }
+            }
     }
 
     override fun onResume() {

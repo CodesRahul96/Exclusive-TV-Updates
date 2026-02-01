@@ -164,6 +164,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-config-ktx")
+
 
     implementation("androidx.cardview:cardview:1.0.0")
     implementation("androidx.tvprovider:tvprovider:1.0.0")
