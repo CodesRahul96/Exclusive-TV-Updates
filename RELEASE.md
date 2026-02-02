@@ -17,7 +17,7 @@ This script will:
 - Generate version info
 - Commit and tag the release
 - Build the signed APK
-- Upload to GitHub Releases
+- Upload to GitHub Both Releases
 
 ---
 
