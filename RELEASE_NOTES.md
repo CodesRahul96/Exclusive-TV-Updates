@@ -1,9 +1,12 @@
-# ExclusiveTV App v1.0.56
+# ExclusiveTV App v1.0.57
 
-This release significantly improves the stability and reliability of the in-app update mechanism, especially on older hardware.
+This release focuses on critical security enhancements, performance optimizations, and general stability improvements.
 
-## 🐛 Critical Fixes
-*   **Update Dialog Crash**: Resolved `java.lang.RuntimeException: Unable to instantiate fragment ConfirmationFragment` (fixed no-argument constructor).
+## Changelog
+- **Security Enhancements**: Re-implemented robust security checks (Signature, Integrity, Environment validation) with correct release certificate fingerprint.
+- **Performance**: Optimized app startup and reduced background overhead.
+- **Fixes**: Resolved build stability issues and rolled back experimental aspect ratio changes for consistent playback.
+- **Maintenance**: General bug fixes and stability improvements.
 *   **Legacy Compatibility**: Fixed a crash on Android 12 and below when registering update-related system events.
 *   **Robust Networking**: Fixed potential "broken link" issues when processing update URLs from diverse servers.
 *   **Direct Update Restored**: Re-implemented the direct download and install mechanism for in-app updates.

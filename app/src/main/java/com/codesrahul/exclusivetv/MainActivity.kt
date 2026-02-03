@@ -888,11 +888,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (!settingFragment.isHidden) settingActive()
         if (!trackSelectionFragment.isHidden) trackSelectionActive()
         
-        // Intercept Select/Enter for Info Card when in Playback Mode (No menus visible)
+        // Intercept Select/Enter for Info Card or Channel Switch when in Playback Mode (No menus visible)
         if (event.action == KeyEvent.ACTION_DOWN && 
            (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER)) {
              
-             if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
+             if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                 if (channelFragment.isNumberEntering()) {
+                     channelFragment.playNow()
+                     return true
+                 }
+                 
                  if (infoFragment.isShowing()) {
                      infoFragment.dismiss()
                  } else {
@@ -1235,6 +1240,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                 if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                    if (channelFragment.isNumberEntering()) {
+                        channelFragment.playNow()
+                        return true
+                    }
                     if (infoFragment.isShowing()) {
                         infoFragment.dismiss()
                     } else {

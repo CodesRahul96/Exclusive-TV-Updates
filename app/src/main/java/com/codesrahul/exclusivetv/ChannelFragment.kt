@@ -53,21 +53,29 @@ class ChannelFragment : Fragment() {
     }
 
     fun show(channel: String) {
-        if (binding.content.text.length > 1) {
+        if (binding.content.text.length >= 4) {
             return
         }
-        val textValue = "${binding.content.text}$channel"
+        
+        val currentText = binding.content.text.toString()
+        val textValue = "$currentText$channel"
         this.channel = try { textValue.toInt() } catch (e: Exception) { 0 }
+        
         handler.removeCallbacks(hideRunnable)
         handler.removeCallbacks(playRunnable)
-        if (binding.content.text == "") {
-            binding.content.text = channel
-            view?.visibility = View.VISIBLE
-            handler.postDelayed(playRunnable, delay)
-        } else {
-            binding.content.text = "${binding.content.text}$channel"
-            handler.postDelayed(playRunnable, 0)
-        }
+        
+        binding.content.text = textValue
+        view?.visibility = View.VISIBLE
+        handler.postDelayed(playRunnable, delay)
+    }
+
+    fun isNumberEntering(): Boolean {
+        return view?.visibility == View.VISIBLE && binding.content.text.isNotEmpty()
+    }
+
+    fun playNow() {
+        handler.removeCallbacks(playRunnable)
+        playRunnable.run()
     }
 
     override fun onResume() {
