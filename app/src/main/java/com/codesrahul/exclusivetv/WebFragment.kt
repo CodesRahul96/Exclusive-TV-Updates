@@ -1127,7 +1127,7 @@ class WebFragment : Fragment() {
     private fun getOptimalUserAgent(url: String): String {
         return when {
             // SPECIAL HANDLING: IPTV Providers blocking standard browsers
-            url.contains("drmlive.net") || url.contains("servertvhub.site") -> 
+            url.contains("drmlive.net") || url.contains("servertvhub.site") || url.contains("workers.dev") -> 
                 "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
                 
             url.contains("googlevideo.com") || url.contains("youtube.com") -> 

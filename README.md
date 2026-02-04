@@ -2,7 +2,7 @@
 
 A premium IPTV player for Android TV, optimized for a seamless and immersive viewing experience. **Exclusive TV** combines a high-end aesthetic with robust playback capabilities, intelligent content management, and advanced features for power users.
 
-![Exclusive TV](https://img.shields.io/badge/Platform-Android%20TV-green?style=flat-square) ![Version](https://img.shields.io/badge/Version-v1.0.33-blue?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
+![Exclusive TV](https://img.shields.io/badge/Platform-Android%20TV-green?style=flat-square) ![Version](https://img.shields.io/badge/Version-v1.0.58-blue?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
 **Repository:** [CodesRahul96/Exclusive-TV-APP](https://github.com/CodesRahul96/Exclusive-TV-APP)
 
@@ -103,7 +103,7 @@ Exclusive TV uses a hybrid storage model to ensure content is always available:
 
 ### From GitHub Releases (Recommended)
 1. Download the latest APK from [GitHub Releases](https://github.com/CodesRahul96/Exclusive-TV-APP/releases)
-2. Install via ADB: `adb install ExclusiveTV-v1.0.33.apk`
+2. Install via ADB: `adb install ExclusiveTV-v1.0.58.apk`
 3. Or copy to USB drive and install directly on your Android TV
 
 ### Dual-Repository Update System
@@ -122,7 +122,7 @@ cd Exclusive-TV-APP
 
 ---
 
-## 🔧 What's New in v1.0.33
+## 🔧 What's New in v1.0.58
 
 ### Touch & Gesture Controls
 - **Timed Long-Press Gestures:** 3-second hold for audio selector, 5-second hold for settings

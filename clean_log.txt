@@ -1,8 +1,0 @@
-﻿
-> Configure project :app
-Version Code from version.json: 16790529
-Version Name from version.json: v1.0.53
-Building with VersionCode: 16790529, VersionName: v1.0.53
-
-> Task :app:clean FAILED
-1 actionable task: 1 executed
