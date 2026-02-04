@@ -42,6 +42,10 @@ import java.util.UUID
 import android.util.Base64
 import java.nio.charset.StandardCharsets
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.common.AudioAttributes
+import androidx.media3.exoplayer.hls.DefaultHlsExtractorFactory
+import androidx.media3.exoplayer.hls.HlsExtractorFactory
+import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
 import org.json.JSONObject
@@ -65,6 +69,7 @@ class WebFragment : Fragment() {
     private var savedAudioTrackToApply: Int = -1
     private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
     private val playbackHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var isWebMode = false
 
     data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
@@ -848,6 +853,14 @@ class WebFragment : Fragment() {
 
         val builder = ExoPlayer.Builder(requireContext())
             .setLoadControl(loadControl)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build(),
+                true
+            )
+            .setHandleAudioBecomingNoisy(true)
         
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(userAgent)
@@ -875,11 +888,16 @@ class WebFragment : Fragment() {
             httpDataSourceFactory.setDefaultRequestProperties(requestHeaders)
         }
 
+        val hlsExtractorFactory = DefaultHlsExtractorFactory(
+            1 or 8, // FLAG_ALLOW_NON_IDR_KEYFRAMES (1) | FLAG_DETECT_ACCESS_UNIT_DELIMITERS (8)
+            true
+        )
+
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext())
-            .setDataSourceFactory(httpDataSourceFactory)
+        mediaSourceFactory.setDataSourceFactory(httpDataSourceFactory)
 
         // FIX: Configure DRM Provider to use our Cookie-enabled DataSource
-        mediaSourceFactory.setDrmSessionManagerProvider { mediaItem ->
+        mediaSourceFactory.setDrmSessionManagerProvider { mediaItem: androidx.media3.common.MediaItem ->
             // Use local variable capture for configuration
             val schemeUuid = if (drmConfig != null) {
                 when (drmConfig?.scheme?.lowercase()) {
@@ -965,6 +983,7 @@ class WebFragment : Fragment() {
              }
         }
         
+        
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
@@ -1001,26 +1020,27 @@ class WebFragment : Fragment() {
                     }
                 } else {
                      // Check if we should fallback to WebView (Universal Support)
-                     // If we are in "Stream" mode but it failed repeatedly, maybe it's a web link?
-                     tvModel?.setErrInfo("Switching to Web Mode...")
-                     
-                     // Switch to WebView
-                     playbackHandler.post {
-                         _binding?.let { b ->
-                             b.playerView.visibility = View.GONE
-                             b.webView.visibility = View.VISIBLE
-                             releasePlayer()
-                             
-                             // Re-apply WebView settings if needed
-                             val url = currentVideoUrl
-                             val uri = Uri.parse(url)
-                             
-                             // Some site-specifics might need re-triggering
-                             if (uri.host == "tv.cctv.com") {
-                                 b.webView.evaluateJavascript("localStorage.setItem('cctv_live_resolution', '720');", null)
+                     if (isAdded) {
+                         val errorUrl = currentVideoUrl
+                         if (!errorUrl.isNullOrEmpty() && (errorUrl.startsWith("http") || errorUrl.startsWith("https"))) {
+                             if (!isWebMode) {
+                                  isWebMode = true
+                                  val b = binding ?: return
+                                  b.playerView.visibility = View.GONE
+                                  b.webView.visibility = View.VISIBLE
+                                  releasePlayer()
+                                  
+                                  // Re-apply WebView settings if needed
+                                  val errWebUrl = errorUrl
+                                  val errWebUri = Uri.parse(errWebUrl)
+                                  
+                                  // Some site-specifics might need re-triggering
+                                  if (errWebUri.host == "tv.cctv.com") {
+                                      b.webView.evaluateJavascript("localStorage.setItem('cctv_live_resolution', '720');", null)
+                                  }
+      
+                                  b.webView.loadUrl(errWebUrl)
                              }
- 
-                             b.webView.loadUrl(url)
                          }
                      }
                 }
@@ -1070,43 +1090,82 @@ class WebFragment : Fragment() {
                 }
 
                 var audioLabel = ""
+                var hasAudio = false
                 for (group in tracks.groups) {
-                    if (group.type == C.TRACK_TYPE_AUDIO && group.isSelected) {
-                        val format = group.getTrackFormat(0)
-                        val channels = format.channelCount
-                        audioLabel = when (channels) {
-                            1 -> "Mono"
-                            2 -> "Stereo"
-                            6 -> "5.1ch"
-                            8 -> "7.1ch"
-                            else -> if (channels > 0) "${channels}ch" else ""
+                    if (group.type == C.TRACK_TYPE_AUDIO) {
+                        hasAudio = true
+                        if (group.isSelected) {
+                            val format = group.getTrackFormat(0)
+                            val channels = format.channelCount
+                            audioLabel = when (channels) {
+                                1 -> "Mono"
+                                2 -> "Stereo"
+                                6 -> "5.1ch"
+                                8 -> "7.1ch"
+                                else -> if (channels > 0) "${channels}ch" else ""
+                            }
+                            // UI POLISH: Map Codecs to Friendly Names
+                            val mime = format.sampleMimeType ?: ""
+                            val codecName = when {
+                                mime.contains("mp4a") || mime.contains("aac") -> "AAC"
+                                mime.contains("ac-3") || mime == androidx.media3.common.MimeTypes.AUDIO_AC3 -> "Dolby Digital"
+                                mime.contains("eac-3") || mime == androidx.media3.common.MimeTypes.AUDIO_E_AC3 -> "Dolby Digital Plus"
+                                mime.contains("dts") || mime == androidx.media3.common.MimeTypes.AUDIO_DTS -> "DTS"
+                                mime.contains("mpeg") -> "MP3"
+                                mime.contains("opus") -> "Opus"
+                                mime.contains("flac") -> "FLAC"
+                                mime.contains("vorbis") -> "Vorbis"
+                                else -> ""
+                            }
+                            
+                            audioLabel = if (codecName.isNotEmpty()) {
+                                if (audioLabel.isNotEmpty()) "$codecName $audioLabel" else codecName
+                            } else {
+                                // Fallback if unknown codec but channels detected
+                                if (audioLabel.isNotEmpty()) audioLabel else "Audio OK"
+                            }
                         }
-                        // Optional: Check for Dolby
-                        val mime = format.sampleMimeType
-                        if (mime == androidx.media3.common.MimeTypes.AUDIO_AC3 || 
-                            mime == androidx.media3.common.MimeTypes.AUDIO_E_AC3) {
-                            audioLabel = if (audioLabel.isNotEmpty()) "$audioLabel Dolby" else "Dolby"
-                        }
-                        break // Found the selected audio track
                     }
                 }
+                
+                if (!hasAudio && tracks.groups.isNotEmpty()) {
+                    tvModel?.setErrInfo("No Audio Track Found")
+                } else if (hasAudio && audioLabel.isEmpty() && tracks.groups.any { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }) {
+                     audioLabel = "Audio OK" // Fallback label
+                }
+
                 tvModel?.setAudioQuality(audioLabel)
             }
         })
 
         playerView.player = exoPlayer
         
-        val mediaItemBuilder = MediaItem.Builder().setUri(videoUrl)
-        
-        // Force HLS MIME type for .php streams or any link detected as M3U8 but not ending in standard extensions
-        if (videoUrl.contains(".m3u8", ignoreCase = true) || 
-            (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))) {
-             mediaItemBuilder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
-        }
+        val uri = Uri.parse(videoUrl)
+        val isHls = videoUrl.contains(".m3u8", ignoreCase = true) || 
+                   (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))
 
-        exoPlayer?.setMediaItem(mediaItemBuilder.build())
-        exoPlayer?.prepare()
+        val mediaItem = MediaItem.Builder()
+            .setUri(uri)
+            .setMimeType(if (isHls) androidx.media3.common.MimeTypes.APPLICATION_M3U8 else null)
+            .build()
+
+        if (isHls) {
+            // UNIVERSAL FIX: Apply robust settings to ALL HLS streams
+            val hlsExtractorFactory = DefaultHlsExtractorFactory(
+                1, // FLAG_ALLOW_NON_IDR_KEYFRAMES (1)
+                true
+            )
+            val hlsMediaSource = androidx.media3.exoplayer.hls.HlsMediaSource.Factory(httpDataSourceFactory)
+                .setExtractorFactory(hlsExtractorFactory)
+                .setAllowChunklessPreparation(false) // Strict Sync for stability on all streams
+                .createMediaSource(mediaItem)
+            exoPlayer?.setMediaSource(hlsMediaSource)
+        } else {
+            exoPlayer?.setMediaItem(mediaItem)
+        }
         
+        exoPlayer?.prepare()
+        exoPlayer?.playWhenReady = true
         // Audio Stabilizer (LoudnessEnhancer)
         if (SP.audioStabilizer) {
             try {

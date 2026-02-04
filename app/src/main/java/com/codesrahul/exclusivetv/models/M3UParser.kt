@@ -130,7 +130,7 @@ object M3UParser {
                         }
 
                         if (currentName.isEmpty()) {
-                            currentName = "Channel ${channelCount + 1}"
+                            currentName = "ExclusiveTV ${channelCount + 1}"
                         }
 
                         // Extract Properties
@@ -350,7 +350,7 @@ object M3UParser {
         catchupSource: String?
     ): TV {
         // Default name if still empty
-        val finalName = if (name.isEmpty()) "Channel ${id + 1}" else name
+        val finalName = if (name.isEmpty()) "ExclusiveTV ${id + 1}" else name
         val finalGroup = if (group.isNotEmpty()) group else "Uncategorized"
 
         return TV(

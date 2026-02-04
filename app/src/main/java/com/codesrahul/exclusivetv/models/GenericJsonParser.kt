@@ -79,7 +79,7 @@ object GenericJsonParser {
         // Heuristic Field Mapping
         
         // 1. Find Name
-        val name = findString(obj, "name", "title", "channel_name", "display_name", "caption", "station", "tv_name", "channel", "label", "tvg-name", "tvg_name", "ch_name") ?: "Channel $index"
+        val name = findString(obj, "name", "title", "channel_name", "display_name", "caption", "station", "tv_name", "channel", "label", "tvg-name", "tvg_name", "ch_name") ?: "ExclusiveTV $index"
         
         // 2. Find URL (Strict - must exist)
         val url = findString(obj, "url", "stream_url", "uri", "file", "src", "link", "stream", "play_url", "m3u8_url", "mpd_url", "video_url", "address", "location", "media_url", "hls_url", "dash_url", "rtsp_url", "source", "content_url")

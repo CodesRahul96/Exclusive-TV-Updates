@@ -20,8 +20,8 @@ object SimpleListParser {
                     TV(
                         id = count,
                         apiId = count.toString(),
-                        name = "Channel ${count + 1}",
-                        title = "Channel ${count + 1}",
+                        name = "ExclusiveTV ${count + 1}",
+                        title = "ExclusiveTV ${count + 1}",
                         description = null,
                         logo = "",
                         image = null,

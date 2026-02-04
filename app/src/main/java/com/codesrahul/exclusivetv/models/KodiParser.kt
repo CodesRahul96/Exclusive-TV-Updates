@@ -86,7 +86,7 @@ object KodiParser {
                     if (lastCommaIndex != -1) {
                         currentName = trimmedLine.substring(lastCommaIndex + 1).trim()
                     } else {
-                        currentName = "Channel ${channelCount + 1}"
+                        currentName = "ExclusiveTV ${channelCount + 1}"
                     }
 
                     // Extract Properties
@@ -267,7 +267,7 @@ object KodiParser {
                                  currentName = namePart.replace("-", " ").capitalizeWords()
                                  if (currentGroup.isEmpty()) currentGroup = "Star Live"
                              } else {
-                                 currentName = "Channel ${channelCount + 1}"
+                                 currentName = "ExclusiveTV ${channelCount + 1}"
                              }
                          }
 
