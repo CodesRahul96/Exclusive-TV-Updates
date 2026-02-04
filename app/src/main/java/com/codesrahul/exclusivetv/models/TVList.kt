@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv.models
+package com.codesrahul.exclusivetv.models
 
 import android.content.Context
 import android.net.Uri
@@ -17,6 +17,7 @@ import com.codesrahul.exclusivetv.SecureHttpClient
 import com.codesrahul.exclusivetv.UnsafeHttpClient
 import com.codesrahul.exclusivetv.OrderPreferenceManager
 import okhttp3.Request
+import com.codesrahul.exclusivetv.SecretManager
 import io.github.lizongying.Gua
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -511,8 +512,11 @@ object TVList {
                 // Gua requires full string for decoding. 
                 // We read the rest of the stream into a string.
                 val remaining = BufferedReader(pushbackReader).readText()
-                val decoded = Gua().decode(remaining)
-                return parseUniversal(decoded)
+                val g = Gua()
+                val decoded = if (g.verify(remaining)) g.decode(remaining) else remaining
+                val secretKey = SecretManager.getAppKey()
+                val finalContent = SecurityUtil.decryptChannelData(decoded, secretKey)
+                return parseUniversal(finalContent)
             } else {
             }
         } catch (e: Exception) {
@@ -523,10 +527,16 @@ object TVList {
 
     private fun parseUniversal(content: String): List<TV> {
         var string = content.trim()
+        // SECURITY UPGRADE: Use Native Key
+        // Layer 1: Gua64 Decoding (Encoding layer)
         val g = Gua()
-        if (g.verify(string)) {
-            string = g.decode(string)
-        }
+        val decodedFromGua = if (g.verify(string)) g.decode(string) else string
+        
+        // Layer 2: AES Decryption (Security layer)
+        val secretKey = SecretManager.getAppKey()
+        val finalString = SecurityUtil.decryptChannelData(decodedFromGua, secretKey)
+        
+        string = finalString
         
         if (string.isBlank()) return emptyList()
         val decryptedContent = string
@@ -648,13 +658,16 @@ object TVList {
         
         // 3. Strategy B: Gua / Encrypted (Legacy String requirement)
         if (peekContent.isNotEmpty() && (peekContent[0].toInt() >= 0x4D00 && peekContent[0].toInt() <= 0x4DFF)) {
-             try {
-                 val content = file.readText()
-                  val decoded = Gua().decode(content)
-                 val result = parseUniversal(decoded)
-                 if (result.isNotEmpty()) return@withContext expandNestedPlaylists(result)
-             } catch (e: Exception) {
-             }
+            try {
+                val content = file.readText()
+                val g = Gua()
+                val decodedFromGua = if (g.verify(content)) g.decode(content) else content
+                val secretKey = SecretManager.getAppKey()
+                val finalContent = SecurityUtil.decryptChannelData(decodedFromGua, secretKey)
+                val result = parseUniversal(finalContent)
+                if (result.isNotEmpty()) return@withContext expandNestedPlaylists(result)
+            } catch (e: Exception) {
+            }
         }
 
         // 4. Strategy C: M3U / Universal Stream

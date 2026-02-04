@@ -69,20 +69,6 @@ object SecurityUtil {
     }
 
     private fun checkFrida(): Boolean {
-        // Check for Frida specific files and ports
-        // 1. Open ports check (common Frida ports)
-        /*
-        try {
-            val socket = java.net.Socket("127.0.0.1", 27042)
-            socket.close()
-            return true
-        } catch (e: Exception) {
-            // Port closed or unreachable, which is good
-        }
-        */
-        // Note: NetworkOnMainThreadException if called from main thread. 
-        // Better to check for artifacts in /proc/self/maps which is safer and synchronous.
-        
         try {
             val file = java.io.File("/proc/self/maps")
             if (file.exists()) {
@@ -96,6 +82,35 @@ object SecurityUtil {
         }
         
         return false
+    }
+
+    /**
+     * Decrypts channel data using AES-256-CBC.
+     * Use this with the NDK key for the ultimate security.
+     */
+    fun decryptChannelData(data: String, key: String): String {
+        if (key.isEmpty() || data.isEmpty()) return data
+        try {
+            val combined = android.util.Base64.decode(data, android.util.Base64.DEFAULT)
+            if (combined.size < 16) return data
+            
+            val iv = combined.sliceArray(0 until 16)
+            val encryptedBytes = combined.sliceArray(16 until combined.size)
+            
+            // PROFESSIONAL KEY DERIVATION: Use SHA-256 to create a 32-byte key
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            val keyBytes = md.digest(key.toByteArray(Charsets.UTF_8))
+            
+            val secretKeySpec = javax.crypto.spec.SecretKeySpec(keyBytes, "AES")
+            val ivSpec = javax.crypto.spec.IvParameterSpec(iv)
+            
+            val cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding")
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKeySpec, ivSpec)
+            
+            return String(cipher.doFinal(encryptedBytes), Charsets.UTF_8)
+        } catch (e: Exception) {
+            return data
+        }
     }
 }
 
