@@ -19,6 +19,19 @@ class ChannelFragment : Fragment() {
     private val delay: Long = 3000
     private var channel = 0
 
+    fun isShowing(): Boolean {
+        return view?.visibility == View.VISIBLE
+    }
+
+    fun dismiss() {
+        handler.removeCallbacks(hideRunnable)
+        handler.removeCallbacks(playRunnable)
+        _binding?.let {
+            it.content.text = ""
+            view?.visibility = View.GONE
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?

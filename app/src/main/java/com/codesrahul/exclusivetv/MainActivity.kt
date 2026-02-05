@@ -405,6 +405,56 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }, refreshInterval)
     }
     
+    override fun onUserLeaveHint() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val isPlaying = webFragment.isPlaying()
+            // Check if PIP is enabled in settings
+            if (isPlaying && !isMaintenanceMode && SP.pipMode) {
+                // Check if we are in a state where PiP makes sense (e.g. not in settings)
+                if (settingFragment.isHidden && menuFragment.isHidden) {
+                    try {
+                        val params = android.app.PictureInPictureParams.Builder()
+                            //.setAspectRatio(Rational(16, 9)) // Optional: Set aspect ratio if known
+                            .build()
+                        enterPictureInPictureMode(params)
+                    } catch (e: Exception) {
+                        // PiP might not be supported or failed
+                    }
+                }
+            }
+        }
+        super.onUserLeaveHint()
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        }
+        
+        if (isInPictureInPictureMode) {
+            // Hide UI elements
+            watermarkContainer.visibility = View.GONE
+            
+            // Hide fragments if they are interfering
+            if (infoFragment.isShowing()) infoFragment.dismiss()
+            if (channelFragment.isShowing()) channelFragment.dismiss()
+            
+            // Hide other overlays
+            loadingFragment.view?.visibility = View.GONE
+            
+        } else {
+            // Restore UI elements
+            updateWatermarkVisibility()
+            
+            // Restore loading fragment visibility if it was active
+            // (Simpler to just let logic handle it, but ensuring visibility is reset)
+            loadingFragment.view?.visibility = View.VISIBLE
+            
+            // Force refresh of layout or controls if needed
+            webFragment.refreshPlayback()
+        }
+    }
+
     private fun setupWatermark() {
         watermarkContainer = findViewById<FrameLayout>(R.id.watermarkContainer)
         tvWatermark = findViewById<TextView>(R.id.tvWatermark)

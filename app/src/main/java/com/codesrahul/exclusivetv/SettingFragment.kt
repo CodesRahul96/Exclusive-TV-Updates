@@ -109,7 +109,9 @@ class SettingFragment : Fragment() {
         binding.statusChannelCheck.text = if (SP.channelCheck) "ON" else "OFF"
          binding.statusEpg.text = if (SP.epgEnabled) "ON" else "OFF"
          binding.statusEpgShift.text = "${SP.epgShift}h"
+         binding.statusEpgShift.text = "${SP.epgShift}h"
          binding.statusWatermark.text = if (SP.watermarkEnabled) "ON" else "OFF"
+         binding.statusPipMode.text = if (SP.pipMode) "ON" else "OFF"
 
         // Set text colors based on state
         val activeColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
@@ -121,7 +123,8 @@ class SettingFragment : Fragment() {
             binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
              binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
              binding.statusEpgShift,
-             binding.statusWatermark, binding.statusBufferMode, binding.statusAudioStabilizer
+             binding.statusEpgShift,
+             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, binding.statusAudioStabilizer
         )
 
         statusViews.forEach { v ->
@@ -158,6 +161,7 @@ class SettingFragment : Fragment() {
              binding.cardEpg,
              binding.cardEpgShift,
              binding.cardWatermark,
+             binding.cardPipMode,
             binding.cardBufferMode,
             binding.cardAudioLanguage,
             binding.cardAudioLanguage,
@@ -209,7 +213,9 @@ class SettingFragment : Fragment() {
         binding.cardChannelCheck.setOnClickListener { toggleSetting("channelCheck") }
          binding.cardEpg.setOnClickListener { toggleSetting("epgEnabled") }
          binding.cardEpgShift.setOnClickListener { setupEpgShiftDialog() }
+         binding.cardEpgShift.setOnClickListener { setupEpgShiftDialog() }
          binding.cardWatermark.setOnClickListener { toggleSetting("watermark") }
+         binding.cardPipMode.setOnClickListener { toggleSetting("pipMode") }
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
         binding.cardAudioLanguage.setOnClickListener { setupAudioLanguageDialog() }
         binding.cardAudioStabilizer.setOnClickListener { toggleSetting("audioStabilizer") }
@@ -316,8 +322,9 @@ class SettingFragment : Fragment() {
             "watermark" -> {
                 SP.watermarkEnabled = !SP.watermarkEnabled
                 (activity as? MainActivity)?.updateWatermarkVisibility()
-                (activity as? MainActivity)?.updateWatermarkVisibility()
+                 (activity as? MainActivity)?.updateWatermarkVisibility()
             }
+            "pipMode" -> SP.pipMode = !SP.pipMode
             "bufferMode" -> {
                 var current = SP.bufferMode
                 current = (current + 1) % 3 // 0->1->2->0

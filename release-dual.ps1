@@ -40,10 +40,10 @@ $jsonContent | Out-File -FilePath "version.json" -Encoding ascii
 Write-Host "version.json generated:" -ForegroundColor Green
 Get-Content version.json
 
-# 2. Build Release APK
-Write-Host "`n--> Building Release APK..." -ForegroundColor Yellow
+# 2. Build Release & Debug APKs
+Write-Host "`n--> Building APKs..." -ForegroundColor Yellow
 if (Test-Path ".\gradlew.bat") {
-    $gradleArgs = @("assembleRelease", "-PversionCodeOverride=$versionCode", "-PversionNameOverride=$Version")
+    $gradleArgs = @("assembleRelease", "assembleDebug", "-PversionCodeOverride=$versionCode", "-PversionNameOverride=$Version")
     & .\gradlew.bat $gradleArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Build Failed. Aborting release."
@@ -73,16 +73,22 @@ Write-Host "--> Pushing to origin/$currentBranch..." -ForegroundColor Yellow
 git push origin $currentBranch
 git push origin $Version
 
-# 4. Prepare APK
-$apkPath = "app\build\outputs\apk\release\app-release.apk"
-$targetName = "ExclusiveTV-$Version.apk"
+# 4. Prepare APKs
+$apkReleasePath = "app\build\outputs\apk\release\app-release.apk"
+$apkDebugPath = "app\build\outputs\apk\debug\app-debug.apk"
 
-if (Test-Path $apkPath) {
-    Copy-Item -Path $apkPath -Destination ".\$targetName"
-    Write-Host "APK copied to .\$targetName" -ForegroundColor Green
+$targetRelease = "ExclusiveTV-$Version.apk"
+$targetDebug = "ExclusiveTV-$Version-debug.apk"
+
+if ((Test-Path $apkReleasePath) -and (Test-Path $apkDebugPath)) {
+    Copy-Item -Path $apkReleasePath -Destination ".\$targetRelease"
+    Copy-Item -Path $apkDebugPath -Destination ".\$targetDebug"
+    Write-Host "APKs copied:" -ForegroundColor Green
+    Write-Host "  - $targetRelease"
+    Write-Host "  - $targetDebug"
 }
 else {
-    Write-Error "APK not found at $apkPath"
+    Write-Error "APK(s) not found. Check build output."
     exit 1
 }
 
@@ -109,7 +115,7 @@ if (Test-Path "RELEASE_NOTES.md") {
     $notes = Get-Content "RELEASE_NOTES.md" -Raw
 }
 
-& $ghExe release create "$Version" "$targetName" --repo $PRIMARY_REPO --title "$Version" --notes "$notes"
+& $ghExe release create "$Version" "$targetRelease" "$targetDebug" --repo $PRIMARY_REPO --title "$Version" --notes "$notes"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "PRIMARY release published successfully!" -ForegroundColor Green
 }
@@ -121,7 +127,7 @@ else {
 # 7. Release to Fallback Repository
 Write-Host "`n--> Creating Release on FALLBACK Repository ($FALLBACK_REPO)..." -ForegroundColor Yellow
 
-& $ghExe release create "$Version" "$targetName" --repo $FALLBACK_REPO --title "$Version" --notes "$notes"
+& $ghExe release create "$Version" "$targetRelease" "$targetDebug" --repo $FALLBACK_REPO --title "$Version" --notes "$notes"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "FALLBACK release published successfully!" -ForegroundColor Green
 }

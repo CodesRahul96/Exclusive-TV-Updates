@@ -324,6 +324,13 @@ object SP {
         get() = sp.getBoolean(KEY_AUDIO_STABILIZER, false) // Default: Disabled
         set(value) = sp.edit().putBoolean(KEY_AUDIO_STABILIZER, value).apply()
 
+    // PIP Mode
+    private const val KEY_PIP_MODE = "pip_mode"
+
+    var pipMode: Boolean
+        get() = sp.getBoolean(KEY_PIP_MODE, false) // Default: Disabled
+        set(value) = sp.edit().putBoolean(KEY_PIP_MODE, value).apply()
+
     fun reset() {
         sp.edit().clear().apply()
     }

@@ -1294,6 +1294,12 @@ class WebFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && activity?.isInPictureInPictureMode == true) {
+            // Keep playing in PiP mode
+            return
+        }
+
         if (android.os.Build.VERSION.SDK_INT <= 23) {
             releasePlayer()
         } else {
@@ -1410,5 +1416,13 @@ class WebFragment : Fragment() {
             .setTargetBufferBytes(targetBufferBytes)
             .setPrioritizeTimeOverSizeThresholds(false) // Enforce size limit to prevent OOM
             .build()
+    }
+
+    fun isPlaying(): Boolean {
+        return try {
+            exoPlayer?.isPlaying == true || (getCurrentUrl()?.isNotEmpty() == true)
+        } catch (e: Exception) {
+            false
+        }
     }
 }
