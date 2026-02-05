@@ -66,6 +66,7 @@ object TVList {
     val groupModel = TVGroupModel()
     
     private var isUpdating = false
+    fun isUpdating() = isUpdating
     private val refreshLock = kotlinx.coroutines.sync.Mutex()
 
     private val _position = MutableLiveData<Int>()
@@ -185,6 +186,8 @@ object TVList {
         CoroutineScope(Dispatchers.IO).launch {
                 // Ensure initialization is finished before updating
                 initDeferred.await()
+                
+                refreshLock.withLock {
                 
                 if (SecurityUtil.isMaintenanceMode) {
                     isUpdating = false
@@ -425,6 +428,7 @@ object TVList {
                         }, 5000)
                     }
                 }
+            }
             }
         }
     }

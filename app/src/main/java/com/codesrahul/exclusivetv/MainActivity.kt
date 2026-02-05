@@ -501,6 +501,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             minimumFetchIntervalInSeconds = if (BuildConfig.DEBUG) 0 else 3600 // 0 for debug, 1 hour for prod
         }
         remoteConfig.setConfigSettingsAsync(configSettings)
+
+        // IMMEDIATE LOAD: Trigger update with cached config immediately
+        val cachedConfig = SP.config
+        if (!cachedConfig.isNullOrEmpty()) {
+             TVList.update(this, silent = true)
+        }
         
         // Set defaults
         val defaults = mapOf(
@@ -541,12 +547,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         // Trigger update with the new URL
                         TVList.update(this, silent = true)
                     } else {
-                        // Even if it's the same, trigger initial update if not already done
-                        TVList.update(this, silent = true)
+                        // Optimization: Avoid redundant update if already updating or data loaded
+                        if (!TVList.isUpdating() && TVList.listModel.isEmpty()) {
+                             TVList.update(this, silent = true)
+                        }
                     }
                 } else {
                     // Fallback to initial update
-                    TVList.update(this, silent = true)
+                     if (!TVList.isUpdating() && TVList.listModel.isEmpty()) {
+                        TVList.update(this, silent = true)
+                    }
                 }
             }
     }
