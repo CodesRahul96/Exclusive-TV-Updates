@@ -12,37 +12,55 @@ import com.codesrahul.exclusivetv.requests.ReleaseResponse
 
 object SecurityUtil {
 
+    @Volatile
+    var isAppOutdated: Boolean = false
+
+    @Volatile
+    var isMaintenanceMode: Boolean = false
+
+    private var lastFullCheckTime: Long = 0
+    private var lastCheckResult: Boolean = false
+    private const val CHECK_CACHE_DURATION = 30 * 1000L // 30 seconds
+
     fun isDeviceRestricted(context: Context): Boolean {
-        // 1. Debugger Check
+        // 1. Maintenance Mode Check - Always check, very fast
+        if (isMaintenanceMode) {
+            return true
+        }
+
+        // 2. Debugger Check - Always check, very fast
         if (Debug.isDebuggerConnected() || Debug.waitingForDebugger()) {
             return true
         }
 
-        // 2. Proxy Check
-        if (isProxySet(context)) {
-            return true
+        // 3. Cached Extensive Checks
+        val now = System.currentTimeMillis()
+        if (now - lastFullCheckTime < CHECK_CACHE_DURATION) {
+            return lastCheckResult
         }
 
-        // 3. Frida Check
-        if (checkFrida()) {
-            return true
-        }
+        // Perform extensive checks
+        val result = performExtensiveChecks(context)
+        lastCheckResult = result
+        lastFullCheckTime = now
+        return result
+    }
 
-        // 4. Root Check
-        if (RootCheckUtil.isDeviceRooted()) {
-            return true
-        }
+    private fun performExtensiveChecks(context: Context): Boolean {
+        // Proxy Check
+        if (isProxySet(context)) return true
 
-        // 5. App Outdated Check
-        if (isAppOutdated) {
-            return true
-        }
+        // Frida Check
+        if (checkFrida()) return true
+
+        // Root Check
+        if (RootCheckUtil.isDeviceRooted()) return true
+
+        // Native Integrity Check (Signature)
+        if (SecretManager.verifyIntegrity(context)) return true
 
         return false
     }
-
-    @Volatile
-    var isAppOutdated: Boolean = false
 
     var remoteRelease: ReleaseResponse? = null
 

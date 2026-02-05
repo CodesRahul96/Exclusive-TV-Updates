@@ -72,38 +72,7 @@ class InfoFragment : Fragment() {
         b.channelNumber.text = String.format("%03d", tvViewModel.tv.id + 1)
         b.title.text = tvViewModel.tv.title
 
-        when (tvViewModel.tv.title) {
-            else -> {
-                if (tvViewModel.tv.logo.isNullOrBlank()) {
-                    val width = Utils.dpToPx(100)
-                    val height = Utils.dpToPx(60)
-                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    val canvas = Canvas(bitmap)
-
-                    val paint = Paint().apply {
-                        val ctx = context ?: return@apply
-                        color = ContextCompat.getColor(ctx, R.color.blur)
-                        textSize = 100f
-                        textAlign = Paint.Align.CENTER
-                    }
-
-                    val text = "${tvViewModel.tv.id + 1}"
-                    val x = width / 2f
-                    val y = height / 2f - (paint.descent() + paint.ascent()) / 2
-                    canvas.drawText(text, x, y, paint)
-
-                    Glide.with(this)
-                        .load(BitmapDrawable(context?.resources, bitmap))
-//                        .centerInside()
-                        .into(b.logo)
-                } else {
-                    Glide.with(this)
-                        .load(tvViewModel.tv.logo)
-//                        .centerInside()
-                        .into(b.logo)
-                }
-            }
-        }
+        LogoUtil.loadLogo(requireContext(), b.logo, tvViewModel.tv.logo, tvViewModel.tv.title)
 
         // Fix for symbols/icons not showing correctly on API < 23 (XML tint ignored)
         tvUiUtils?.tintTextViewDrawable(b.videoBadge, android.graphics.Color.WHITE)

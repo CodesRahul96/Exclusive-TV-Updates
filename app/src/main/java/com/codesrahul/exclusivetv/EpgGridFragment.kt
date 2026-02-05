@@ -126,10 +126,7 @@ class EpgGridFragment : Fragment() {
             val channel = channels[position]
             holder.name.text = channel.tv.title
             
-            Glide.with(holder.logo)
-                .load(channel.tv.logo)
-                .placeholder(R.drawable.bg_glass)
-                .into(holder.logo)
+            LogoUtil.loadLogo(holder.logo.context, holder.logo, channel.tv.logo, channel.tv.title)
             
             // Click header to play
             holder.channelInfo.setOnClickListener {

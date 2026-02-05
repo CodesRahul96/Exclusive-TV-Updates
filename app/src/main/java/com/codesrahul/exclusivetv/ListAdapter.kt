@@ -283,7 +283,7 @@ class ListAdapter(
             viewHolder.bindDescription(null)
         }
 
-        viewHolder.bindImage(tvModel.tv.logo, tvModel.tv.id)
+        viewHolder.bindImage(tvModel.tv.logo, tvModel.tv.title)
 
         viewHolder.setArrows(movingPosition == position)
         
@@ -346,7 +346,7 @@ class ListAdapter(
                 bindDescription(null)
             }
 
-            bindImage(tvModel.tv.logo, tvModel.tv.id)
+            bindImage(tvModel.tv.logo, tvModel.tv.title)
             
             // Bind channel number (position + 1 for 1-based indexing)
             binding.channelNumber.text = (tvModel.tv.id + 1).toString()
@@ -382,34 +382,8 @@ class ListAdapter(
             }
         }
 
-        fun bindImage(url: String?, id: Int) {
-            if (url.isNullOrBlank()) {
-                val width = Utils.dpToPx(40)
-                val height = Utils.dpToPx(40)
-                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                val canvas = Canvas(bitmap)
-
-                val paint = Paint().apply {
-                    color = Color.WHITE
-                    textSize = 32f
-                    textAlign = Paint.Align.CENTER
-                }
-                val text = String.format("%3d", id + 1)
-                val x = width / 2f
-                val y = height / 2f - (paint.descent() + paint.ascent()) / 2
-                canvas.drawText(text, x, y, paint)
-                Glide.with(context)
-                    .load(BitmapDrawable(context.resources, bitmap))
-                    .centerInside()
-                    .into(binding.icon)
-//                binding.imageView.setImageDrawable(null)
-            } else {
-                Glide.with(context)
-                    .load(url)
-                    .centerInside()
-//                    .error(BitmapDrawable(context.resources, bitmap))
-                    .into(binding.icon)
-            }
+        fun bindImage(url: String?, name: String?) {
+            LogoUtil.loadLogo(context, binding.icon, url, name)
         }
 
         fun focus(hasFocus: Boolean) {

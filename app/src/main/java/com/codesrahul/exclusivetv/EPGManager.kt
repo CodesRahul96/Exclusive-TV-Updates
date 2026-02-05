@@ -46,6 +46,7 @@ object EPGManager {
     var epgStatus = "Not Loaded"
 
     suspend fun fetchEPG(force: Boolean = false) = withContext(Dispatchers.IO) {
+        if (SecurityUtil.isMaintenanceMode) return@withContext
         try {
             val file = cacheFile ?: return@withContext
             val now = System.currentTimeMillis()
@@ -55,7 +56,7 @@ object EPGManager {
                 val request = Request.Builder().url(epgUrl).build()
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
-                        val body = response.body() ?: return@use
+                        val body = response.body ?: return@use
                         FileOutputStream(file).use { out ->
                             body.byteStream().copyTo(out)
                         }

@@ -48,6 +48,7 @@ import androidx.media3.exoplayer.hls.HlsExtractorFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -862,9 +863,8 @@ class WebFragment : Fragment() {
             )
             .setHandleAudioBecomingNoisy(true)
         
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+        val httpDataSourceFactory = OkHttpDataSource.Factory(SecureHttpClient.client)
             .setUserAgent(userAgent)
-            .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(requestHeaders)
         
 
@@ -912,9 +912,8 @@ class WebFragment : Fragment() {
             }
 
             // Prepare DataSource for DRM (reuse main factory with headers)
-            val drmDataSourceFactory = DefaultHttpDataSource.Factory()
+            val drmDataSourceFactory = OkHttpDataSource.Factory(SecureHttpClient.client)
                 .setUserAgent(userAgent)
-                .setAllowCrossProtocolRedirects(true)
                 .setDefaultRequestProperties(requestHeaders)
 
             // Logic for License URL
@@ -1336,7 +1335,7 @@ class WebFragment : Fragment() {
 
             val response = client.newCall(request).execute()
             if (response.isSuccessful) {
-                val body = response.body()?.string()
+                val body = response.body?.string()
                 if (body != null) {
                     val m3u8Regex = """src:\s*"(https://.*?\.m3u8.*?)"""".toRegex()
                     val m3u8Match = m3u8Regex.find(body)

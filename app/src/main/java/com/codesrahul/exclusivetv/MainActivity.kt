@@ -51,6 +51,31 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var trackSelectionFragment = TrackSelectionFragment()
     private var epgGridFragment = EpgGridFragment()
     private var offlineFragment = OfflineFragment()
+    private var maintenanceFragment = MaintenanceFragment()
+
+    private val spListener = object : OnSharedPreferenceChangeListener {
+        override fun onSharedPreferenceChanged(key: String) {
+            if (isMaintenanceMode) return
+            if (key == SP.KEY_EPG) {
+                if (SP.epgEnabled) {
+                    runOnUiThread {
+                        com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
+                    }
+                }
+            } else if (key == SP.KEY_EPG_ENABLED) {
+                runOnUiThread {
+                    if (SP.epgEnabled) {
+                        com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
+                    } else {
+                        // Silently refresh UI models to clear EPG data from view
+                        com.codesrahul.exclusivetv.models.TVList.refreshModels(this@MainActivity)
+                    }
+                }
+            }
+        }
+    }
+
+    private var isMaintenanceMode = false
 
     private lateinit var updateManager: UpdateManager
     
@@ -204,11 +229,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .add(R.id.main_browse_fragment, importProgressFragment)
                 .add(R.id.main_browse_fragment, trackSelectionFragment)
                 .add(R.id.main_browse_fragment, offlineFragment)
+                .add(R.id.main_browse_fragment, maintenanceFragment)
                 .hide(menuFragment)
                 .hide(settingFragment)
                 .hide(importProgressFragment)
                 .hide(trackSelectionFragment)
                 .hide(offlineFragment)
+                .hide(maintenanceFragment)
                 .hide(epgGridFragment)
                 .hide(errorFragment)
                 .show(loadingFragment)
@@ -249,6 +276,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                  if (fragment is TrackSelectionFragment) {
                      trackSelectionFragment = fragment
                  }
+                 if (fragment is MaintenanceFragment) {
+                     maintenanceFragment = fragment
+                 }
              }
         }
 
@@ -270,26 +300,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         startPeriodicUpdateCheck()
 
         // EPG Update Listener
-        SP.setOnSharedPreferenceChangeListener(object : OnSharedPreferenceChangeListener {
-            override fun onSharedPreferenceChanged(key: String) {
-                if (key == SP.KEY_EPG) {
-                    if (SP.epgEnabled) {
-                        runOnUiThread {
-                            com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
-                        }
-                    }
-                } else if (key == SP.KEY_EPG_ENABLED) {
-                    runOnUiThread {
-                        if (SP.epgEnabled) {
-                            com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
-                        } else {
-                            // Silently refresh UI models to clear EPG data from view
-                            com.codesrahul.exclusivetv.models.TVList.refreshModels(this@MainActivity)
-                        }
-                    }
-                }
-            }
-        })
+        SP.setOnSharedPreferenceChangeListener(spListener)
 
         setupObservers()
     }
@@ -382,7 +393,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private fun startPeriodicRefresh() {
         refreshHandler.postDelayed(object : Runnable {
             override fun run() {
-                if (!SecurityUtil.isAppOutdated) {
+                if (!SecurityUtil.isAppOutdated && !isMaintenanceMode) {
                     val config = SP.config
                     if (!config.isNullOrEmpty() && config.startsWith("http")) {
                         TVList.update(this@MainActivity, config, silent = true)
@@ -406,7 +417,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private fun startPeriodicUpdateCheck() {
         updateHandler.postDelayed(object : Runnable {
             override fun run() {
-                updateManager.checkAndUpdate()
+                if (!isMaintenanceMode) {
+                    updateManager.checkAndUpdate()
+                }
                 updateHandler.postDelayed(this, updateCheckInterval)
             }
         }, updateCheckInterval)
@@ -440,7 +453,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         remoteConfig.setConfigSettingsAsync(configSettings)
         
         // Set defaults
-        val defaults = mapOf("main_api_url" to TVList.DEFAULT_CONFIG_URL)
+        val defaults = mapOf(
+            "main_api_url" to TVList.DEFAULT_CONFIG_URL,
+            SecretManager.getMaintenanceModeKey() to false
+        )
         remoteConfig.setDefaultsAsync(defaults)
 
         remoteConfig.fetchAndActivate()
@@ -460,6 +476,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
                 val apiUrl = remoteConfig.getString("main_api_url")
                 
+                isMaintenanceMode = remoteConfig.getBoolean(SecretManager.getMaintenanceModeKey())
+                SecurityUtil.isMaintenanceMode = isMaintenanceMode
+                if (isMaintenanceMode) {
+                    onAppMaintenance()
+                    return@addOnCompleteListener
+                }
+
                 if (apiUrl.isNotBlank()) {
                     val currentConfig = SP.config
                     if (apiUrl != currentConfig) {
@@ -481,7 +504,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onResume() {
         super.onResume()
-        if (!SecurityUtil.isAppOutdated) {
+        if (!SecurityUtil.isAppOutdated && !isMaintenanceMode) {
             // Check for refresh on resume
             val now = Utils.getDateTimestamp() * 1000L
             if (now - lastRefreshTime > resumeRefreshThreshold) {
@@ -499,7 +522,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     override fun onResumeFragments() {
         super.onResumeFragments()
         
-        if (server == null) {
+        if (!isMaintenanceMode && server == null) {
             val port = PortUtil.findFreePort()
             if (port != -1) {
                 server = SimpleServer(this, port)
@@ -516,6 +539,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     fun playChannel(tvModel: TVModel) {
+        if (isMaintenanceMode) return
         
         // Hide error and show loader
         hideErrorFragment()
@@ -883,6 +907,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (isMaintenanceMode) return true // Block all keys
+        
         // Reset ALL auto-hide timers on ANY key event before dispatching it to views
         if (!menuFragment.isHidden) menuActive()
         if (!settingFragment.isHidden) settingActive()
@@ -974,6 +1000,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (isMaintenanceMode) return true // Block all touch
+        
         // Reset ALL auto-hide timers on ANY touch event
         if (!menuFragment.isHidden) menuActive()
         if (!settingFragment.isHidden) settingActive()
@@ -1350,13 +1378,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
         connectivityManager.unregisterNetworkCallback(networkCallback)
-        rootHandler.removeCallbacksAndMessages(null) // Stop monitoring to prevent memory leaks
+        rootHandler.removeCallbacksAndMessages(null)
         refreshHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)
+        rightArrowHandler.removeCallbacksAndMessages(null)
+        SP.removeOnSharedPreferenceChangeListener(spListener)
         server?.stop()
         updateManager.destroy()
+        super.onDestroy()
     }
 
     // Security check helper
@@ -1394,6 +1425,21 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         hideFragment(trackSelectionFragment)
         
         Toast.makeText(this, "Update Required - Please update to continue", Toast.LENGTH_LONG).show()
+    }
+
+    private fun onAppMaintenance() {
+        isMaintenanceMode = true
+        com.codesrahul.exclusivetv.models.TVList.clear()
+        
+        // Stop playback and server
+        webFragment.stop()
+        server?.stop()
+        server = null
+        
+        // Show maintenance screen
+        showFragment(maintenanceFragment)
+        
+        Toast.makeText(this, "System under maintenance", Toast.LENGTH_LONG).show()
     }
 
     companion object {

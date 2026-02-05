@@ -22,5 +22,16 @@ object SecretManager {
         return cachedKey ?: ""
     }
 
+    fun getMaintenanceModeKey(): String {
+        return getMaintenanceKey()
+    }
+
+    fun verifyIntegrity(context: android.content.Context): Boolean {
+        // Returns true if tampered (signature mismatch)
+        return verifyNativeIntegrity(context)
+    }
+
     private external fun getNativeKey(): String
+    private external fun getMaintenanceKey(): String
+    private external fun verifyNativeIntegrity(context: android.content.Context): Boolean
 }

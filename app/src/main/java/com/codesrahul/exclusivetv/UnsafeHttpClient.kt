@@ -33,12 +33,13 @@ object UnsafeHttpClient {
             .callTimeout(120, TimeUnit.SECONDS) // Global timeout for the entire request
             .followRedirects(true)
             .followSslRedirects(true)
+            .addInterceptor(SecurityInterceptor(MyTVApplication.getInstance()))
             .addInterceptor { chain ->
                 val original = chain.request()
                 // Use a robust IPTV Player User-Agent (TiviMate) to bypass anti-bot/browser-check pages.
                 val request = original.newBuilder()
                     .header("User-Agent", "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)")
-                    .method(original.method(), original.body())
+                    .method(original.method, original.body)
                     .build()
                 chain.proceed(request)
             }

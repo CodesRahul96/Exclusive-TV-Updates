@@ -186,6 +186,15 @@ object TVList {
                 // Ensure initialization is finished before updating
                 initDeferred.await()
                 
+                if (SecurityUtil.isMaintenanceMode) {
+                    isUpdating = false
+                    withContext(Dispatchers.Main) {
+                        _importProgress.value = 0
+                        _importStatus.value = ""
+                    }
+                    return@launch
+                }
+                
                 val showUi = !silent || size() == 0
                 
                 try {
@@ -245,7 +254,7 @@ object TVList {
                                            _importStatus.value = "Downloading: Source ${index + 1}/$totalSources"
                                        }
                                    }
-                                   val responseBody = response.body()
+                                   val responseBody = response.body
                                    if (responseBody != null) {
                                        val tempFile = File(ctx.cacheDir, "playlist_source_$index.tmp")
                                        try {
@@ -738,6 +747,7 @@ object TVList {
                 async {
                     semaphore.acquire()
                     try {
+                        if (SecurityUtil.isMaintenanceMode) return@async listOf(tv)
                         val requestBuilder = Request.Builder().url(url).get()
                         
                         // FIX: Do NOT propagate parent headers to the nested playlist fetch.
@@ -754,7 +764,7 @@ object TVList {
                         
                         expansionClient.newCall(request).execute().use { response ->
                             // FIX: Use streaming instead of .string() to avoid OOM
-                            val responseBody = response.body()
+                            val responseBody = response.body
                             if (response.isSuccessful && responseBody != null) {
                                 // Use UNIVERSAL parser with streaming
                                 // We use Reader helper
@@ -1020,7 +1030,7 @@ object TVList {
             checkClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     return true
-                } else if (response.code() == 405) {
+                } else if (response.code == 405) {
                     // Method not allowed, try GET instead
                     request = requestBuilder.get().build()
                     checkClient.newCall(request).execute().use { getResponse ->
