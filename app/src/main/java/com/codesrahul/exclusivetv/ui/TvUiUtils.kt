@@ -64,25 +64,26 @@ class TvUiUtils(private val context: Context) {
     fun applyTvFocus(view: View, scale: Float = 1.08f, elevationDp: Float = 14f) {
 
         view.setOnFocusChangeListener { v, hasFocus ->
+            v.post {
+                // Prevent animation stacking on fast DPAD moves
+                v.animate().cancel()
 
-            // Prevent animation stacking on fast DPAD moves
-            v.animate().cancel()
+                val targetScale = if (hasFocus) scale else 1f
+                val targetElevation = if (hasFocus) dpToPx(v.context, elevationDp) else 0f
 
-            val targetScale = if (hasFocus) scale else 1f
-            val targetElevation = if (hasFocus) dpToPx(v.context, elevationDp) else 0f
+                v.animate()
+                    .scaleX(targetScale)
+                    .scaleY(targetScale)
+                    .setDuration(130)
+                    .setInterpolator(DecelerateInterpolator())
+                    .start()
 
-            v.animate()
-                .scaleX(targetScale)
-                .scaleY(targetScale)
-                .setDuration(130)
-                .setInterpolator(DecelerateInterpolator())
-                .start()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    v.elevation = targetElevation
+                }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                v.elevation = targetElevation
+                if (hasFocus) playFocusSound()
             }
-
-            if (hasFocus) playFocusSound()
         }
 
         // Preserve user's original click listener

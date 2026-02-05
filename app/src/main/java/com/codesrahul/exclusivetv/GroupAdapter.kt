@@ -91,7 +91,7 @@ class GroupAdapter(
             listener?.onItemFocusChange(tvListModel, hasFocus)
 
             if (hasFocus) {
-                viewHolder.focus(true)
+                view.post { viewHolder.focus(true) }
                 focused = view
                 if (visible) {
                     // Update model position if needed
@@ -108,7 +108,7 @@ class GroupAdapter(
                     }
                 }
             } else {
-                viewHolder.focus(false)
+                view.post { viewHolder.focus(false) }
             }
         }
 

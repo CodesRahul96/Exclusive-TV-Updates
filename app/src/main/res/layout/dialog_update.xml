@@ -71,7 +71,7 @@
             <Button
                 android:id="@+id/btnCancel"
                 android:layout_width="wrap_content"
-                android:minWidth="80dp"
+                android:minWidth="90dp"
                 android:layout_height="38dp"
                 android:layout_marginEnd="8dp"
                 android:background="@drawable/selector_item_focus"
@@ -86,7 +86,7 @@
             <Button
                 android:id="@+id/btnUpdate"
                 android:layout_width="wrap_content"
-                android:minWidth="80dp"
+                android:minWidth="90dp"
                 android:layout_height="38dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/selector_item_focus"

@@ -187,7 +187,7 @@ class ListAdapter(
             listener?.onItemFocusChange(tvModel, hasFocus)
 
             if (hasFocus) {
-                viewHolder.focus(true)
+                view.post { viewHolder.focus(true) }
                 focused = view
                 if (visible) {
                     if (position != tvListModel.position.value) {
@@ -197,7 +197,7 @@ class ListAdapter(
                     visible = true
                 }
             } else {
-                viewHolder.focus(false)
+                view.post { viewHolder.focus(false) }
             }
         }
 
