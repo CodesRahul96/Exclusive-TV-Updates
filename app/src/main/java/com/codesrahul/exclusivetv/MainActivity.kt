@@ -1429,6 +1429,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     private fun onAppMaintenance() {
         isMaintenanceMode = true
+    SecurityUtil.isMaintenanceMode = true
         com.codesrahul.exclusivetv.models.TVList.clear()
         
         // Stop playback and server

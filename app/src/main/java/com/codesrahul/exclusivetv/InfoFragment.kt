@@ -124,14 +124,16 @@ class InfoFragment : Fragment() {
                 b.desc.visibility = if (program.description.isNotEmpty()) View.VISIBLE else View.GONE
                 
                 // --- Progress Calculation ---
-                val now = System.currentTimeMillis()
+                val epgShiftMs = SP.epgShift * 3600_000L
+                val now = (Utils.getDateTimestamp() * 1000L) - epgShiftMs
                 val start = program.start
                 val stop = program.stop
-                if (now in start..stop) {
+                
+                if (now in start until stop) {
                     val total = stop - start
                     val elapsed = now - start
                     val progress = (elapsed.toFloat() / total.toFloat() * 100).toInt()
-                    b.programProgress.progress = progress
+                    b.programProgress.progress = progress.coerceIn(0, 100)
                     b.programProgress.visibility = View.VISIBLE
                 } else {
                     b.programProgress.visibility = View.GONE
@@ -190,6 +192,7 @@ class InfoFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(removeRunnable)
+        handler.removeCallbacks(timeRunnable)
     }
 
     private val removeRunnable = Runnable {
