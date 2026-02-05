@@ -1,40 +1,20 @@
-# ExclusiveTV v1.0.59 - Security Upgrade
+# ExclusiveTV v1.0.60 - Visual & Performance Update
 
-## Major Security Enhancements
+## ✨ New Features
 
-### NDK Key Protection
-- **Native Code Storage**: Encryption keys now stored in C++ binary code (`native-lib.cpp`)
-- **Reverse Engineering Resistance**: Keys are obfuscated and split across multiple variables, making extraction extremely difficult
-- **JNI Bridge**: Secure Kotlin wrapper (`SecretManager`) with memory caching for optimal performance
+### EPG Info Overlay Refinement
+- **Live Program Progress**: Added a real-time progress bar to the channel info overlay so you can see exactly how much of the current program has aired.
+- **Auto-Scrolling Text**: Long program descriptions and titles now marquee (scroll) automatically, ensuring you never miss the full details.
+- **Visual Improvements**: Tighter layout and cleaner typography for a more premium reading experience.
 
-### Military-Grade Encryption
-- **AES-256-CBC**: Upgraded from simple encoding to professional AES encryption
-- **SHA-256 Key Derivation**: Robust key padding ensures cryptographic strength
-- **Double-Layer Security**: API uses AES encryption + Gua64 encoding for maximum protection
+### Professional Channel Logos
+- **Smart Fallback System**: Channels without official logos now display beautiful, branded letter icons with a gradient background.
+- **Unified Look**: Consistent icon style across the channel list, EPG grid, and info overlay.
 
-### Performance Optimizations
-- **JNI Caching**: Secret key cached in memory, eliminating redundant native calls
-- **Correct Decryption Order**: Fixed logic to properly handle Gua64 → AES sequence
-- **Stack-Safe Base64**: Resolved API crashes on large playlists
+### Enhanced User Experience
+- **Maintenance UI**: A brand-new, polished screen for when the system is under maintenance, keeping you informed with style.
+- **Scrolling Performance**: Significantly smoother scrolling in channel lists and grids thanks to under-the-hood optimizations.
 
-## Technical Details
-
-### App Changes
-- Added `app/src/main/cpp/native-lib.cpp` for native key storage
-- Added `app/src/main/cpp/CMakeLists.txt` for NDK build configuration
-- Updated `SecurityUtil.kt` with SHA-256 key derivation
-- Optimized `SecretManager.kt` with key caching
-- Fixed decryption order in `TVList.kt`
-
-### API Changes
-- Implemented AES-256-CBC encryption in `api/index.js`
-- Added SHA-256 key derivation matching app logic
-- Fixed stack overflow on large data sets
-
-## Requirements
-- **NDK**: Version 27.1.12297006
-- **CMake**: Version 3.22.1
-- **API Deployment**: Run `wrangler deploy` to activate server-side encryption
-
-## Security Rating
-**8/10** - Professional-grade protection that stops 99% of reverse engineering attempts
+## 🚀 Improvements
+- **Network Optimization**: Improved data handling for faster EPG loading.
+- **Stability**: Fixed various minor bugs to ensure a crash-free experience.
