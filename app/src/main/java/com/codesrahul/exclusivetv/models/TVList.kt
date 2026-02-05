@@ -189,7 +189,7 @@ object TVList {
                 
                 refreshLock.withLock {
                 
-                if (SecurityUtil.isMaintenanceMode) {
+                if (SecurityUtil.isMaintenanceMode || SecurityUtil.isAppOutdated) {
                     isUpdating = false
                     withContext(Dispatchers.Main) {
                         _importProgress.value = 0
@@ -205,13 +205,15 @@ object TVList {
                 
                 isUpdating = true
                 
-                // Ensure all URLs from preferences are included
-                val urls = SP.playlistUrls.toMutableSet()
-                
-                // ALWAYS ensure primary API is included
+                // Ensure all URLs from preferences are included, but prioritize Main API
                 val mainUrl = SP.config ?: DEFAULT_CONFIG_URL
-                if (mainUrl.isNotEmpty() && !urls.contains(mainUrl)) {
-                    urls.add(mainUrl)
+                val urls = mutableListOf<String>()
+                if (mainUrl.isNotEmpty()) urls.add(mainUrl)
+                
+                SP.playlistUrls.forEach { url ->
+                    if (url != mainUrl && url.isNotEmpty()) {
+                        urls.add(url)
+                    }
                 }
 
                 
@@ -302,15 +304,48 @@ object TVList {
                     }
                 }
                 
-                // Await all
-                val results = deferredResults.map { it.await() }
-                results.forEach { 
-                    if (it.isNotEmpty()) {
-                        allChannels.addAll(it)
+                
+                // FINAL SECURITY CHECK before UI update
+                if (SecurityUtil.isMaintenanceMode || SecurityUtil.isAppOutdated) {
+                    return@launch
+                }
+
+                // PROFESSIONAL OPTIMIZATION: Prioritize first (Main) source for instant UI refresh
+                if (deferredResults.isNotEmpty()) {
+                    val primaryResult = deferredResults[0].await()
+                    if (primaryResult.isNotEmpty()) {
+                        allChannels.addAll(primaryResult)
                         successCount++
+                        
+                        // Instant refresh with primary data
+                        val tempFinal = mutableListOf<TV>()
+                        allChannels.forEachIndexed { index, tv ->
+                             tempFinal.add(tv.copy(id = index))
+                        }
+                        list = tempFinal
+                        withContext(Dispatchers.Main) {
+                            refreshModelsInternal(ctx)
+                            if (showUi) _importStatus.value = "Main Data Loaded..."
+                        }
+                    }
+                }
+
+                // Await the rest
+                if (deferredResults.size > 1) {
+                    for (i in 1 until deferredResults.size) {
+                        val result = deferredResults[i].await()
+                        if (result.isNotEmpty()) {
+                            allChannels.addAll(result)
+                            successCount++
+                        }
                     }
                 }
                 
+                
+                 if (SecurityUtil.isMaintenanceMode || SecurityUtil.isAppOutdated) {
+                     return@launch
+                 }
+
                  if (successCount > 0) {
                       if (showUi) {
                            withContext(Dispatchers.Main) {
@@ -349,7 +384,7 @@ object TVList {
                      list = finalChannels
                      
                       withContext(Dispatchers.Main) {
-                          refreshModels(ctx)
+                          refreshModelsInternal(ctx)
                           checkChannelsInBackground()
                           
                           // Always update status to "Complete" only if we were showing progress
@@ -395,7 +430,7 @@ object TVList {
                                         if (cached.isNotEmpty()) {
                                             list = cached
                                             withContext(Dispatchers.Main) {
-                                                refreshModels(ctx)
+                                                refreshModelsInternal(ctx)
                                                 "Loaded ${cached.size} channels from cache".showToast()
                                             }
                                         }
@@ -810,13 +845,23 @@ object TVList {
 
     fun refreshModels(ctx: Context) {
         CoroutineScope(Dispatchers.IO).launch {
-            // FIX: Add synchronization to prevent race conditions
             refreshLock.withLock {
-            try {
-                if (!::list.isInitialized || list.isEmpty()) {
-                    return@withLock
+                withContext(Dispatchers.Main) {
+                    refreshModelsInternal(ctx)
                 }
+            }
+        }
+    }
 
+    private suspend fun refreshModelsInternal(ctx: Context) {
+        if (SecurityUtil.isMaintenanceMode || SecurityUtil.isAppOutdated) {
+            return
+        }
+        if (!::list.isInitialized || list.isEmpty()) {
+            return
+        }
+
+        try {
                 // Preparation Phase (Background)
                 val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
                 for (v in list) {
@@ -957,9 +1002,8 @@ object TVList {
                     }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Refresh failed", e)
             }
-            } // End of refreshLock.withLock
-        }
     }
 
     private fun checkChannelsInBackground() {

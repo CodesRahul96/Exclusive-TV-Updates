@@ -158,6 +158,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
         
+        // Initialize Firebase Remote Config (Triggers parallel network request for Main API)
+        initRemoteConfig()
         // Initial network check
         if (!isNetworkAvailable()) {
             handler.postDelayed({
@@ -292,9 +294,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         
         // Initialize watermark
         setupWatermark()
-        
-        // Initialize Firebase Remote Config
-        initRemoteConfig()
         
         startPeriodicRefresh()
         startPeriodicUpdateCheck()
