@@ -1,64 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#E6000000"
+    android:background="@color/overlay_background"
     android:clickable="true"
     android:focusable="true">
 
     <LinearLayout
-        android:layout_width="450dp"
+        android:layout_width="480dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:background="@drawable/bg_glass_dialog"
+        android:background="@drawable/bg_transparent_glass"
         android:orientation="vertical"
-        android:padding="40dp"
-        android:gravity="center">
+        android:padding="48dp"
+        android:gravity="center"
+        android:elevation="16dp">
 
         <ImageView
-            android:layout_width="120dp"
-            android:layout_height="120dp"
+            android:layout_width="140dp"
+            android:layout_height="140dp"
             android:src="@drawable/ic_no_connection"
-            android:layout_marginBottom="24dp" />
+            app:tint="@color/white"
+            android:layout_marginBottom="28dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Internet Connection Lost"
-            android:textSize="22sp"
+            android:text="Connection Lost"
+            android:textSize="26sp"
             android:textStyle="bold"
-            android:textColor="#FFFFFF"
+            android:fontFamily="sans-serif-black"
+            android:textColor="@color/white"
             android:layout_marginBottom="12dp" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Unable to connect to the internet. Please check your network settings and try again."
-            android:textSize="14sp"
-            android:textColor="#B3FFFFFF"
+            android:text="Unable to connect to the internet. Please check your network settings for a seamless experience."
+            android:textSize="15sp"
+            android:textColor="@color/text_secondary"
             android:gravity="center"
             android:lineSpacingMultiplier="1.2"
-            android:layout_marginBottom="32dp" />
+            android:layout_marginBottom="40dp"
+            android:fontFamily="sans-serif-medium" />
 
         <Button
             android:id="@+id/btn_retry"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="52dp"
             android:text="Try Again"
-            android:background="@drawable/bg_glass_button"
-            android:textColor="#FFFFFF"
+            android:background="@drawable/bg_dialog_btn"
+            android:textColor="@color/white"
             android:textSize="14sp"
+            android:textAllCaps="true"
+            android:textStyle="bold"
             android:stateListAnimator="@null"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="16dp" />
 
         <Button
             android:id="@+id/btn_settings"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="Wi-Fi Settings"
-            android:background="@drawable/bg_glass_button"
-            android:textColor="#FFFFFF"
+            android:layout_height="52dp"
+            android:text="Network Settings"
+            android:background="@drawable/bg_dialog_btn"
+            android:textColor="@color/white"
             android:textSize="14sp"
+            android:textAllCaps="true"
+            android:textStyle="bold"
             android:stateListAnimator="@null" />
 
     </LinearLayout>

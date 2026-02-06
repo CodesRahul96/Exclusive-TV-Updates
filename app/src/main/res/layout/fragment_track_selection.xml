@@ -10,13 +10,13 @@
         android:id="@+id/background_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#99000000" />
+        android:background="@color/overlay_background" />
 
     <androidx.cardview.widget.CardView
-        android:layout_width="350dp"
+        android:layout_width="380dp"
         android:layout_height="wrap_content"
         app:cardBackgroundColor="@android:color/transparent"
-        app:cardCornerRadius="14dp"
+        app:cardCornerRadius="20dp"
         app:cardElevation="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -26,18 +26,19 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_menu_glass"
+            android:background="@drawable/bg_transparent_glass"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="32dp">
 
             <TextView
                 android:id="@+id/title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Audio Tracks"
-                android:textColor="@android:color/white"
-                android:textSize="22sp"
+                android:textColor="@color/white"
+                android:textSize="24sp"
                 android:textStyle="bold"
+                android:fontFamily="sans-serif-black"
                 android:layout_marginBottom="24dp"
                 android:gravity="center" />
 
@@ -46,7 +47,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:maxHeight="350dp"
-                android:scrollbars="vertical" />
+                android:scrollbars="vertical"
+                android:paddingHorizontal="4dp"/>
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>
