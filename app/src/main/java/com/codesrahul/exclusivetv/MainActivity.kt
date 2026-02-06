@@ -445,8 +445,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             // Restore UI elements
             updateWatermarkVisibility()
             
-            // Restore loading fragment visibility check
-            if (loadingFragment.view?.visibility == View.GONE) {
+            // Logic Fix: Only restore loading fragment visibility if it is NOT logically hidden
+            // (i.e., if the player is actually in a buffering/loading state)
+            if (!loadingFragment.isHidden) {
                  loadingFragment.view?.visibility = View.VISIBLE
             }
             
