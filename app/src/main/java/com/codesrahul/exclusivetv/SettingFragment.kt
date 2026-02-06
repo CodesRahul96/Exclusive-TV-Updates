@@ -30,7 +30,7 @@ class SettingFragment : Fragment() {
 
     private val idleHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val idleRunnable = Runnable { hideSelf() }
-    private val IDLE_TIMEOUT = 10000L // 10 seconds
+    private val IDLE_TIMEOUT = 0L // Disabled as per user request
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -95,6 +95,12 @@ class SettingFragment : Fragment() {
         tvUiUtils?.tintTextViewDrawable(binding.clear, iconColorSecondary)
         tvUiUtils?.tintTextViewDrawable(binding.checkVersion, iconColorSecondary)
         tvUiUtils?.tintTextViewDrawable(binding.copyrightInfo, iconColorSecondary)
+
+        // Tint Portfolio Icons
+        val goldColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
+        binding.portfolioWebsite.setColorFilter(goldColor)
+        binding.portfolioLinkedin.setColorFilter(goldColor)
+        binding.portfolioGithub.setColorFilter(goldColor)
     }
 
     private fun syncStatusUI() {
@@ -109,9 +115,9 @@ class SettingFragment : Fragment() {
         binding.statusChannelCheck.text = if (SP.channelCheck) "ON" else "OFF"
          binding.statusEpg.text = if (SP.epgEnabled) "ON" else "OFF"
          binding.statusEpgShift.text = "${SP.epgShift}h"
-         binding.statusEpgShift.text = "${SP.epgShift}h"
-         binding.statusWatermark.text = if (SP.watermarkEnabled) "ON" else "OFF"
-         binding.statusPipMode.text = if (SP.pipMode) "ON" else "OFF"
+          binding.statusWatermark.text = if (SP.watermarkEnabled) "ON" else "OFF"
+          binding.statusPipMode.text = if (SP.pipMode) "ON" else "OFF"
+          binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
 
         // Set text colors based on state
         val activeColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
@@ -121,14 +127,15 @@ class SettingFragment : Fragment() {
             binding.statusChannelReversal, binding.statusChannelNum, binding.statusTime,
             binding.statusShowDateInInfo,
             binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
-             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
-             binding.statusEpgShift,
-             binding.statusEpgShift,
-             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, binding.statusAudioStabilizer
+            binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
+            binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, 
+            binding.statusAudioStabilizer, binding.statusEpgShift
         )
 
         statusViews.forEach { v ->
-            v.setTextColor(if (v.text == "ON" || v.text.toString().startsWith("Mode")) activeColor else inactiveColor)
+            val text = v.text.toString()
+            val isActive = text == "ON" || (text != "OFF" && text != "Default" && text != "0h")
+            v.setTextColor(if (isActive) activeColor else inactiveColor)
         }
 
         val bufferModes = arrayOf("Default", "Max Stability", "Low Latency") // 0, 1, 2
@@ -146,8 +153,6 @@ class SettingFragment : Fragment() {
 
     private fun setupFocusAnimations() {
         val focusViews = listOf(
-            binding.config,
-            binding.confirmConfig,
             binding.cardChannelReversal,
             binding.cardChannelNum,
             binding.cardShowDateInInfo,
@@ -157,20 +162,21 @@ class SettingFragment : Fragment() {
             binding.cardBootStartup,
             binding.cardConfigAutoLoad,
             binding.cardChannelCheck,
-            binding.cardChannelCheck,
              binding.cardEpg,
              binding.cardEpgShift,
              binding.cardWatermark,
              binding.cardPipMode,
             binding.cardBufferMode,
             binding.cardAudioLanguage,
-            binding.cardAudioLanguage,
             binding.cardAudioStabilizer,
+            binding.managePlaylists,
             binding.manageCategories,
-            binding.clear,
             binding.clear,
             binding.checkVersion,
             binding.copyrightInfo,
+            binding.portfolioWebsite,
+            binding.portfolioLinkedin,
+            binding.portfolioGithub,
             binding.closeMenu
         )
 
@@ -190,17 +196,6 @@ class SettingFragment : Fragment() {
     }
 
     private fun setupListeners() {
-        // Developer Link
-        binding.developer.setOnClickListener {
-            try {
-                tvUiUtils?.playClickSound()
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse("https://github.com/CodesRahul96"))
-                startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Could not open link", Toast.LENGTH_SHORT).show()
-            }
-        }
-
         // Card Toggles
         binding.cardChannelReversal.setOnClickListener { toggleSetting("channelReversal") }
         binding.cardChannelNum.setOnClickListener { toggleSetting("channelNum") }
@@ -293,8 +288,30 @@ class SettingFragment : Fragment() {
             showCopyrightDialog()
         }
 
+        binding.portfolioWebsite.setOnClickListener {
+            openUrl("https://www.codesrahul.in")
+        }
+
+        binding.portfolioLinkedin.setOnClickListener {
+            openUrl("https://www.linkedin.com/in/codesrahul")
+        }
+
+        binding.portfolioGithub.setOnClickListener {
+            openUrl("https://github.com/CodesRahul96")
+        }
+
         binding.closeMenu.setOnClickListener {
             hideSelf()
+        }
+    }
+
+    private fun openUrl(url: String) {
+        try {
+            tvUiUtils?.playClickSound()
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Could not open link", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -322,7 +339,6 @@ class SettingFragment : Fragment() {
             "watermark" -> {
                 SP.watermarkEnabled = !SP.watermarkEnabled
                 (activity as? MainActivity)?.updateWatermarkVisibility()
-                 (activity as? MainActivity)?.updateWatermarkVisibility()
             }
             "pipMode" -> SP.pipMode = !SP.pipMode
             "bufferMode" -> {
@@ -452,8 +468,8 @@ class SettingFragment : Fragment() {
     }
 
     private fun resetIdleTimer() {
+        // Disabled auto-close to ensure settings stay open while in use
         idleHandler.removeCallbacks(idleRunnable)
-        idleHandler.postDelayed(idleRunnable, IDLE_TIMEOUT)
     }
 
     private fun requestInstallPermissions() {

@@ -10,12 +10,12 @@
     <!-- Top-Center Card Container -->
     <androidx.cardview.widget.CardView
         android:id="@+id/notification_card"
-        android:layout_width="320dp"
+        android:layout_width="380dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="32dp"
         app:cardBackgroundColor="#00000000"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="8dp"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="12dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -23,13 +23,13 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_menu_glass"
-            android:padding="16dp">
+            android:background="@drawable/bg_premium_glass"
+            android:padding="20dp">
 
             <ImageView
                 android:id="@+id/icon"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:src="@drawable/ic_update"
                 app:tint="@color/accent_gold"
                 app:layout_constraintStart_toStartOf="parent"
@@ -40,11 +40,11 @@
                 android:id="@+id/tv_status"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="16dp"
                 android:fontFamily="sans-serif-medium"
                 android:text="Checking for updates..."
-                android:textColor="@android:color/white"
-                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
                 android:maxLines="1"
                 android:ellipsize="end"
                 app:layout_constraintBottom_toBottomOf="@+id/icon"
@@ -56,8 +56,8 @@
                 android:id="@+id/progress_bar"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="0dp"
-                android:layout_height="3dp"
-                android:layout_marginTop="12dp"
+                android:layout_height="4dp"
+                android:layout_marginTop="16dp"
                 android:max="100"
                 android:progressDrawable="@drawable/custom_progress_bg"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -68,11 +68,12 @@
                 android:id="@+id/tv_percent"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="sans-serif"
                 android:text="0%"
-                android:textColor="#B0B0B0"
-                android:textSize="10sp"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:alpha="0.7"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/progress_bar" />
 

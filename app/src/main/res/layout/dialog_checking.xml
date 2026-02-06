@@ -2,18 +2,17 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#80000000"
-    android:padding="24dp">
+    android:background="@color/overlay_background">
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="320dp"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:minWidth="260dp"
-        android:background="@drawable/bg_menu_glass"
+        android:background="@drawable/bg_premium_glass"
         android:orientation="vertical"
         android:padding="32dp"
-        android:gravity="center">
+        android:gravity="center"
+        android:elevation="12dp">
 
         <ProgressBar
             android:layout_width="48dp"
@@ -26,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Checking for updates..."
-            android:textColor="@android:color/white"
+            android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:fontFamily="sans-serif-medium"/>
 
