@@ -15,8 +15,8 @@
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:orientation">vertical</item>
-        <item name="android:paddingVertical">8dp</item>
-        <item name="android:layout_marginBottom">20dp</item>
+        <item name="android:paddingVertical">6dp</item>
+        <item name="android:layout_marginBottom">16dp</item>
     </style>
 
     <style name="SettingsToggleItem">
@@ -25,7 +25,7 @@
         <item name="android:orientation">horizontal</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:background">@drawable/ripple_effect</item>
-        <item name="android:padding">18dp</item>
+        <item name="android:padding">14dp</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
     </style>
@@ -35,10 +35,10 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:background">@drawable/ripple_effect</item>
-        <item name="android:padding">18dp</item>
+        <item name="android:padding">14dp</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
-        <item name="android:textSize">16sp</item>
+        <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:drawablePadding">16dp</item>
         <item name="android:drawableTint">@color/accent_gold</item>
@@ -69,6 +69,7 @@
     <style name="SettingsTitle" parent="ExclusiveText.Body">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
@@ -91,7 +92,7 @@
     <style name="SettingsValueText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">13sp</item>
         <item name="android:textColor">@color/text_secondary</item>
         <item name="android:layout_marginEnd">4dp</item>
     </style>

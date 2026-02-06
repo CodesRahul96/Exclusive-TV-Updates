@@ -17,7 +17,7 @@
     <!-- Main Content Container restricted to right half -->
     <LinearLayout
         android:id="@+id/container"
-        android:layout_width="500dp"
+        android:layout_width="420dp"
         android:layout_height="match_parent"
         android:layout_gravity="end"
         android:orientation="vertical"
@@ -30,8 +30,8 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="24dp"
-            android:paddingTop="24dp"
-            android:paddingBottom="16dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="12dp"
             android:background="@drawable/bg_header_gradient"
             android:elevation="4dp">
 
@@ -61,7 +61,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/app_name"
-                        android:textSize="20sp" />
+                        android:textSize="18sp" />
 
                     <TextView
                         android:id="@+id/version"
@@ -126,7 +126,7 @@
                             android:id="@+id/config"
                             android:layout_width="0dp"
                             android:layout_weight="1"
-                            android:layout_height="52dp"
+                            android:layout_height="48dp"
                             android:hint="Enter Playlist URL"
                             android:textColorHint="#66FFFFFF"
                             android:textColor="@color/text_primary"
@@ -139,14 +139,14 @@
 
                         <Button
                             android:id="@+id/confirm_config"
-                            android:layout_width="52dp"
-                            android:layout_height="52dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
                             android:layout_marginStart="16dp"
                             android:drawableStart="@drawable/ic_check"
                             android:background="@drawable/tv_button_bg"
                             android:elevation="4dp"
                             android:gravity="center"
-                            android:paddingStart="14dp"
+                            android:paddingStart="12dp"
                             android:paddingEnd="0dp"
                             tools:ignore="SpeakableTextPresentCheck" />
                     </LinearLayout>
