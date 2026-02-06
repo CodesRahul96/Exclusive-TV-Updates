@@ -445,12 +445,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             // Restore UI elements
             updateWatermarkVisibility()
             
-            // Restore loading fragment visibility if it was active
-            // (Simpler to just let logic handle it, but ensuring visibility is reset)
-            loadingFragment.view?.visibility = View.VISIBLE
+            // Restore loading fragment visibility check
+            if (loadingFragment.view?.visibility == View.GONE) {
+                 loadingFragment.view?.visibility = View.VISIBLE
+            }
             
-            // Force refresh of layout or controls if needed
-            webFragment.refreshPlayback()
+            // No need to refresh playback as ExoPlayer/WebView handles full-screen transition
+            // webFragment.refreshPlayback() // REASON: Prevents redundant loading spinner
         }
     }
 

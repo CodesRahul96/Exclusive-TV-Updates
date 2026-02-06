@@ -54,15 +54,9 @@
     <!-- Categories Sidebar -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/group"
+        style="@style/ExclusiveCard.Glass"
         android:layout_width="220dp"
         android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="32dp"
-        android:layout_marginStart="24dp"
-        android:paddingVertical="12dp"
-        android:paddingHorizontal="8dp"
-        android:clipToPadding="false"
-        android:background="@drawable/bg_transparent_glass"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_grid_guide"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -89,15 +83,9 @@
     <!-- Channels Panel -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list"
+        style="@style/ExclusiveCard.Glass"
         android:layout_width="450dp"
         android:layout_height="0dp"
-        android:layout_marginTop="32dp"
-        android:layout_marginBottom="32dp"
-        android:layout_marginStart="20dp"
-        android:paddingVertical="12dp"
-        android:paddingHorizontal="8dp"
-        android:clipToPadding="false"
-        android:background="@drawable/bg_transparent_glass"
         app:layout_constraintStart_toEndOf="@id/group"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"

@@ -9,11 +9,10 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/info_card"
+        style="@style/ExclusiveCard.Glass"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="64dp"
-        android:background="@drawable/bg_transparent_glass"
-        android:elevation="12dp"
         android:padding="20dp">
 
         <ImageView
@@ -60,12 +59,10 @@
 
         <TextView
             android:id="@+id/title"
+            style="@style/ExclusiveText.Header"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
-            android:fontFamily="sans-serif-black"
-            android:textColor="@color/text_primary"
-            android:textSize="24sp"
             android:maxLines="1"
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
@@ -124,13 +121,11 @@
 
         <TextView
             android:id="@+id/desc"
+            style="@style/ExclusiveText.Body"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:layout_marginEnd="16dp"
-            android:fontFamily="sans-serif"
-            android:textColor="#CCFFFFFF"
-            android:textSize="15sp"
             android:singleLine="true"
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
