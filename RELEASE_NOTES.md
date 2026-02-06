@@ -1,20 +1,20 @@
-# ExclusiveTV v1.0.60 - Visual & Performance Update
+# ExclusiveTV v1.0.61 - Stability & UX Refinement
 
-## ✨ New Features
+## ✨ Highlights
 
-### EPG Info Overlay Refinement
-- **Live Program Progress**: Added a real-time progress bar to the channel info overlay so you can see exactly how much of the current program has aired.
-- **Auto-Scrolling Text**: Long program descriptions and titles now marquee (scroll) automatically, ensuring you never miss the full details.
-- **Visual Improvements**: Tighter layout and cleaner typography for a more premium reading experience.
+### PiP Mode Reliability
+- **Smooth Transition**: Fixed the "stuck loading spinner" when returning from Picture-in-Picture mode. The app now accurately detects player readiness and hides the loading layer instantly.
 
-### Professional Channel Logos
-- **Smart Fallback System**: Channels without official logos now display beautiful, branded letter icons with a gradient background.
-- **Unified Look**: Consistent icon style across the channel list, EPG grid, and info overlay.
+### Premium Settings UI
+- **Compact Layout**: Refined the settings panel with a more professional 420dp width and optimized row spacing (14dp), allowing 20% more options to be visible on screen.
+- **Mobile Optimized**: Restructured the developer portfolio section for better scrolling performance on mobile devices.
+- **Improved Information Density**: Reduced header and label sizes (14sp) for a tighter, cleaner look.
 
-### Enhanced User Experience
-- **Maintenance UI**: A brand-new, polished screen for when the system is under maintenance, keeping you informed with style.
-- **Scrolling Performance**: Significantly smoother scrolling in channel lists and grids thanks to under-the-hood optimizations.
+### Branding & Identity
+- **Watermark Update**: Refined the screen watermark to "Exclusive TV" with sleek, modernized casing.
+- **Standardized Accents**: Verified gold-accented consistency across all maintenance and diagnostic screens.
 
-## 🚀 Improvements
-- **Network Optimization**: Improved data handling for faster EPG loading.
-- **Stability**: Fixed various minor bugs to ensure a crash-free experience.
+### 🚀 Stability & Resilience
+- **Startup Guard**: Added mandatory layout attributes to base styles, resolving a potential boot crash on Fire TV and older Android systems.
+- **Resilient Clean Build**: Optimized the internal build logic for consistent APK generation.
+- **Master Reset Restoration**: Restored the "Master Factory Reset" functionality in the main maintenance menu.
