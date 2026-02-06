@@ -19,14 +19,30 @@ class MaintenanceFragment : Fragment() {
         
         val activity = requireActivity() as MainActivity
         binding.appVersion.text = "Exclusive TV ${activity.appVersionName}"
-        
-        // Scale UI for Android TV if needed (using existing px2Px logic if applicable)
-        val application = requireActivity().applicationContext as MyTVApplication
-        binding.maintenanceIcon.layoutParams.width = application.px2Px(120)
-        binding.maintenanceIcon.layoutParams.height = application.px2Px(120)
-        binding.maintenanceTitle.textSize = application.px2PxFont(32f)
-        binding.maintenanceMessage.textSize = application.px2PxFont(18f)
-        
+
+        // No custom scaling, use XML sizes for best clarity
+
+        // Exit App button logic (robust)
+        binding.btnExit.setOnClickListener {
+            it.isEnabled = false
+            val act = activity
+            try {
+                android.widget.Toast.makeText(requireContext(), "Exiting app...", android.widget.Toast.LENGTH_SHORT).show()
+                act?.finishAffinity()
+                act?.finish()
+                android.os.Handler().postDelayed({
+                    System.exit(0)
+                }, 500)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                System.exit(0)
+            }
+        }
+
+        // Request focus for Exit button by default (for TV/remote)
+        binding.btnExit.isFocusableInTouchMode = true
+        binding.btnExit.requestFocus()
+
         return binding.root
     }
 
