@@ -5,12 +5,12 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="@drawable/selector_item_focus"
-    android:paddingStart="20dp"
+    android:paddingStart="24dp"
     android:paddingEnd="20dp"
-    android:paddingTop="14dp"
-    android:paddingBottom="14dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp"
     android:layout_marginBottom="8dp"
-    android:layout_marginHorizontal="2dp"
+    android:layout_marginHorizontal="4dp"
     android:focusable="true"
     android:clickable="true">
 
@@ -27,9 +27,10 @@
             android:gravity="center_vertical"
             android:textColor="@color/selector_text_menu"
             android:duplicateParentState="true"
-            android:textSize="18sp"
+            android:textSize="17sp"
             android:textStyle="bold"
-            android:fontFamily="sans-serif-medium"/>
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.02"/>
 
         <LinearLayout
             android:id="@+id/arrows"

@@ -5,12 +5,11 @@
     android:id="@+id/list_item"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="6dp"
+    android:layout_marginBottom="8dp"
+    android:layout_marginHorizontal="4dp"
     android:background="@drawable/selector_item_focus"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp"
     android:focusable="true"
     android:clickable="true">
 
@@ -18,13 +17,13 @@
         android:id="@+id/channel_number"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:minWidth="32dp"
+        android:minWidth="36dp"
         android:background="@drawable/bg_channel_tag"
         android:gravity="center"
-        android:textColor="#E0E0E0"
-        android:textSize="12sp"
+        android:textColor="@color/white"
+        android:textSize="13sp"
         android:textStyle="bold"
-        android:fontFamily="sans-serif-medium"
+        android:fontFamily="sans-serif-black"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -32,14 +31,14 @@
 
     <ImageView
         android:id="@+id/icon"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
         app:layout_constraintStart_toEndOf="@id/channel_number"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:layout_marginStart="16dp"
         android:background="@drawable/bg_channel_icon"
-        android:padding="6dp"
+        android:padding="7dp"
         android:scaleType="fitCenter"
         android:contentDescription="Channel Icon" />
 
@@ -52,21 +51,22 @@
         app:layout_constraintBottom_toTopOf="@+id/description"
         app:layout_constraintVertical_chainStyle="packed"
         app:layout_constraintEnd_toStartOf="@+id/heart"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="4dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
         android:textColor="@color/selector_text_menu"
         android:duplicateParentState="true"
         android:maxLines="1"
         tools:text="Channel Name"
         android:ellipsize="end"
-        android:textSize="16sp"
+        android:textSize="17sp"
         android:textStyle="bold"
-        android:fontFamily="sans-serif-medium"/>
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.01"/>
 
     <ImageView
         android:id="@+id/heart"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:src="@drawable/ic_heart_empty"
         android:contentDescription="Favorite"
         app:layout_constraintEnd_toStartOf="@+id/arrows"
@@ -74,7 +74,8 @@
         app:layout_constraintBottom_toBottomOf="parent"
         android:clickable="true"
         android:focusable="false"
-        android:padding="4dp"/>
+        android:padding="4dp"
+        app:tint="#4DFFFFFF"/>
 
     <LinearLayout
         android:id="@+id/arrows"
@@ -88,8 +89,8 @@
 
         <ImageView
             android:id="@+id/arrow_up"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:src="@android:drawable/arrow_up_float"
             android:clickable="true"
             android:focusable="true"
@@ -97,8 +98,8 @@
 
         <ImageView
             android:id="@+id/arrow_down"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
             android:src="@android:drawable/arrow_down_float"
             android:clickable="true"
             android:focusable="true"
@@ -113,11 +114,12 @@
         app:layout_constraintTop_toBottomOf="@id/title"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/heart"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="16dp"
         android:visibility="gone"
         android:text=""
         android:maxLines="1"
         android:ellipsize="end"
-        android:textColor="#B3FFFFFF"
-        android:textSize="12sp" />
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:alpha="0.8"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

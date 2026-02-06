@@ -6,8 +6,7 @@
     android:layout_height="match_parent"
     android:clickable="true"
     android:focusable="false"
-    android:background="@color/overlay_background"
-    >
+    android:background="@color/overlay_background">
 
     <!-- The 50% Guide (Left Half) -->
     <androidx.constraintlayout.widget.Guideline
@@ -20,47 +19,50 @@
     <!-- Grid Guide Button -->
     <LinearLayout
         android:id="@+id/btn_grid_guide"
-        android:layout_width="200dp"
+        android:layout_width="220dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="32dp"
         android:visibility="gone"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:background="@drawable/selector_item_focus"
+        android:background="@drawable/bg_dialog_btn"
         android:focusable="true"
         android:clickable="true"
         android:gravity="center_vertical"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:elevation="9dp">
+        android:elevation="12dp"
+        android:layout_marginStart="24dp">
 
         <ImageView
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@android:drawable/ic_menu_agenda"
-            android:tint="#FFFFFF" />
+            app:tint="@color/white" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:text="TV Guide"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/white"
             android:textSize="14sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"/>
     </LinearLayout>
 
     <!-- Categories Sidebar -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/group"
-        android:layout_width="200dp"
+        android:layout_width="220dp"
         android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="24dp"
-        android:paddingVertical="16dp"
-        android:paddingHorizontal="12dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="32dp"
+        android:layout_marginStart="24dp"
+        android:paddingVertical="12dp"
+        android:paddingHorizontal="8dp"
         android:clipToPadding="false"
-        android:background="#99000000"
+        android:background="@drawable/bg_transparent_glass"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_grid_guide"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -75,27 +77,27 @@
         android:format12Hour="hh:mm a"
         android:format24Hour="HH:mm"
         android:textColor="@color/accent_gold"
-        android:textSize="24sp"
+        android:textSize="28sp"
         android:textStyle="bold"
-        android:fontFamily="sans-serif-medium"
-        android:layout_marginTop="24dp"
-        android:layout_marginEnd="32dp"
+        android:fontFamily="sans-serif-black"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="48dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:elevation="10dp"
-        />
+        android:elevation="10dp" />
 
     <!-- Channels Panel -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list"
-        android:layout_width="400dp"
+        android:layout_width="450dp"
         android:layout_height="0dp"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="24dp"
-        android:paddingVertical="16dp"
-        android:paddingHorizontal="12dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp"
+        android:layout_marginStart="20dp"
+        android:paddingVertical="12dp"
+        android:paddingHorizontal="8dp"
         android:clipToPadding="false"
-        android:background="@drawable/bg_menu_glass"
+        android:background="@drawable/bg_transparent_glass"
         app:layout_constraintStart_toEndOf="@id/group"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -107,7 +109,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="No channels in this category"
-        android:textColor="@color/description_blur"
+        android:textColor="@color/text_secondary"
         android:textSize="18sp"
         android:gravity="center"
         android:visibility="gone"

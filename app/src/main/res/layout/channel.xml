@@ -3,50 +3,52 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
-    >
+    android:gravity="center">
+
     <FrameLayout
         android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        >
+        android:layout_height="match_parent">
 
         <RelativeLayout
             android:id="@+id/channel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end|top"
-            android:layout_marginTop="30dp"
-            android:layout_marginEnd="30dp"
-            android:gravity="end|top" >
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="32dp"
+            android:gravity="end|top">
+
             <TextView
                 android:id="@+id/content"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_menu_glass"
-                android:paddingHorizontal="24dp"
-                android:paddingVertical="12dp"
-                android:minWidth="100dp"
+                android:background="@drawable/bg_transparent_glass"
+                android:paddingHorizontal="28dp"
+                android:paddingVertical="14dp"
+                android:minWidth="110dp"
                 android:gravity="center"
                 android:text="1"
                 android:textColor="@color/white"
-                android:textSize="54sp"
+                android:textSize="56sp"
                 android:includeFontPadding="false"
                 tools:text="99"
                 android:textStyle="bold"
                 android:fontFamily="sans-serif-black"
                 android:elevation="12dp" />
+
             <TextView
                 android:id="@+id/time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_below="@id/content"
                 android:layout_alignEnd="@id/content"
-                android:layout_marginTop="8dp"
-                android:textColor="#B3FFFFFF"
-                android:textStyle="normal"
-                android:textSize="24sp"
+                android:layout_marginTop="12dp"
+                android:textColor="@color/text_secondary"
+                android:textStyle="bold"
+                android:textSize="26sp"
                 android:fontFamily="sans-serif-medium"
+                android:alpha="0.9"
                 tools:text="12:34" />
         </RelativeLayout>
     </FrameLayout>
