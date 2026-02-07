@@ -15,8 +15,8 @@
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:orientation">vertical</item>
-        <item name="android:paddingVertical">6dp</item>
-        <item name="android:layout_marginBottom">16dp</item>
+        <item name="android:paddingVertical">10dp</item>
+        <item name="android:layout_marginBottom">20dp</item>
     </style>
 
     <style name="SettingsToggleItem">
@@ -25,7 +25,7 @@
         <item name="android:orientation">horizontal</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:background">@drawable/ripple_effect</item>
-        <item name="android:padding">14dp</item>
+        <item name="android:padding">16dp</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
     </style>

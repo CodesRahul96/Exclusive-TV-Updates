@@ -108,6 +108,10 @@ object SP {
         get() = sp.getBoolean(KEY_REPEAT_INFO, true)
         set(value) = sp.edit().putBoolean(KEY_REPEAT_INFO, value).apply()
 
+    var mainApiEnabled: Boolean
+        get() = sp.getBoolean("main_api_enabled", true)
+        set(value) = sp.edit().putBoolean("main_api_enabled", value).apply()
+
     var bufferMode: Int
         get() = sp.getInt(KEY_BUFFER_MODE, 0) // 0: Default, 1: Low, 2: High
         set(value) = sp.edit().putInt(KEY_BUFFER_MODE, value).apply()
@@ -120,12 +124,6 @@ object SP {
             context.resources.getString(R.string.app_name),
             Context.MODE_PRIVATE
         )
-        
-        // Migration: If config exists but playlistUrls is empty, move config to playlistUrls
-        if (config?.isNotEmpty() == true && playlistUrls.isEmpty()) {
-            addPlaylistUrl(config!!)
-            // We keep config for now as "current/last active" or just backward compatibility
-        }
     }
 
     fun setOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener) {

@@ -208,19 +208,26 @@ object TVList {
                 // Ensure all URLs from preferences are included, but prioritize Main API
                 val mainUrl = SP.config ?: DEFAULT_CONFIG_URL
                 val urls = mutableListOf<String>()
-                if (mainUrl.isNotEmpty()) urls.add(mainUrl)
                 
+                // 1. Add Main API if enabled
+                if (mainUrl.isNotEmpty() && SP.mainApiEnabled) urls.add(mainUrl)
+                
+                // 2. Add Custom Playlists (and clean up if mainUrl leaked into the set)
                 SP.playlistUrls.forEach { url ->
-                    if (url != mainUrl && url.isNotEmpty()) {
-                        urls.add(url)
+                    if (url.isNotEmpty()) {
+                        if (url == mainUrl) {
+                            // Proactively clean up Main API from custom list to fix settings visibility
+                            SP.removePlaylistUrl(url)
+                        } else {
+                            urls.add(url)
+                        }
                     }
                 }
-
                 
-                
-                // If the set changed (e.g. first run), save it
-                if (urls.size != SP.playlistUrls.size) {
-                    urls.forEach { SP.addPlaylistUrl(it) }
+                // 3. Fallback: If absolutely no sources are available/enabled, load Main API as safety
+                if (urls.isEmpty() && mainUrl.isNotEmpty()) {
+                    urls.add(mainUrl)
+                    // Optional: could force SP.mainApiEnabled = true here, but keeping it simple for now
                 }
 
                 

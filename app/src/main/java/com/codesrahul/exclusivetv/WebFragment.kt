@@ -1048,7 +1048,8 @@ class WebFragment : Fragment() {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
                  if (playbackState == Player.STATE_READY) {
-                        tvModel?.setErrInfo("") 
+                        // Success Signal: Explicitly mark as ready for MainActivity to hide loader
+                        tvModel?.setErrInfo("success") 
                         retryCount = 0 // Reset retry count on success
                  }
             }
@@ -1056,13 +1057,13 @@ class WebFragment : Fragment() {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 super.onIsPlayingChanged(isPlaying)
                 if (isPlaying) {
-                    tvModel?.setErrInfo("")
+                    tvModel?.setErrInfo("success")
                 }
             }
 
             override fun onRenderedFirstFrame() {
                 super.onRenderedFirstFrame()
-                tvModel?.setErrInfo("")
+                tvModel?.setErrInfo("success")
             }
 
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {

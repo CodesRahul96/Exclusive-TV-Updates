@@ -614,8 +614,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         
         // Observe Error Info
         tvModel.errInfo.observe(this) { info: String? ->
-            if (info != null && tvModel.tv.id == currentPos) {
-                if (info == "" || info == "web ok") {
+            // Robust Verification: Ensure we only handle signals for the CURRENTLY selected channel instance
+            if (info != null && tvModel == TVList.getTVModel()) {
+                if (info == "" || info == "success" || info == "web ok") {
                     hideFragment(loadingFragment)
                     hideErrorFragment()
                     showFragment(webFragment)
@@ -644,7 +645,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // Auto-hide loader after timeout backup
         handler.removeCallbacksAndMessages("loader_timeout")
         handler.postAtTime({ 
-             if (tvModel.tv.id == TVList.position.value) {
+             if (tvModel == TVList.getTVModel()) {
                 hideFragment(loadingFragment)
             }
         }, "loader_timeout", SystemClock.uptimeMillis() + 6000)

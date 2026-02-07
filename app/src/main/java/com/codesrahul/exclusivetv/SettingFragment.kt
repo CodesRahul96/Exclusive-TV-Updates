@@ -95,6 +95,7 @@ class SettingFragment : Fragment() {
         tvUiUtils?.tintTextViewDrawable(binding.clear, iconColorSecondary)
         tvUiUtils?.tintTextViewDrawable(binding.checkVersion, iconColorSecondary)
         tvUiUtils?.tintTextViewDrawable(binding.copyrightInfo, iconColorSecondary)
+        tvUiUtils?.tintTextViewDrawable(binding.appWebsite, iconColorSecondary)
 
         // Tint Portfolio Icons
         val goldColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
@@ -119,6 +120,8 @@ class SettingFragment : Fragment() {
           binding.statusPipMode.text = if (SP.pipMode) "ON" else "OFF"
           binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
 
+        binding.statusMainApi.text = if (SP.mainApiEnabled) "ON" else "OFF"
+
         // Set text colors based on state
         val activeColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
         val inactiveColor = Color.parseColor("#80FFFFFF")
@@ -129,7 +132,7 @@ class SettingFragment : Fragment() {
             binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, 
-            binding.statusAudioStabilizer, binding.statusEpgShift
+            binding.statusAudioStabilizer, binding.statusEpgShift, binding.statusMainApi
         )
 
         statusViews.forEach { v ->
@@ -171,9 +174,11 @@ class SettingFragment : Fragment() {
             binding.cardAudioStabilizer,
             binding.managePlaylists,
             binding.manageCategories,
+            binding.cardMainApi,
             binding.clear,
             binding.checkVersion,
             binding.copyrightInfo,
+            binding.appWebsite,
             binding.portfolioWebsite,
             binding.portfolioLinkedin,
             binding.portfolioGithub,
@@ -184,7 +189,7 @@ class SettingFragment : Fragment() {
             v.setOnFocusChangeListener { view, hasFocus ->
                 if (hasFocus) {
                     resetIdleTimer()
-                    view.animate().scaleX(1.02f).scaleY(1.02f).setDuration(150).start()
+                    view.animate().scaleX(1.01f).scaleY(1.01f).setDuration(150).start()
                     if (view !is android.widget.EditText) {
                         tvUiUtils?.playFocusSound()
                     }
@@ -225,13 +230,21 @@ class SettingFragment : Fragment() {
                 // Add to multi-playlist source
                 SP.addPlaylistUrl(url)
                 
+                // AUTO-FEATURE: Disable main API when adding custom source (for isolation testing)
+                if (SP.mainApiEnabled) {
+                    SP.mainApiEnabled = false
+                    syncStatusUI()
+                }
+                
                 // Trigger update
                 TVList.update(requireContext(), silent = false) // Fetch all
                 
                 binding.config.text = null // Clear input
-                Toast.makeText(requireContext(), "Source added", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Source added (Main API disabled for testing)", Toast.LENGTH_SHORT).show()
             }
         }
+        
+        binding.cardMainApi.setOnClickListener { toggleSetting("mainApi") }
         
         binding.managePlaylists.setOnClickListener {
              tvUiUtils?.playClickSound()
@@ -286,6 +299,10 @@ class SettingFragment : Fragment() {
         binding.copyrightInfo.setOnClickListener {
             tvUiUtils?.playClickSound()
             showCopyrightDialog()
+        }
+
+        binding.appWebsite.setOnClickListener {
+            openUrl("https://exclusivetv.indevs.in/")
         }
 
         binding.portfolioWebsite.setOnClickListener {
@@ -349,7 +366,12 @@ class SettingFragment : Fragment() {
             }
             "audioStabilizer" -> {
                 SP.audioStabilizer = !SP.audioStabilizer
-                Toast.makeText(requireContext(), if (SP.audioStabilizer) "Audio Stabilizer Enabled" else "Audio Stabilizer Disabled", Toast.LENGTH_SHORT).show()
+                binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
+            }
+            "mainApi" -> {
+                SP.mainApiEnabled = !SP.mainApiEnabled
+                binding.statusMainApi.text = if (SP.mainApiEnabled) "ON" else "OFF"
+                TVList.update(requireContext(), silent = false)
             }
         }
         syncStatusUI()

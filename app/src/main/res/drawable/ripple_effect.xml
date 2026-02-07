@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/ripple_color">
-    <item android:drawable="@drawable/focus_background" />
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="@color/ripple_color">
+    <item>
+        <selector>
+            <item android:drawable="@drawable/focus_background" android:state_focused="true" />
+            <item android:drawable="@android:color/transparent" />
+        </selector>
+    </item>
 </ripple>
