@@ -16,7 +16,7 @@ import com.codesrahul.exclusivetv.models.EPGProgram
 
 object EPGManager {
     private const val TAG = "EPGManager"
-    private const val DEFAULT_EPG_URL = "https://avkb.short.gy/epg.xml.gz"
+    private const val DEFAULT_EPG_URL = "https://tsepg.cf/jio.xml.gz"
     
     private val epgUrl: String
         get() = SP.epg.takeIf { !it.isNullOrEmpty() } ?: DEFAULT_EPG_URL

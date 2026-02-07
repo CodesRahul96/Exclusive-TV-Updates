@@ -57,7 +57,7 @@ object TVList {
     }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    const val DEFAULT_CONFIG_URL = "https://exclusive-tv-app-api.vercel.app/"
+    const val DEFAULT_CONFIG_URL = "https://exclusivetvapi.indevs.in/"
     private lateinit var appDirectory: File
 
     private lateinit var serverUrl: String
