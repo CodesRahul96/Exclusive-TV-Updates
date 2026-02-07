@@ -209,14 +209,20 @@ object TVList {
                 val mainUrl = SP.config ?: DEFAULT_CONFIG_URL
                 val urls = mutableListOf<String>()
                 
-                // 1. Add Main API if enabled
-                if (mainUrl.isNotEmpty() && SP.mainApiEnabled) urls.add(mainUrl)
+                // 1. Add Main API if enabled (Split into 4 parts for performance/reliability)
+                if (mainUrl.isNotEmpty() && SP.mainApiEnabled) {
+                    val baseUrl = if (mainUrl.endsWith("/")) mainUrl else "$mainUrl/"
+                    urls.add(baseUrl + "part1.txt")
+                    urls.add(baseUrl + "part2.txt")
+                    urls.add(baseUrl + "part3.txt")
+                    urls.add(baseUrl + "part4.txt")
+                }
                 
                 // 2. Add Custom Playlists (and clean up if mainUrl leaked into the set)
                 SP.playlistUrls.forEach { url ->
                     if (url.isNotEmpty()) {
-                        if (url == mainUrl) {
-                            // Proactively clean up Main API from custom list to fix settings visibility
+                        if (url == mainUrl || url.startsWith(mainUrl)) {
+                            // Proactively clean up Main API parts from custom list
                             SP.removePlaylistUrl(url)
                         } else {
                             urls.add(url)
@@ -226,8 +232,11 @@ object TVList {
                 
                 // 3. Fallback: If absolutely no sources are available/enabled, load Main API as safety
                 if (urls.isEmpty() && mainUrl.isNotEmpty()) {
-                    urls.add(mainUrl)
-                    // Optional: could force SP.mainApiEnabled = true here, but keeping it simple for now
+                    val baseUrl = if (mainUrl.endsWith("/")) mainUrl else "$mainUrl/"
+                    urls.add(baseUrl + "part1.txt")
+                    urls.add(baseUrl + "part2.txt")
+                    urls.add(baseUrl + "part3.txt")
+                    urls.add(baseUrl + "part4.txt")
                 }
 
                 
