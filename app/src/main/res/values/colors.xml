@@ -28,8 +28,8 @@
 
     <!-- UI Surface Colors -->
     <color name="surface_glass">#E60F1520</color>
-    <color name="surface_glass_alpha">#B30F1520</color>
-    <color name="overlay_background">#99000000</color>
+    <color name="surface_glass_alpha">#CC0F1520</color>
+    <color name="overlay_background">#B3000000</color>
     <color name="focus_highlight">#33FFD700</color>
     <color name="surface_dark">#CC000000</color>
 

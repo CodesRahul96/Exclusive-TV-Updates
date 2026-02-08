@@ -57,7 +57,7 @@ object TVList {
     }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    const val DEFAULT_CONFIG_URL = "https://exclusivetvapi.indevs.in/"
+    const val DEFAULT_CONFIG_URL = "https://exclusivetv.indevs.in/"
     private lateinit var appDirectory: File
 
     private lateinit var serverUrl: String
@@ -209,29 +209,16 @@ object TVList {
                 val mainUrl = SP.config ?: DEFAULT_CONFIG_URL
                 val urls = mutableListOf<String>()
                 
-                // 1. Add Main API if enabled (Split into 4 parts for performance/reliability)
-                if (mainUrl.isNotEmpty() && SP.mainApiEnabled) {
-                    val baseUrl = if (mainUrl.endsWith("/")) mainUrl else "$mainUrl/"
-                    urls.add(baseUrl + "part1.txt")
-                    urls.add(baseUrl + "part2.txt")
-                    urls.add(baseUrl + "part3.txt")
-                    urls.add(baseUrl + "part4.txt")
+                // 1. Get Custom Playlists (filter out empty or Main API leaks)
+                val customUrls = SP.playlistUrls.filter { url ->
+                    url.isNotEmpty() && url != mainUrl && !url.startsWith(mainUrl)
                 }
                 
-                // 2. Add Custom Playlists (and clean up if mainUrl leaked into the set)
-                SP.playlistUrls.forEach { url ->
-                    if (url.isNotEmpty()) {
-                        if (url == mainUrl || url.startsWith(mainUrl)) {
-                            // Proactively clean up Main API parts from custom list
-                            SP.removePlaylistUrl(url)
-                        } else {
-                            urls.add(url)
-                        }
-                    }
-                }
-                
-                // 3. Fallback: If absolutely no sources are available/enabled, load Main API as safety
-                if (urls.isEmpty() && mainUrl.isNotEmpty()) {
+                // 2. Load Logic: Custom sources if they exist, otherwise fallback to Main API
+                if (customUrls.isNotEmpty()) {
+                    urls.addAll(customUrls)
+                } else if (mainUrl.isNotEmpty()) {
+                    // Load Main API (Split into 4 parts for performance/reliability)
                     val baseUrl = if (mainUrl.endsWith("/")) mainUrl else "$mainUrl/"
                     urls.add(baseUrl + "part1.txt")
                     urls.add(baseUrl + "part2.txt")

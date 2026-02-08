@@ -220,7 +220,7 @@ class GroupAdapter(
 
         fun focus(hasFocus: Boolean) {
             val colorWhite = ContextCompat.getColor(context, R.color.white)
-            val colorBlur = ContextCompat.getColor(context, R.color.description_blur)
+            val colorBlur = ContextCompat.getColor(context, R.color.text_secondary)
             val focusBackground = R.drawable.focus_background
             binding.title.setTextColor(if (hasFocus) colorWhite else colorBlur)
 

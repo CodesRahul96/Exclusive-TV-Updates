@@ -167,18 +167,6 @@
                         android:text="Organize Categories"
                         android:drawableStart="@drawable/ic_category" />
 
-                    <View style="@style/SettingsDivider"/>
-
-                    <LinearLayout
-                        android:id="@+id/card_main_api"
-                        style="@style/SettingsToggleItem">
-                        <ImageView style="@style/SettingsIcon" android:src="@drawable/ic_check" />
-                        <LinearLayout style="@style/SettingsTextContainer">
-                            <TextView style="@style/SettingsTitle" android:text="Include Main Source"/>
-                            <TextView style="@style/SettingsSubtitle" android:text="Load channels from Main API"/>
-                        </LinearLayout>
-                        <TextView android:id="@+id/status_main_api" style="@style/SettingsStatusText" android:text="ON"/>
-                    </LinearLayout>
                 </LinearLayout>
 
 

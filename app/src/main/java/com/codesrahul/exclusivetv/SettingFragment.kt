@@ -120,7 +120,6 @@ class SettingFragment : Fragment() {
           binding.statusPipMode.text = if (SP.pipMode) "ON" else "OFF"
           binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
 
-        binding.statusMainApi.text = if (SP.mainApiEnabled) "ON" else "OFF"
 
         // Set text colors based on state
         val activeColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
@@ -132,7 +131,7 @@ class SettingFragment : Fragment() {
             binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, 
-            binding.statusAudioStabilizer, binding.statusEpgShift, binding.statusMainApi
+            binding.statusAudioStabilizer, binding.statusEpgShift
         )
 
         statusViews.forEach { v ->
@@ -174,7 +173,6 @@ class SettingFragment : Fragment() {
             binding.cardAudioStabilizer,
             binding.managePlaylists,
             binding.manageCategories,
-            binding.cardMainApi,
             binding.clear,
             binding.checkVersion,
             binding.copyrightInfo,
@@ -230,21 +228,15 @@ class SettingFragment : Fragment() {
                 // Add to multi-playlist source
                 SP.addPlaylistUrl(url)
                 
-                // AUTO-FEATURE: Disable main API when adding custom source (for isolation testing)
-                if (SP.mainApiEnabled) {
-                    SP.mainApiEnabled = false
-                    syncStatusUI()
-                }
-                
                 // Trigger update
                 TVList.update(requireContext(), silent = false) // Fetch all
                 
                 binding.config.text = null // Clear input
-                Toast.makeText(requireContext(), "Source added (Main API disabled for testing)", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Source added", Toast.LENGTH_SHORT).show()
             }
         }
         
-        binding.cardMainApi.setOnClickListener { toggleSetting("mainApi") }
+
         
         binding.managePlaylists.setOnClickListener {
              tvUiUtils?.playClickSound()
@@ -368,11 +360,7 @@ class SettingFragment : Fragment() {
                 SP.audioStabilizer = !SP.audioStabilizer
                 binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
             }
-            "mainApi" -> {
-                SP.mainApiEnabled = !SP.mainApiEnabled
-                binding.statusMainApi.text = if (SP.mainApiEnabled) "ON" else "OFF"
-                TVList.update(requireContext(), silent = false)
-            }
+
         }
         syncStatusUI()
     }

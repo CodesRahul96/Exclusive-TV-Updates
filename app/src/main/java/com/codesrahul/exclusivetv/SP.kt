@@ -108,9 +108,7 @@ object SP {
         get() = sp.getBoolean(KEY_REPEAT_INFO, true)
         set(value) = sp.edit().putBoolean(KEY_REPEAT_INFO, value).apply()
 
-    var mainApiEnabled: Boolean
-        get() = sp.getBoolean("main_api_enabled", true)
-        set(value) = sp.edit().putBoolean("main_api_enabled", value).apply()
+
 
     var bufferMode: Int
         get() = sp.getInt(KEY_BUFFER_MODE, 0) // 0: Default, 1: Low, 2: High
