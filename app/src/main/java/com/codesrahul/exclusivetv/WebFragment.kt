@@ -48,6 +48,7 @@ import androidx.media3.exoplayer.hls.HlsExtractorFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
+import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import org.json.JSONObject
 import org.json.JSONArray
@@ -133,6 +134,7 @@ class WebFragment : Fragment() {
     }
 
     private var wakeLock: android.os.PowerManager.WakeLock? = null
+    private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
     private var retryCount = 0
     private var currentUrlIndex = 0
     private val maxRetries = 10
@@ -149,6 +151,14 @@ class WebFragment : Fragment() {
 
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
             wakeLock = powerManager.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "ExclusiveTV:WakeLock")
+            
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                wifiLock = wifiManager.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "ExclusiveTV:WifiLock")
+            } else {
+                wifiLock = wifiManager.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "ExclusiveTV:WifiLock")
+            }
+            wifiLock?.setReferenceCounted(false)
         } catch (e: Exception) {
         }
 
@@ -782,6 +792,9 @@ class WebFragment : Fragment() {
         if (wakeLock?.isHeld == false) {
              wakeLock?.acquire(4 * 60 * 60 * 1000L) // 4 hours timeout safety
         }
+        if (wifiLock?.isHeld == false) {
+             wifiLock?.acquire()
+        }
 
         currentVideoUrl = url
         var videoUrl = url
@@ -851,8 +864,13 @@ class WebFragment : Fragment() {
 
         // OPTIMIZED BUFFER SETTINGS
         val loadControl = getLoadControl()
+        
+        // Use Extension Renderers if available (e.g. FFMpeg) and ENABLE FALLBACK
+        val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(requireContext())
+            .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            .setEnableDecoderFallback(true) // IMPORTANT: Swaps to software decoder if hardware hangs
 
-        val builder = ExoPlayer.Builder(requireContext())
+        val builder = ExoPlayer.Builder(requireContext(), renderersFactory)
             .setLoadControl(loadControl)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -893,7 +911,15 @@ class WebFragment : Fragment() {
             true
         )
 
-        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext())
+        // ENHANCED EXTRACTOR FACTORY FOR .TS FILES (Multi-Audio / H265 / DD5.1)
+        val extractorsFactory = DefaultExtractorsFactory()
+            .setTsExtractorFlags(
+                DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
+                8 or // FLAG_DETECT_ACCESS_UNIT_DELIMITERS
+                DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS
+            )
+
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext(), extractorsFactory)
         mediaSourceFactory.setDataSourceFactory(httpDataSourceFactory)
 
         // FIX: Configure DRM Provider to use our Cookie-enabled DataSource
@@ -1188,7 +1214,11 @@ class WebFragment : Fragment() {
             // SPECIAL HANDLING: IPTV Providers blocking standard browsers
             url.contains("drmlive.net") || url.contains("servertvhub.site") || url.contains("workers.dev") -> 
                 "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
-                
+            
+            // OSTV / Tokenized Streams / General TS - TiviMate is the gold standard for compatibility
+            url.contains("ostv.info") || url.contains("token=") || url.endsWith(".ts", ignoreCase = true) -> 
+                "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
+
             url.contains("googlevideo.com") || url.contains("youtube.com") -> 
                 "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US) gzip"
             url.contains("facebook.com") || url.contains("fbcdn.net") ->
@@ -1288,6 +1318,9 @@ class WebFragment : Fragment() {
 
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
+        }
+        if (wifiLock?.isHeld == true) {
+            wifiLock?.release()
         }
         exoPlayer?.release()
         exoPlayer = null
@@ -1403,19 +1436,34 @@ class WebFragment : Fragment() {
             else -> 1000 // Optimized default: 1s start (was 2000)
         }
         
-        // Calculate target buffer size (e.g., 20MB) to prevent OOM on low-end devices
-        val targetBufferBytes = 20 * 1024 * 1024 
+        // DYNAMIC BUFFER SIZING (Professional Solution)
+        val activityManager = requireContext().getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val memoryInfo = android.app.ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+        
+        val totalMemGb = memoryInfo.totalMem / (1024 * 1024 * 1024.0)
+        val isHighEnd = totalMemGb > 2.0
+        
+        // Target Buffer: 128MB for High-End, 50MB for Low-End
+        val targetBufferBytes = if (isHighEnd) {
+            128 * 1024 * 1024 
+        } else {
+            50 * 1024 * 1024
+        }
+        
+        // Priority: Time for High-End (Smoothness), Size for Low-End (Stability)
+        val prioritizeTime = isHighEnd
 
         return DefaultLoadControl.Builder()
             .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                minBuffer,
-                maxBuffer,
+                if (isHighEnd) 30000 else minBuffer, // 30s min for High-End (Safe for 3GB RAM @ 50Mbps)
+                if (isHighEnd) 50000 else maxBuffer, // 50s max for High-End
                 startBuffer,
                 2500 
             )
             .setTargetBufferBytes(targetBufferBytes)
-            .setPrioritizeTimeOverSizeThresholds(false) // Enforce size limit to prevent OOM
+            .setPrioritizeTimeOverSizeThresholds(prioritizeTime) 
             .build()
     }
 

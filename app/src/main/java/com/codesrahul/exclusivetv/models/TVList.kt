@@ -693,7 +693,26 @@ object TVList {
     }
 
     private suspend fun parseUniversalFile(file: File): List<TV> = withContext(Dispatchers.IO) {
-        // 1. Peek Header
+        // OPTIMIZATION: Direct Stream Parsing for Cache (Avoids reading 50MB string into memory)
+        val filename = file.name
+        
+        // 1. FASTEST PATH: If it's the internal cache file, we KNOW it is JSON.
+        // Skip all guessing and sniffing.
+        if (filename == FILE_NAME || filename.endsWith(".json")) {
+            try {
+                // Open standard BufferedReader for performance
+                val reader = java.io.BufferedReader(java.io.FileReader(file), 8192)
+                // Use the streamlined GenericJsonParser which now supports streaming
+                val result = GenericJsonParser.parse(reader)
+                reader.close()
+                if (result.isNotEmpty()) return@withContext result
+            } catch (e: Exception) {
+                // If JSON fails, fall back to legacy sniffing below
+            }
+        }
+
+        // 2. Legacy/Universal Logic for unknown files
+        // Peek Header
         val peekBuilder = StringBuilder()
         try {
             java.io.BufferedReader(java.io.FileReader(file)).use { br ->
@@ -706,14 +725,12 @@ object TVList {
         
         val peekContent = peekBuilder.toString().trim()
         
-        // 2. Strategy A: JSON
+        // Strategy A: JSON
         if (peekContent.startsWith("[") || peekContent.startsWith("{")) {
             try {
-                // Open new Reader
                 val reader = java.io.BufferedReader(java.io.FileReader(file))
                 val result = GenericJsonParser.parse(reader)
-                reader.close() // Close explicitly
-                
+                reader.close()
                 if (result.isNotEmpty()) {
                      return@withContext expandNestedPlaylists(result)
                 }
