@@ -256,15 +256,44 @@ object TVList {
                                    _importStatus.value = "Connecting: Source ${index + 1}/$totalSources"
                                }
                            }
-                           val request = Request.Builder().url(url).get().build()
+                           
+                           val requestBuilder = Request.Builder().url(url).get()
+                           // OPTIMIZATION: Use ETag only if we have a SINGLE source to avoid partial update checks
+                           if (urls.size == 1 && SP.lastEtag != null) {
+                               requestBuilder.header("If-None-Match", SP.lastEtag!!)
+                           }
+                           val request = requestBuilder.build()
                            
                            client.newCall(request).execute().use { response ->
+                               // 1. Handle 304 Not Modified (Server says content hasn't changed)
+                               if (response.code == 304) {
+                                   withContext(Dispatchers.Main) {
+                                        if (showUi) _importStatus.value = "Content up to date (Cached)"
+                                   }
+                                   // Return null or specific marker? 
+                                   // If we return emptyList, the main logic might think it failed.
+                                   // But if we have local cache, we are good.
+                                   // We need to signal that we should KEEP existing data.
+                                   // For now, let's treat it as successful but empty, and rely on the fact 
+                                   // that we loaded cache initially.
+                                   return@async null 
+                               }
+                               
                                if (response.isSuccessful) {
                                    withContext(Dispatchers.Main) {
                                        if (!silent || size() == 0) {
                                            _importStatus.value = "Downloading: Source ${index + 1}/$totalSources"
                                        }
                                    }
+                                   
+                                   // Save ETag for next time (Primary source only)
+                                   if (index == 0) {
+                                       val newEtag = response.header("ETag")
+                                       if (newEtag != null) {
+                                           SP.lastEtag = newEtag
+                                       }
+                                   }
+
                                    val responseBody = response.body
                                    if (responseBody != null) {
                                        val tempFile = File(ctx.cacheDir, "playlist_source_$index.tmp")
@@ -317,9 +346,24 @@ object TVList {
                 // PROFESSIONAL OPTIMIZATION: Prioritize first (Main) source for instant UI refresh
                 if (deferredResults.isNotEmpty()) {
                     val primaryResult = deferredResults[0].await()
-                    if (primaryResult.isNotEmpty()) {
+                    
+                    // Handle 304 (null)
+                    if (primaryResult == null) {
+                         // 304 Not Modified 
+                         // This ONLY happens if urls.size == 1 (as per logic below)
+                         // We rely on existing 'list' (loaded from cache at startup).
+                         withContext(Dispatchers.Main) {
+                             if (showUi) _importStatus.value = "Up to date (Cached)"
+                             _importProgress.value = 100
+                             isUpdating = false // Reset flag
+                         }
+                         return@launch 
+                    } else if (primaryResult.isNotEmpty()) {
                         allChannels.addAll(primaryResult)
                         successCount++
+                        
+                        // Instant refresh connection
+                        // ...
                         
                         // Instant refresh with primary data
                         val tempFinal = mutableListOf<TV>()
@@ -337,7 +381,7 @@ object TVList {
                 // Await the rest
                 if (deferredResults.size > 1) {
                     for (i in 1 until deferredResults.size) {
-                        val result = deferredResults[i].await()
+                        val result = deferredResults[i].await() ?: emptyList()
                         if (result.isNotEmpty()) {
                             allChannels.addAll(result)
                             successCount++

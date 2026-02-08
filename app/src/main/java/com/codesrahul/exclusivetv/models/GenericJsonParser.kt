@@ -111,7 +111,7 @@ object GenericJsonParser {
                 "headers", "http_headers" -> {
                     // Special handling for headers object
                     if (token == JsonToken.BEGIN_OBJECT) {
-                         headers = mutableMapOf()
+                         if (headers == null) headers = mutableMapOf()
                          reader.beginObject()
                          while (reader.hasNext()) {
                              val hKey = reader.nextName()
