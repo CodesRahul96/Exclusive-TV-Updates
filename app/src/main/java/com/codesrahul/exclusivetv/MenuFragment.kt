@@ -104,12 +104,12 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         }
     }
 
-    fun updateList(position: Int) {
+    fun updateList(position: Int, onComplete: (() -> Unit)? = null) {
         TVList.groupModel.setPosition(position)
         SP.positionGroup = position
         val tvListModel = TVList.groupModel.getTVListModel()
         if (tvListModel != null) {
-            (binding.list.adapter as ListAdapter).update(tvListModel)
+            (binding.list.adapter as ListAdapter).update(tvListModel, onComplete)
         }
     }
 
@@ -235,17 +235,33 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                     val currentGroupPosition = TVList.groupModel.position.value ?: 0
                     if (groupIndex == currentGroupPosition) {
                         if (listAdapter.tvListModel.getIndex() != currentTvModel.groupIndex) {
-                            updateList(groupIndex)
+                            // Update list AND THEN scroll
+                            updateList(groupIndex) {
+                                listAdapter.toPosition(currentTvModel.listIndex)
+                            }
+                        } else {
+                             // List already loaded, just scroll
+                            view?.post {
+                                listAdapter.toPosition(currentTvModel.listIndex)
+                            }
                         }
-                        listAdapter.toPosition(currentTvModel.listIndex)
                     } else {
-                        listAdapter.toPosition(0)
+                        // User is in a different group than the one playing.
+                        // We do NOT switch group automatically (standard behavior: stay in current nav),
+                        // OR we force switch? Logic above suggests we stay or reset:
+                        // Original logic called listAdapter.toPosition(0) here which implies 'stay where we are' or 'reset to top'
+                        view?.post {
+                            listAdapter.toPosition(0)
+                        }
                     }
                 }
             }
             if (binding.group.isVisible) {
                 val currentGroupPosition = TVList.groupModel.position.value ?: 0
-                groupAdapter.toPosition(currentGroupPosition)
+                // Also wrap groupAdapter.toPosition in post to be safe
+                view?.post {
+                    groupAdapter.toPosition(currentGroupPosition)
+                }
             }
         } else {
             if (::groupAdapter.isInitialized) groupAdapter.stopMove()

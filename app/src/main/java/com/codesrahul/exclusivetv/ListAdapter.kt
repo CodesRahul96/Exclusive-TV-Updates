@@ -94,10 +94,11 @@ class ListAdapter(
         }
     }
 
-    fun update(newTvListModel: TVListModel) {
+    fun update(newTvListModel: TVListModel, onUpdateComplete: (() -> Unit)? = null) {
         // OPTIMIZATION: If it's the same model instance, we can check if it actually changed
         // but for now, the simplest is to check if it's the exact same reference and we already have it.
         if (this.tvListModel === newTvListModel && internalList === newTvListModel.getTVModelList()) {
+            onUpdateComplete?.invoke()
             return
         }
 
@@ -113,6 +114,7 @@ class ListAdapter(
                 internalList = newList
                 tvListModel = newTvListModel
                 diffResult.dispatchUpdatesTo(this@ListAdapter)
+                onUpdateComplete?.invoke()
             }
         }
     }
@@ -189,6 +191,9 @@ class ListAdapter(
             if (hasFocus) {
                 view.post { viewHolder.focus(true) }
                 focused = view
+                // CENTER SELECTION ON NAVIGATION
+                scrollToCenter(position)
+                
                 if (visible) {
                     if (position != tvListModel.position.value) {
                         tvListModel.setPosition(position)
@@ -465,14 +470,20 @@ class ListAdapter(
         }
     }
 
-     fun toPosition(position: Int) {
+     fun scrollToCenter(position: Int) {
          if (position < 0 || position >= itemCount) return
          
+         val fH = recyclerView.height
+         val itemHeight = application.px2Px(60) // Fallback height
+         val offset = (fH / 2) - (itemHeight / 2)
+         (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, if (offset > 0) offset else 0)
+     }
+
+     fun toPosition(position: Int) {
+         if (position < 0 || position >= itemCount) return
+
          recyclerView.post {
-             (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
-                 position,
-                 0
-             )
+             scrollToCenter(position)
  
              // Multiple attempts to ensure focus on recycled views
              val focusRunnable = object : Runnable {

@@ -93,6 +93,9 @@ class GroupAdapter(
             if (hasFocus) {
                 view.post { viewHolder.focus(true) }
                 focused = view
+                // CENTER SELECTION ON NAVIGATION
+                scrollToCenter(viewHolder.bindingAdapterPosition)
+
                 if (visible) {
                     // Update model position if needed
                     val currentPos = viewHolder.bindingAdapterPosition
@@ -251,14 +254,20 @@ class GroupAdapter(
 
     }
 
+    fun scrollToCenter(position: Int) {
+        if (position < 0 || position >= itemCount) return
+        
+        val fH = recyclerView.height
+        val itemHeight = application.px2Px(50) 
+        val offset = (fH / 2) - (itemHeight / 2)
+        (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, if (offset > 0) offset else 0)
+    }
+
     fun toPosition(position: Int) {
         if (position < 0 || position >= itemCount) return
         
         recyclerView.post {
-            (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
-                position,
-                0
-            )
+            scrollToCenter(position)
 
             val focusRunnable = object : Runnable {
                 var attempts = 0
