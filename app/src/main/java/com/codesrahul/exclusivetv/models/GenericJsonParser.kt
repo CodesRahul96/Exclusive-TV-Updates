@@ -78,18 +78,37 @@ object GenericJsonParser {
     fun parseSingleObject(obj: JsonObject, index: Int): TV? {
         // Heuristic Field Mapping
         
-        // 1. Find Name
-        val name = findString(obj, "name", "title", "channel_name", "display_name", "caption", "station", "tv_name", "channel", "label", "tvg-name", "tvg_name", "ch_name") ?: "ExclusiveTV $index"
-        
-        // 2. Find URL (Strict - must exist)
-        val url = findString(obj, "url", "stream_url", "uri", "file", "src", "link", "stream", "play_url", "m3u8_url", "mpd_url", "video_url", "address", "location", "media_url", "hls_url", "dash_url", "rtsp_url", "source", "content_url")
+        // 1. Find URL (Strict - must exist)
+        // Prioritize m3u8_url and play_url for streaming stability
+        val url = findString(obj, "m3u8_url", "play_url", "url", "Url", "stream_url", "uri", "file", "src", "link", "stream", "mpd_url", "video_url", "address", "location", "media_url", "hls_url", "dash_url", "rtsp_url", "source", "content_url")
         if (url.isNullOrBlank()) return null
 
-        // 3. Find Logo
-        val logo = findString(obj, "logo", "icon", "image", "thumb", "thumbnail", "stream_icon", "channel_logo", "logo_url", "poster", "tvg-logo", "banner", "tvg_logo", "img", "cover", "picture") ?: ""
+        // 2. Find Name & Extract embedded attributes
+        var rawName = findString(obj, "name", "title", "channel_name", "display_name", "caption", "station", "tv_name", "channel", "label", "tvg-name", "tvg_name", "ch_name") ?: "ExclusiveTV $index"
+        
+        var embeddedGroup: String? = null
+        var embeddedLogo: String? = null
+        val cleanedName: String
 
-        // 4. Find Group
-        val group = findString(obj, "group", "category", "genre", "category_name", "group_title", "group-title", "cat_name", "category_id", "folder", "playlist", "section", "group_name") ?: "Uncategorized"
+        // Handle M3U-style attributes embedded in JSON name field (found in some dynamic sources)
+        if (rawName.contains("group-title=\"")) {
+            embeddedGroup = rawName.substringAfter("group-title=\"").substringBefore("\"")
+            if (rawName.contains("tvg-logo=\"")) {
+                embeddedLogo = rawName.substringAfter("tvg-logo=\"").substringBefore("\"")
+            }
+            cleanedName = rawName.substringAfterLast("\",").substringAfterLast(",").trim()
+        } else if (rawName.contains(",|")) {
+             // Handle "|KU| Channel Name" or similar delimiters
+             cleanedName = rawName.substringAfterLast("|").trim()
+        } else {
+            cleanedName = rawName.trim()
+        }
+
+        // 3. Find Logo (Prefer embedded if found in name cleanup)
+        val logo = embeddedLogo ?: findString(obj, "logo", "Logo", "LOGO", "icon", "image", "thumb", "thumbnail", "stream_icon", "channel_logo", "logo_url", "poster", "tvg-logo", "banner", "tvg_logo", "img", "cover", "picture") ?: ""
+
+        // 4. Find Group (Prefer embedded if found in name cleanup)
+        val group = embeddedGroup ?: findString(obj, "group", "category", "genre", "category_name", "group_title", "group-title", "cat_name", "category_id", "folder", "playlist", "section", "group_name") ?: "Uncategorized"
 
         // 5. Find DRM
         val drmLicense = findString(obj, "license_key", "drm_url", "license", "clearkey", "key", "license_url", "license_src", "drm_license", "kodi_prop_license_key")
@@ -99,12 +118,6 @@ object GenericJsonParser {
         if (drmScheme == null && obj.has("drm") && obj.get("drm").isJsonObject) {
             val drmObj = obj.getAsJsonObject("drm")
             drmScheme = findString(drmObj, "type", "scheme", "system")
-            // If license key was not found at top level, check inside drm object
-            if (drmLicense == null) {
-                 // We can't reassign val drmLicense, so we handle it below or use a separate var?
-                 // Let's rely on fallback logic below, but first try to peek.
-                 // Actually Kotlin params are vals. We need new vars if we want to change logic significantly.
-            }
         }
         
         var finalDrmLicense = drmLicense
@@ -120,18 +133,16 @@ object GenericJsonParser {
                 finalDrmLicense.contains("widevine", ignoreCase = true) || finalDrmLicense.contains("wv", ignoreCase = true) -> drmScheme = "widevine"
                 finalDrmLicense.contains("playready", ignoreCase = true) || finalDrmLicense.contains("pr", ignoreCase = true) -> drmScheme = "playready"
                 finalDrmLicense.contains("keyid=", ignoreCase = true) && finalDrmLicense.contains("key=", ignoreCase = true) -> drmScheme = "clearkey"
-                // Heuristic: If it looks like a hex key pair (32 chars : 32 chars)
                 finalDrmLicense.matches(Regex("^[0-9a-fA-F]{32}:[0-9a-fA-F]{32}$")) -> drmScheme = "clearkey"
             }
         }
         
-        // Fallback: If DASH (.mpd), assume Widevine if not explicit and has license
         if (finalDrmLicense != null && drmScheme == null && url.contains(".mpd", ignoreCase = true)) {
              drmScheme = "widevine"
         }
 
-        // 6. Find ID (Optional, default to index)
-        val idStr = findString(obj, "id", "channel_id", "tvg-id", "tvg_id", "ch_id", "unique_id", "stream_id")
+        // 6. Find ID (Optional, handle UUIDs or IDs)
+        val idStr = findString(obj, "id", "channel_id", "tvg-id", "tvg_id", "ch_id", "unique_id", "stream_id", "uuid")
         val finalId = idStr?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: index
         val apiId = idStr ?: finalId.toString()
         
@@ -151,7 +162,6 @@ object GenericJsonParser {
             else -> Type.STREAM
         }
         
-        // Final sanity check for WEB type
         if (type != Type.WEB && (url.contains("youtube.com") || url.contains("youtu.be") || url.contains("facebook.com") || url.contains("twitch.tv"))) {
             type = Type.WEB
         }
@@ -159,8 +169,8 @@ object GenericJsonParser {
         return TV(
             id = finalId,
             apiId = apiId,
-            name = name,
-            title = name,
+            name = cleanedName,
+            title = cleanedName,
             description = findString(obj, "description", "desc", "plot", "info", "summary"),
             logo = logo,
             image = findString(obj, "image", "backdrop", "fanart", "background"),

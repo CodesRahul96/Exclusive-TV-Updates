@@ -57,7 +57,8 @@ object TVList {
     }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    const val DEFAULT_CONFIG_URL = "https://exclusivetv.indevs.in/"
+    // const val DEFAULT_CONFIG_URL = "https://exclusivetv.indevs.in/"
+    val DEFAULT_CONFIG_URL: String get() = SP.config ?: "https://exclusivetv.indevs.in/" // Dynamic fallback
     private lateinit var appDirectory: File
 
     private lateinit var serverUrl: String
@@ -68,6 +69,8 @@ object TVList {
     private var isUpdating = false
     fun isUpdating() = isUpdating
     private val refreshLock = kotlinx.coroutines.sync.Mutex()
+    
+    private var lastListHash: Int = 0
 
     private val _position = MutableLiveData<Int>()
     val position: LiveData<Int>
@@ -272,13 +275,11 @@ object TVList {
                                                }
                                            }
                                            
-                                           if (showUi) {
-                                               withContext(Dispatchers.Main) {
-                                                   _importStatus.value = "Parsing: Source ${index + 1}/$totalSources"
-                                               }
-                                           }
-                                           
+                                           // OPTIMIZATION: Parse in parallel with other downloads
                                            val channels = parseUniversalFile(tempFile)
+                                           withContext(Dispatchers.Main) {
+                                               if (showUi) _importStatus.value = "Parsed: ${channels.size} channels from source ${index + 1}"
+                                           }
                                            return@async channels
                                            
                                        } catch (e: Exception) {
@@ -356,67 +357,80 @@ object TVList {
                            }
                       }
                      
-                     // UNROLL: If one channel contains multiple sources, show them all in the list
-                     val finalChannels = mutableListOf<TV>()
-                     allChannels.forEach { tv ->
-                         if (tv.uris.size > 1) {
-                             tv.uris.forEachIndexed { index, uri ->
-                                 finalChannels.add(tv.copy(
-                                     id = tv.id * 100 + index, // Generate a unique sub-id
-                                     title = "${tv.title} (S${index + 1})",
-                                     uris = listOf(uri)
-                                 ))
-                             }
-                         } else {
-                             finalChannels.add(tv)
-                         }
-                     }
-                     
-                     // FIX: Re-index securely
-                     finalChannels.forEachIndexed { index, tv ->
-                         tv.id = index
-                     }
-
-                     val gson = com.google.gson.Gson()
-                     val jsonStr = gson.toJson(finalChannels)
-                     
-                     val file = File(ctx.filesDir, FILE_NAME)
-                     file.writeText(jsonStr) // Save formatted JSON
-                     
-                     // Update memory
-                     list = finalChannels
-                     
-                      withContext(Dispatchers.Main) {
-                          refreshModelsInternal(ctx)
-                          checkChannelsInBackground()
-                          
-                          // Always update status to "Complete" only if we were showing progress
-                          if (showUi) {
-                             _importProgress.value = 100
-                             _importStatus.value = "Complete"
+                      // UNROLL: If one channel contains multiple sources, show them all in the list
+                      val finalChannels = mutableListOf<TV>()
+                      allChannels.forEach { tv ->
+                          if (tv.uris.size > 1) {
+                              tv.uris.forEachIndexed { index, uri ->
+                                  finalChannels.add(tv.copy(
+                                      id = tv.id * 100 + index, // Generate a unique sub-id
+                                      title = "${tv.title} (S${index + 1})",
+                                      uris = listOf(uri)
+                                  ))
+                              }
+                          } else {
+                              finalChannels.add(tv)
                           }
-                         
-                         if (!silent && SP.config != DEFAULT_CONFIG_URL) {
-                             "Channels updated from $successCount sources".showToast()
-                         }
-                         
-                         // OPTIMIZATION: Defer EPG loading to avoid blocking startup
-                         // Load EPG 10 seconds after channels are ready
-                         if (SP.epgEnabled) {
-                             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                 EPGManager.init(ctx)
-                                 CoroutineScope(Dispatchers.IO).launch {
-                                      withContext(Dispatchers.Main) { 
-                                          if (showUi) _importStatus.value = "Updating Guide..." 
-                                      } 
-                                     EPGManager.fetchEPG(force = false)
-                                     withContext(Dispatchers.Main) {
-                                         listModel.forEach { it.updateEPG() }
-                                     }
-                                 }
-                             }, 10000) // 10 second delay
-                         }
-                     }
+                      }
+                      
+                      // FIX: Re-index securely
+                      finalChannels.forEachIndexed { index, tv ->
+                          tv.id = index
+                      }
+
+                      // DIFF OPTIMIZATION: Only update if anything actually changed
+                      val newListHash = finalChannels.sumOf { (it.uris.firstOrNull() ?: "").hashCode() } + finalChannels.size
+                      if (newListHash == lastListHash && list.isNotEmpty()) {
+                          withContext(Dispatchers.Main) {
+                              if (showUi) {
+                                  _importProgress.value = 100
+                                  _importStatus.value = "Up to date"
+                              }
+                          }
+                          return@launch
+                      }
+                      lastListHash = newListHash
+
+                      val gson = com.google.gson.Gson()
+                      val jsonStr = gson.toJson(finalChannels)
+                      
+                      val file = File(ctx.filesDir, FILE_NAME)
+                      file.writeText(jsonStr) // Save formatted JSON
+                      
+                      // Update memory
+                      list = finalChannels
+                      
+                       withContext(Dispatchers.Main) {
+                           refreshModelsInternal(ctx)
+                           checkChannelsInBackground()
+                           
+                           // Always update status to "Complete" only if we were showing progress
+                           if (showUi) {
+                              _importProgress.value = 100
+                              _importStatus.value = "Complete"
+                           }
+                          
+                          if (!silent && SP.config != DEFAULT_CONFIG_URL) {
+                              "Channels updated from $successCount sources".showToast()
+                          }
+                          
+                          // OPTIMIZATION: Defer EPG loading to avoid blocking startup
+                          // Load EPG 10 seconds after channels are ready
+                          if (SP.epgEnabled) {
+                              android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                  EPGManager.init(ctx)
+                                  CoroutineScope(Dispatchers.IO).launch {
+                                       withContext(Dispatchers.Main) { 
+                                           if (showUi) _importStatus.value = "Updating Guide..." 
+                                       } 
+                                      EPGManager.fetchEPG(force = false)
+                                      withContext(Dispatchers.Main) {
+                                          listModel.forEach { it.updateEPG() }
+                                      }
+                                  }
+                              }, 10000) // 10 second delay
+                          }
+                      }
                 } else {
                     withContext(Dispatchers.Main) {
                         if (!silent) "Failed to update channels, using cached data".showToast()
