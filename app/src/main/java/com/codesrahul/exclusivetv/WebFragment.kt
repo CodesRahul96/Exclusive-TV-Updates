@@ -915,7 +915,6 @@ class WebFragment : Fragment() {
         val extractorsFactory = DefaultExtractorsFactory()
             .setTsExtractorFlags(
                 DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
-                8 or // FLAG_DETECT_ACCESS_UNIT_DELIMITERS
                 DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS
             )
 
@@ -1287,6 +1286,16 @@ class WebFragment : Fragment() {
     fun setAudioTrack(trackIndex: Int) {
         val currentTracks = exoPlayer?.currentTracks ?: return
         var currentIndex = 0
+        
+        // If trackIndex is -1 (Default/Auto), clear overrides
+        if (trackIndex == -1) {
+             exoPlayer?.trackSelectionParameters = exoPlayer?.trackSelectionParameters
+                ?.buildUpon()
+                ?.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                ?.build() ?: return
+             return
+        }
+
         for (group in currentTracks.groups) {
             if (group.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until group.length) {
