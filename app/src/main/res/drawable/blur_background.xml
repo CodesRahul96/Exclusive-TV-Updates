@@ -1,5 +1,0 @@
-<!-- res/drawable/blur_background.xml -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/blur" />
-    <corners android:radius="8dp" />
-</shape>
