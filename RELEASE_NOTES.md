@@ -1,20 +1,20 @@
-# ExclusiveTV v1.0.61 - Stability & UX Refinement
+# ExclusiveTV v1.0.63 - In-App Update & Performance
 
 ## ✨ Highlights
 
-### PiP Mode Reliability
-- **Smooth Transition**: Fixed the "stuck loading spinner" when returning from Picture-in-Picture mode. The app now accurately detects player readiness and hides the loading layer instantly.
+### 🚀 In-App Update Engine
 
-### Premium Settings UI
-- **Compact Layout**: Refined the settings panel with a more professional 420dp width and optimized row spacing (14dp), allowing 20% more options to be visible on screen.
-- **Mobile Optimized**: Restructured the developer portfolio section for better scrolling performance on mobile devices.
-- **Improved Information Density**: Reduced header and label sizes (14sp) for a tighter, cleaner look.
+- **Seamless Updates**: Implemented a robust in-app update system that detects new versions and allows one-tap installation directly within the app.
+- **Dual-Source Reliability**: Leverages both primary and fallback hosts to ensure update availability even during outages.
+- **Real-time Feedback**: Added a premium-styled download progress bar with glassmorphism effects.
 
-### Branding & Identity
-- **Watermark Update**: Refined the screen watermark to "Exclusive TV" with sleek, modernized casing.
-- **Standardized Accents**: Verified gold-accented consistency across all maintenance and diagnostic screens.
+### 🛠️ Performance & Stability
 
-### 🚀 Stability & Resilience
-- **Startup Guard**: Added mandatory layout attributes to base styles, resolving a potential boot crash on Fire TV and older Android systems.
-- **Resilient Clean Build**: Optimized the internal build logic for consistent APK generation.
-- **Master Reset Restoration**: Restored the "Master Factory Reset" functionality in the main maintenance menu.
+- **Parser Optimization**: Enhanced `KodiParser` for faster playlist loading and better memory management.
+- **DASH Stream Reliability**: Improved handling of DASH/MPD streams for Star and JioCinema playback.
+- **Boot Resilience**: Optimized startup sequence to prevent crashes on low-end Fire TV devices.
+
+### 🎨 UI/UX Refinement
+
+- **Standardized Accents**: Consistent gold theme and smooth transitions across all fragments.
+- **Improved Focus Handling**: Fixed D-pad focus issues on older Android TV versions.
