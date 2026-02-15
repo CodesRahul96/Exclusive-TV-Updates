@@ -543,13 +543,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 if (apiUrl.isNotBlank()) {
                     val currentConfig = SP.config
                     if (apiUrl != currentConfig) {
+                        Log.d(TAG, "Config URL changed: $apiUrl")
                         SP.config = apiUrl
                         SP.addPlaylistUrl(apiUrl)
+                        
+                        // ONLY trigger update if URL changed (The initRemoteConfig call handles the startup sync)
+                        TVList.update(this, silent = true)
                     }
                 }
-                
-                // FINAL SYNC (Smart update will handle caching)
-                TVList.update(this, silent = true)
             }
     }
 

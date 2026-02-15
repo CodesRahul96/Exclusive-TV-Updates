@@ -248,6 +248,8 @@ object TVList {
         get() = _importStatus
 
     fun update(ctx: Context, silent: Boolean = false) {
+        if (isUpdating && silent) return // PEFORMANCE: Fast exit if already busy updating silently
+        
         CoroutineScope(Dispatchers.IO).launch {
                 // Ensure initialization is finished before updating
                 initDeferred.await()
@@ -909,8 +911,14 @@ object TVList {
             return
         }
 
-        try {
-                Log.d(TAG, "refreshModelsInternal: Processing ${list.size} channels...")
+        // PERFORMANCE: Capture preferences on Main thread
+        val hiddenCategories = OrderPreferenceManager.getHiddenCategories()
+        val categoryOrder = OrderPreferenceManager.getCategoryOrder()
+        val channelRenames = OrderPreferenceManager.getChannelRenames()
+
+        withContext(Dispatchers.Default) {
+            try {
+                Log.d(TAG, "refreshModelsInternal: Background Processing ${list.size} channels...")
                 // Preparation Phase (Background)
                 val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
                 for (v in list) {
@@ -1057,6 +1065,7 @@ object TVList {
             } catch (e: Exception) {
                 Log.e(TAG, "Refresh failed", e)
             }
+        }
     }
 
     private fun checkChannelsInBackground() {
