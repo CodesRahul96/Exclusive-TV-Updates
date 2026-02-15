@@ -189,7 +189,21 @@ object KodiParser {
                                 }
                             }
                             "inputstream.adaptive.license_key" -> {
-                                currentDrmLicense = value.split("|")[0] 
+                                if (value.contains("|")) {
+                                    val parts = value.split("|")
+                                    currentDrmLicense = parts[0]
+                                    if (parts.size > 1) {
+                                        val headerParts = parts[1].split("&")
+                                        for (h in headerParts) {
+                                            val kv = h.split("=", limit = 2)
+                                            if (kv.size == 2) {
+                                                currentHeaders[kv[0]] = kv[1]
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    currentDrmLicense = value
+                                }
                             }
                             "inputstream.adaptive.manifest_type" -> {
                                 // e.g. "mpd", "hls", "ism" - implies STREAM type

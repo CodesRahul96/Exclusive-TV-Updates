@@ -942,7 +942,22 @@ class WebFragment : Fragment() {
                 .setDefaultRequestProperties(requestHeaders)
 
             // Logic for License URL
-            val licenseUrl = drmConfig?.license ?: mediaItem.localConfiguration?.drmConfiguration?.licenseUri?.toString() ?: ""
+            var licenseUrl = drmConfig?.license ?: mediaItem.localConfiguration?.drmConfiguration?.licenseUri?.toString() ?: ""
+            
+            // EXTRACT HEADERS FROM LICENSE URL (Failsafe)
+            if (licenseUrl.contains("|")) {
+                val parts = licenseUrl.split("|")
+                licenseUrl = parts[0]
+                if (parts.size > 1) {
+                    val headerParts = parts[1].split("&")
+                    for (h in headerParts) {
+                        val kv = h.split("=", limit = 2)
+                        if (kv.size == 2) {
+                            requestHeaders[kv[0]] = kv[1]
+                        }
+                    }
+                }
+            }
 
             if (schemeUuid == C.CLEARKEY_UUID && !licenseUrl.startsWith("http")) {
                  // Local ClearKey
@@ -955,6 +970,8 @@ class WebFragment : Fragment() {
                  val drmCallback = HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory)
                  
                  // Pass specific headers if manually set (already in requestHeaders, but ensure)
+                 // NOTE: Setting a generic User-Agent here again to be safe
+                 drmCallback.setKeyRequestProperty("User-Agent", userAgent)
                  for ((k, v) in requestHeaders) {
                      drmCallback.setKeyRequestProperty(k, v)
                  }

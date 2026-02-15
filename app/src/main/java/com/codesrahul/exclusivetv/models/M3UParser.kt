@@ -168,7 +168,23 @@ object M3UParser {
                                 "origin", "http-origin" -> currentHeaders["Origin"] = value
 
                                 // DRM
-                                "license-key", "license_key", "license-url", "license_url", "clearkey", "key" -> currentDrmLicense = value
+                                "license-key", "license_key", "license-url", "license_url", "clearkey", "key" -> {
+                                    if (value.contains("|")) {
+                                        val parts = value.split("|")
+                                        currentDrmLicense = parts[0]
+                                        if (parts.size > 1) {
+                                            val headerParts = parts[1].split("&")
+                                            for (h in headerParts) {
+                                                val kv = h.split("=", limit = 2)
+                                                if (kv.size == 2) {
+                                                    currentHeaders[kv[0]] = kv[1]
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        currentDrmLicense = value
+                                    }
+                                }
                                 "license-type", "license_type", "drm-scheme", "drm" -> currentDrmScheme = value
                             }
                         }
@@ -214,7 +230,21 @@ object M3UParser {
                                     }
                                 }
                                 "inputstream.adaptive.license_key" -> {
-                                    currentDrmLicense = value
+                                    if (value.contains("|")) {
+                                        val parts = value.split("|")
+                                        currentDrmLicense = parts[0]
+                                        if (parts.size > 1) {
+                                            val headerParts = parts[1].split("&")
+                                            for (h in headerParts) {
+                                                val kv = h.split("=", limit = 2)
+                                                if (kv.size == 2) {
+                                                    currentHeaders[kv[0]] = kv[1]
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        currentDrmLicense = value
+                                    }
                                 }
                                 "inputstream.adaptive.stream_headers" -> {
                                     val headerPairs = value.split("&")
