@@ -150,7 +150,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     }
 
     override fun onItemClicked(tvModel: TVModel) {
-        TVList.setPosition(tvModel.tv.id)
+        TVList.setPositionByModel(tvModel)
         (activity as MainActivity).hideMenuFragment()
     }
 

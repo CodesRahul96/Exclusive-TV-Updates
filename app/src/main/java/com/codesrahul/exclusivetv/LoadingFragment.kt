@@ -23,6 +23,17 @@ class LoadingFragment : Fragment() {
         binding.bar.layoutParams.height = application.px2Px(binding.bar.layoutParams.height)
 
         (activity as MainActivity).ready(TAG)
+        
+        // V9.3 UI Polish: Observe Status Updates
+        com.codesrahul.exclusivetv.models.TVList.importStatus.observe(viewLifecycleOwner) { status ->
+             if (!status.isNullOrEmpty()) {
+                 binding.tvStatus.text = status
+                 binding.tvStatus.visibility = View.VISIBLE
+             } else {
+                 binding.tvStatus.visibility = View.GONE
+             }
+        }
+        
         return binding.root
     }
 

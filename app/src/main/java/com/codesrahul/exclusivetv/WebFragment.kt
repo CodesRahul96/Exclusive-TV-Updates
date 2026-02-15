@@ -1062,6 +1062,12 @@ class WebFragment : Fragment() {
                 } else {
                      // Check if we should fallback to WebView (Universal Support)
                      if (isAdded) {
+                         // NEW: If persistent error occurs, it might be due to expired keys/links.
+                         // Trigger a silent force-update in the background to handle key rotation.
+                         try {
+                             com.codesrahul.exclusivetv.models.TVList.update(mainActivity, silent = true, force = true)
+                         } catch (e: Exception) {}
+
                          val errorUrl = currentVideoUrl
                          if (!errorUrl.isNullOrEmpty() && (errorUrl.startsWith("http") || errorUrl.startsWith("https"))) {
                              if (!isWebMode) {

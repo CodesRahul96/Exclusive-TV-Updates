@@ -1,0 +1,323 @@
+﻿Version Code from version.json: 16793856
+Version Name from version.json: v1.0.65
+Building with VersionCode: 16793856, VersionName: v1.0.65
+.\gradlew.bat : e: file:///D:/Android%20Projects/Exclus
+iveTV-Development/ExclusiveTV_APP/app/src/main/java/com
+/codesrahul/exclusivetv/WebFragment.kt:714:27 Overload 
+resolution ambiguity: 
+At line:1 char:1
++ .\gradlew.bat assembleDebug --quiet > build_err.txt 
+2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo          : NotSpecified: (e: file:/ 
+   //D:/A...ion ambiguity: :String) [], RemoteExcepti  
+  on
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+public final val videoUrl: LiveData<String> defined in 
+com.codesrahul.exclusivetv.models.TVModel
+public final val videoUrl: LiveData<String> defined in 
+com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:10:17 Conflicting 
+declarations: private final val _position: 
+MutableLiveData<Int>, private final val _position: 
+MutableLiveData<Int>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:11:9 Conflicting 
+declarations: public final val position: 
+LiveData<Int>, public final val position: LiveData<Int>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:12:17 Overload resolution 
+ambiguity: 
+private final val _position: MutableLiveData<Int> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _position: MutableLiveData<Int> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:21:17 Conflicting 
+declarations: private final val _errInfo: 
+MutableLiveData<String>, private final val _errInfo: 
+MutableLiveData<String>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:22:9 Conflicting 
+declarations: public final val errInfo: 
+LiveData<String>, public final val errInfo: 
+LiveData<String>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:23:17 Overload resolution 
+ambiguity: 
+private final val _errInfo: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _errInfo: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:26:9 Overload resolution 
+ambiguity: 
+private final val _errInfo: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _errInfo: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:29:17 Conflicting 
+declarations: private final var _program: 
+MutableLiveData<MutableList<Program>>, private final 
+val _program: MutableLiveData<MutableList<Program>>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:30:9 Conflicting 
+declarations: public final val program: 
+LiveData<MutableList<Program>>, public final val 
+program: LiveData<MutableList<Program>>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:31:17 Overload resolution 
+ambiguity: 
+private final val _program: 
+MutableLiveData<MutableList<Program>> defined in 
+com.codesrahul.exclusivetv.models.TVModel
+private final var _program: 
+MutableLiveData<MutableList<Program>> defined in 
+com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:33:17 Conflicting 
+declarations: private final val _videoUrl: 
+MutableLiveData<String>, private final val _videoUrl: 
+MutableLiveData<String>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:34:9 Conflicting 
+declarations: public final val videoUrl: 
+LiveData<String>, public final val videoUrl: 
+LiveData<String>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:35:17 Overload resolution 
+ambiguity: 
+private final val _videoUrl: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _videoUrl: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:38:9 Overload resolution 
+ambiguity: 
+private final val _videoUrl: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _videoUrl: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:38:19 Variable expected
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:49:17 Conflicting 
+declarations: private final val _like: 
+MutableLiveData<Boolean>, private final val _like: 
+MutableLiveData<Boolean>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:50:9 Conflicting 
+declarations: public final val like: 
+LiveData<Boolean>, public final val like: 
+LiveData<Boolean>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:51:17 Overload resolution 
+ambiguity: 
+private final val _like: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _like: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:54:9 Overload resolution 
+ambiguity: 
+private final val _like: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _like: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:58:17 Conflicting 
+declarations: private final val _ready: 
+MutableLiveData<Boolean>, private final val _ready: 
+MutableLiveData<Boolean>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:59:5 Property must be 
+initialized or be abstract
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:59:9 Conflicting 
+declarations: public final val ready: 
+LiveData<Boolean>, public final val ready: 
+LiveData<Boolean>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:61:9 Overload resolution 
+ambiguity: 
+private final val _ready: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _ready: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:64:17 Conflicting 
+declarations: private final val _position: 
+MutableLiveData<Int>, private final val _position: 
+MutableLiveData<Int>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:65:9 Conflicting 
+declarations: public final val position: 
+LiveData<Int>, public final val position: LiveData<Int>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:66:17 Overload resolution 
+ambiguity: 
+private final val _position: MutableLiveData<Int> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _position: MutableLiveData<Int> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:86:17 Conflicting 
+declarations: private final val _like: 
+MutableLiveData<Boolean>, private final val _like: 
+MutableLiveData<Boolean>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:87:9 Conflicting 
+declarations: public final val like: 
+LiveData<Boolean>, public final val like: 
+LiveData<Boolean>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:88:17 Overload resolution 
+ambiguity: 
+private final val _like: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _like: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:90:17 Conflicting 
+declarations: private final val _videoUrl: 
+MutableLiveData<String>, private final val _videoUrl: 
+MutableLiveData<String>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:91:9 Conflicting 
+declarations: public final val videoUrl: 
+LiveData<String>, public final val videoUrl: 
+LiveData<String>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:92:17 Overload resolution 
+ambiguity: 
+private final val _videoUrl: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _videoUrl: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:94:17 Conflicting 
+declarations: private final var _program: 
+MutableLiveData<MutableList<Program>>, private final 
+val _program: MutableLiveData<MutableList<Program>>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:95:9 Conflicting 
+declarations: public final val program: 
+LiveData<MutableList<Program>>, public final val 
+program: LiveData<MutableList<Program>>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:96:17 Overload resolution 
+ambiguity: 
+private final val _program: 
+MutableLiveData<MutableList<Program>> defined in 
+com.codesrahul.exclusivetv.models.TVModel
+private final var _program: 
+MutableLiveData<MutableList<Program>> defined in 
+com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:106:17 Conflicting 
+declarations: private final val _errInfo: 
+MutableLiveData<String>, private final val _errInfo: 
+MutableLiveData<String>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:107:9 Conflicting 
+declarations: public final val errInfo: 
+LiveData<String>, public final val errInfo: 
+LiveData<String>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:108:17 Overload resolution 
+ambiguity: 
+private final val _errInfo: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _errInfo: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:118:17 Conflicting 
+declarations: private final val _ready: 
+MutableLiveData<Boolean>, private final val _ready: 
+MutableLiveData<Boolean>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:119:9 Conflicting 
+declarations: public final val ready: 
+LiveData<Boolean>, public final val ready: 
+LiveData<Boolean>
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:120:17 Overload resolution 
+ambiguity: 
+private final val _ready: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _ready: MutableLiveData<Boolean> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:139:13 Overload resolution 
+ambiguity: 
+private final val _videoUrl: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+private final val _videoUrl: MutableLiveData<String> 
+defined in com.codesrahul.exclusivetv.models.TVModel
+e: file:///D:/Android%20Projects/ExclusiveTV-Developmen
+t/ExclusiveTV_APP/app/src/main/java/com/codesrahul/excl
+usivetv/models/TVModel.kt:139:23 Variable expected
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotl
+in.compilerRunner.GradleCompilerRunnerWithWorkers$Gradl
+eKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log 
+output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 4s

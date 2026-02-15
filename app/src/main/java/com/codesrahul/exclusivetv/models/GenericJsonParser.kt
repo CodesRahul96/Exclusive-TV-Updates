@@ -91,6 +91,12 @@ object GenericJsonParser {
         var headers: MutableMap<String, String>? = null
         var idStr: String? = null
         
+        var type: com.codesrahul.exclusivetv.models.Type? = null
+        var catchupType: String? = null
+        var catchupDays: String? = null
+        var catchupSource: String? = null
+        val uris = mutableListOf<String>()
+        
         reader.beginObject()
         while (reader.hasNext()) {
             val key = reader.nextName()
@@ -103,11 +109,48 @@ object GenericJsonParser {
             
             // STRICT MATCHING (Fastest) -> Fallback to loose matching
             when (key) {
-                "url", "stream_url", "play_url", "m3u8_url", "uri", "link", "file" -> url = reader.nextString()
+                "url", "stream_url", "play_url", "m3u8_url", "uri", "link", "file" -> {
+                    val singleUrl = reader.nextString()
+                    if (singleUrl.isNotEmpty()) uris.add(singleUrl)
+                }
+                "uris", "urls", "streams" -> {
+                    if (token == JsonToken.BEGIN_ARRAY) {
+                        reader.beginArray()
+                        while (reader.hasNext()) {
+                            val nextUrl = reader.nextString()
+                            if (nextUrl.isNotEmpty()) uris.add(nextUrl)
+                        }
+                        reader.endArray()
+                    } else {
+                        reader.skipValue()
+                    }
+                }
                 "name", "title", "channel_name", "station" -> name = reader.nextString()
                 "group", "category", "group_title", "genre" -> group = reader.nextString()
                 "logo", "icon", "image", "thumbnail", "tvg-logo", "logo_url" -> logo = reader.nextString()
                 "id", "channel_id", "tvg-id" -> idStr = reader.nextString()
+                "internal_id" -> {
+                     // Prioritize internal ID for restoration consistency
+                     try {
+                         idStr = reader.nextInt().toString()
+                     } catch (e: Exception) {
+                         idStr = reader.nextString() // Fallback if stored as string
+                     }
+                }
+                "type" -> {
+                    val typeStr = reader.nextString()
+                    // Map string to enum manually to avoid crashes
+                    type = when (typeStr.uppercase()) {
+                        "WEB" -> com.codesrahul.exclusivetv.models.Type.WEB
+                        "HLS" -> com.codesrahul.exclusivetv.models.Type.HLS
+                        "STREAM" -> com.codesrahul.exclusivetv.models.Type.STREAM
+                        else -> null 
+                    }
+                }
+                "catchup_type", "catchup-type" -> catchupType = reader.nextString()
+                "catchup_days", "catchup-days" -> catchupDays = reader.nextString()
+                "catchup_source", "catchup-source" -> catchupSource = reader.nextString()
+                
                 "headers", "http_headers" -> {
                     // Special handling for headers object
                     if (token == JsonToken.BEGIN_OBJECT) {
@@ -123,7 +166,7 @@ object GenericJsonParser {
                         reader.skipValue()
                     }
                 }
-                "license_key", "drm_license", "drm_url", "license_url", "key" -> drmLicense = reader.nextString()
+                "license_key", "drm_license", "drm_url", "license_url", "key", "drm_license_url" -> drmLicense = reader.nextString()
                 "drm_scheme", "drm_type" -> drmScheme = reader.nextString()
                 "user_agent", "user-agent", "ua" -> {
                     if (headers == null) headers = mutableMapOf()
@@ -138,7 +181,8 @@ object GenericJsonParser {
         }
         reader.endObject()
 
-        if (url.isNullOrEmpty()) return null
+        if (uris.isEmpty()) return null
+        val primaryUrl = uris[0]
 
         val finalId = idStr?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: index
         val apiId = idStr ?: finalId.toString()
@@ -155,8 +199,8 @@ object GenericJsonParser {
             }
         }
         
-        // Simple Type Detection
-        val type = if (url.contains(".m3u8")) com.codesrahul.exclusivetv.models.Type.HLS else com.codesrahul.exclusivetv.models.Type.STREAM
+        // Final Type Logic: Use parsed type if available, else fallback to detection
+        val finalType = type ?: if (primaryUrl.contains(".m3u8")) com.codesrahul.exclusivetv.models.Type.HLS else com.codesrahul.exclusivetv.models.Type.STREAM
 
         return TV(
             id = finalId,
@@ -166,15 +210,15 @@ object GenericJsonParser {
             description = "",
             logo = logo ?: "",
             image = "",
-            uris = arrayListOf(url),
+            uris = uris,
             headers = headers,
             group = finalGroup,
-            type = type,
+            type = finalType,
             drmScheme = drmScheme,
             drmLicenseUrl = drmLicense,
-            catchupType = null,
-            catchupDays = null,
-            catchupSource = null,
+            catchupType = catchupType,
+            catchupDays = catchupDays,
+            catchupSource = catchupSource,
             child = listOf()
         )
     }

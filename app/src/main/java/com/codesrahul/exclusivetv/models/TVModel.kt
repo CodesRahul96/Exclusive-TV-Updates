@@ -7,10 +7,48 @@ import com.codesrahul.exclusivetv.SP
 import com.codesrahul.exclusivetv.EPGManager
 
 class TVModel(var tv: TV) : ViewModel() {
-    private val _position = MutableLiveData<Int>()
-    val position: LiveData<Int>
-        get() = _position
 
+    // Helper for init to start with 0 index safely
+    private fun getInitialUrl(): String {
+        if (tv.uris.isEmpty()) return ""
+        return tv.uris.getOrElse(0) { "" }
+    }
+
+    // Constructor initialization ensuring non-null immediate values (Thread Safe)
+    private val _position = MutableLiveData<Int>(0)
+    val position: LiveData<Int> get() = _position
+
+    private val _videoIndex = MutableLiveData<Int>(0)
+    
+    // We initialize videoUrl with the first URL explicitly
+    private val _videoUrl = MutableLiveData<String>(getInitialUrl())
+    val videoUrl: LiveData<String> get() = _videoUrl
+
+    private val _like = MutableLiveData<Boolean>(SP.getLike(tv.id))
+    val like: LiveData<Boolean> get() = _like
+
+    private val _program = MutableLiveData<MutableList<Program>>(mutableListOf())
+    val program: LiveData<MutableList<Program>> get() = _program
+
+    private val _currentProgram = MutableLiveData<EPGProgram?>()
+    val currentProgram: LiveData<EPGProgram?> get() = _currentProgram
+
+    private val _upcomingProgram = MutableLiveData<EPGProgram?>()
+    val upcomingProgram: LiveData<EPGProgram?> get() = _upcomingProgram
+
+    private val _errInfo = MutableLiveData<String>("")
+    val errInfo: LiveData<String> get() = _errInfo
+
+    private val _videoQuality = MutableLiveData<String>("")
+    val videoQuality: LiveData<String> get() = _videoQuality
+
+    private val _audioQuality = MutableLiveData<String>("")
+    val audioQuality: LiveData<String> get() = _audioQuality
+
+    private val _ready = MutableLiveData<Boolean>()
+    val ready: LiveData<Boolean> get() = _ready
+
+    // Mutable Variables
     var retryTimes = 0
     var retryMaxTimes = 8
     var programUpdateTime = 0L
@@ -18,74 +56,36 @@ class TVModel(var tv: TV) : ViewModel() {
     var groupIndex = 0
     var listIndex = 0
 
-    private val _errInfo = MutableLiveData<String>()
-    val errInfo: LiveData<String>
-        get() = _errInfo
+    init {
+        updateEPG()
+    }
+
+    // Methods
 
     fun setErrInfo(info: String) {
         _errInfo.postValue(info)
     }
 
-    private var _program = MutableLiveData<MutableList<Program>>()
-    val program: LiveData<MutableList<Program>>
-        get() = _program
-
-    private val _videoUrl = MutableLiveData<String>()
-    val videoUrl: LiveData<String>
-        get() = _videoUrl
-
     fun setVideoUrl(url: String) {
-        _videoUrl.value = url
+        _videoUrl.postValue(url)
     }
-
-    private fun getVideoUrl(): String? {
-        val index = _videoIndex.value ?: return null
-        if (tv.uris.isEmpty() || index >= tv.uris.size) {
-            return null
-        }
-        return tv.uris[index]
-    }
-
-    private val _like = MutableLiveData<Boolean>()
-    val like: LiveData<Boolean>
-        get() = _like
 
     fun setLike(liked: Boolean) {
         _like.postValue(liked)
         SP.setLike(tv.id, liked)
     }
 
-    private val _ready = MutableLiveData<Boolean>()
-    val ready: LiveData<Boolean>
-        get() = _ready
-
     fun setReady() {
         _ready.postValue(true)
     }
-
-    private val _videoQuality = MutableLiveData<String>()
-    val videoQuality: LiveData<String>
-        get() = _videoQuality
 
     fun setVideoQuality(q: String) {
         _videoQuality.postValue(q)
     }
 
-    private val _audioQuality = MutableLiveData<String>()
-    val audioQuality: LiveData<String>
-        get() = _audioQuality
-
     fun setAudioQuality(q: String) {
         _audioQuality.postValue(q)
     }
-
-    private val _currentProgram = MutableLiveData<EPGProgram?>()
-    val currentProgram: LiveData<EPGProgram?>
-        get() = _currentProgram
-
-    private val _upcomingProgram = MutableLiveData<EPGProgram?>()
-    val upcomingProgram: LiveData<EPGProgram?>
-        get() = _upcomingProgram
 
     fun updateEPG() {
         if (SP.epgEnabled) {
@@ -97,19 +97,6 @@ class TVModel(var tv: TV) : ViewModel() {
         }
     }
 
-    private val _videoIndex = MutableLiveData<Int>()
-    private val videoIndex: LiveData<Int>
-        get() = _videoIndex
-
-    init {
-        _position.value = 0
-        _videoIndex.value = 0
-        _like.value = SP.getLike(tv.id)
-        _videoUrl.value = getVideoUrl()
-        _program.value = mutableListOf()
-        updateEPG()
-    }
-
     fun update(t: TV) {
         tv = t
         updateEPG()
@@ -118,8 +105,10 @@ class TVModel(var tv: TV) : ViewModel() {
     fun nextVideoUrl(): Boolean {
         val current = _videoIndex.value ?: 0
         if (current + 1 < tv.uris.size) {
-            _videoIndex.value = current + 1
-            _videoUrl.value = getVideoUrl()
+            val nextIndex = current + 1
+            _videoIndex.postValue(nextIndex)
+            val nextUrl = tv.uris.getOrElse(nextIndex) { "" }
+            _videoUrl.postValue(nextUrl)
             return true
         }
         return false

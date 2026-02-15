@@ -43,7 +43,7 @@ object SP {
     private const val KEY_LAST_VERSION = "last_version"
     private const val KEY_LAST_CHANNEL_URL = "last_channel_url"
     private const val KEY_LAST_CHANNEL_NAME = "last_channel_name"
-    private const val KEY_LAST_ETAG = "last_etag" // New Key
+    private const val KEY_ETAG_MAP = "etag_map" // New Map-based system
     const val KEY_EPG_ENABLED = "epg_enabled"
     const val KEY_SHOW_DATE_IN_INFO = "show_date_in_info" // Added key
     
@@ -229,9 +229,17 @@ object SP {
         get() = sp.getString(KEY_LAST_CHANNEL_NAME, "") ?: ""
         set(value) = sp.edit().putString(KEY_LAST_CHANNEL_NAME, value).apply()
 
-    var lastEtag: String?
-        get() = sp.getString(KEY_LAST_ETAG, null)
-        set(value) = sp.edit().putString(KEY_LAST_ETAG, value).apply()
+    fun getEtag(url: String): String? {
+        return sp.getString(KEY_ETAG_MAP + "_" + url.hashCode(), null)
+    }
+
+    fun setEtag(url: String, etag: String?) {
+        if (etag == null) {
+            sp.edit().remove(KEY_ETAG_MAP + "_" + url.hashCode()).apply()
+        } else {
+            sp.edit().putString(KEY_ETAG_MAP + "_" + url.hashCode(), etag).apply()
+        }
+    }
 
     var epgEnabled: Boolean
         get() = sp.getBoolean(KEY_EPG_ENABLED, true)

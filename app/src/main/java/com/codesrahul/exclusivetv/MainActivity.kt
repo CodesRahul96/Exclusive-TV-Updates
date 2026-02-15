@@ -321,8 +321,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     }
                 } else if (currentPlayingUrl.isNotEmpty()) {
                     // This was a silent background refresh
-                    // Find the new index of the current URL
-                    val newIndex = com.codesrahul.exclusivetv.models.TVList.restorePosition() 
+                    // Find the new index of the EXACT CURRENT URL to preserve playback
+                    val newIndex = com.codesrahul.exclusivetv.models.TVList.listModel.indexOfFirst { model ->
+                        model.tv.uris.any { it == currentPlayingUrl }
+                    }
                     if (newIndex != -1 && newIndex != pos) {
                         com.codesrahul.exclusivetv.models.TVList.setPosition(newIndex)
                     }
@@ -353,6 +355,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         }
 
+        // 3. Import Progress (Top Card) - DISABLED v9.4 (User Request: Remove Duplicate Card)
+        /*
         TVList.importProgress.observe(this) { progress ->
             if (progress > 0) {
                  if (importProgressFragment.isHidden) {
@@ -387,6 +391,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         TVList.importStatus.observe(this) { status ->
              importProgressFragment.setStatus(status)
         }
+        */
     }
 
     private fun startPeriodicRefresh() {
