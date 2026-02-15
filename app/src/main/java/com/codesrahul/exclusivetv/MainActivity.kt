@@ -296,7 +296,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         setupWatermark()
         
         startPeriodicRefresh()
-        startPeriodicUpdateCheck()
 
         // EPG Update Listener
         SP.setOnSharedPreferenceChangeListener(spListener)
