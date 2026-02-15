@@ -52,7 +52,6 @@ class SimpleServer(private val context: Context, port: Int) : NanoHTTPD(port) {
                 handler.post {
                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                         if (TVList.str2List(it)) {
-                            File(context.filesDir, TVList.FILE_NAME).writeText(it)
                             "Channels updated".showToast()
                         } else {
                             "Channel import error".showToast()

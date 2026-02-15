@@ -28,40 +28,33 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import com.codesrahul.exclusivetv.SecurityUtil
-import java.io.BufferedReader
-import java.io.StringReader
 import java.io.Reader
+import com.codesrahul.exclusivetv.db.AppDatabase
+import com.codesrahul.exclusivetv.db.TVEntity
+import com.codesrahul.exclusivetv.db.ChannelDao
+import java.io.BufferedReader
+import com.google.gson.Gson
 
 object TVList {
     fun clear() {
-        list = emptyList()
-        listModel = emptyList()
-        // Create empty structures to update valid state
-        val emptyGroups = listOf(
-            TVListModel("My Collection", "My Collection", 0),
-            TVListModel("All channels", "All channels", 1)
-        )
-        groupModel.setTVListModelList(emptyGroups)
-        groupModel.setChange()
-        _position.postValue(-1)
-        
-        // Clear EPG Memory as well to free up significantly
-        EPGManager.clear()
-        
-        try {
-            if (::appDirectory.isInitialized) {
-                File(appDirectory, FILE_NAME).delete()
+        CoroutineScope(Dispatchers.IO).launch {
+            refreshLock.withLock {
+                // MASTER RESET: Simply wipe the DB. 
+                // The reactive observer will detect the empty list and reset the UI.
+                database.channelDao().deleteAll()
+                withContext(Dispatchers.Main) {
+                    EPGManager.clear()
+                }
             }
-        } catch (e: Exception) {
         }
     }
-    private const val TAG = "TVList"
-    const val FILE_NAME = "channels.txt"
+    private val TAG = "TVList"
     const val DEFAULT_CONFIG_URL = "https://exclusivetvapi.indevs.in/api/channels"
-    private lateinit var appDirectory: File
+    private lateinit var database: AppDatabase
+    private val gson = Gson()
 
     private lateinit var serverUrl: String
-    private lateinit var list: List<TV>
+    private var list: List<TV> = listOf()
     var listModel: List<TVModel> = listOf()
     val groupModel = TVGroupModel()
     
@@ -105,77 +98,147 @@ object TVList {
         groupModel.addTVListModel(TVListModel("My Collection", "My Collection", 0))
         groupModel.addTVListModel(TVListModel("All channels", "All channels", 1))
 
-        appDirectory = context.filesDir
-        
+        database = AppDatabase.getDatabase(context)
 
-
-        CoroutineScope(Dispatchers.IO).launch {
-            val file = File(appDirectory, FILE_NAME)
-
-            // OPTIMIZATION: Use streaming parser instead of readText() to avoid OOM
-            try {
-                if (file.exists()) {
-                    val result = parseUniversalFile(file)
-                    if (result.isNotEmpty()) {
-                        list = result
-                        refreshModels(MyTVApplication.getInstance())
+        // STARTUP: Reactive Source of Truth
+        // Observe database changes permanently. This is the ONLY place where 'list' and models are updated.
+        database.channelDao().getAll().observeForever { entities ->
+            CoroutineScope(Dispatchers.IO).launch {
+                refreshLock.withLock {
+                    // SECURITY GUARD: If app restricted, don't process data
+                    if (SecurityUtil.isAppOutdated || SecurityUtil.isMaintenanceMode) {
+                        Log.d(TAG, "ReactiveSource: Blocked by Security Mode")
+                        list = emptyList()
+                        withContext(Dispatchers.Main) {
+                            resetModelsInternal()
+                        }
+                        return@withLock
                     }
-                } else {
-                    context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8).use { reader ->
-                         // Use streaming parser for resource
-                         val result = parseUniversal(reader)
-                         if (result.isNotEmpty()) {
-                             list = result
-                             refreshModels(MyTVApplication.getInstance())
-                         }
+
+                    if (entities.isEmpty()) {
+                        Log.d(TAG, "ReactiveSource: Database empty")
+                        // If empty and we haven't successfully initialized yet, seed from raw
+                        if (!initDeferred.isCompleted) {
+                            Log.d(TAG, "ReactiveSource: Initial seeding triggered")
+                            withContext(Dispatchers.Main) {
+                                loadFromRawSeed(context)
+                            }
+                        } else {
+                            // Manual clear/Master Reset case
+                            list = emptyList()
+                            withContext(Dispatchers.Main) {
+                                resetModelsInternal()
+                            }
+                        }
+                    } else {
+                        Log.d(TAG, "ReactiveSource: Data received (${entities.size} channels)")
+                        list = mapEntitiesToTV(entities)
+                        
+                        withContext(Dispatchers.Main) {
+                            refreshModelsInternal(context)
+                            if (!initDeferred.isCompleted) {
+                                initDeferred.complete(Unit)
+                                Log.d(TAG, "ReactiveSource: Initialized with ${entities.size} channels")
+                            }
+                        }
                     }
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Failed to read channel configuration", Toast.LENGTH_LONG).show()
-                }
-            } finally {
-                initDeferred.complete(Unit)
             }
-
-            // Initial config setup
-            if (SP.config.isNullOrEmpty()) {
-                SP.config = DEFAULT_CONFIG_URL
-            }
-
-            val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
-            // FIX: Only clear cache on MAJOR version changes (not every debug build)
-
-            if (currentVersion != SP.lastVersion) {
-                 val lastMajorVersion = SP.lastVersion / 1000000
-                 val currentMajorVersion = currentVersion / 1000000
-                 
-                 if (currentMajorVersion != lastMajorVersion) {
-                     File(appDirectory, FILE_NAME).delete()
-                 } else {
-                 }
-                 SP.lastVersion = currentVersion
-            }
-
-            // Early version check removed to prevent startup crash (moved to MainActivity)
-
-
-
-            
-
-            // OPTIMIZATION: Removed automatic update call to prevent duplicate API fetch
-            // MainActivity.onCreate() already calls TVList.update(silent=true)
-            // This saves 5-10 seconds on startup
-            /*
-            val cfg = SP.config
-            if (SP.configAutoLoad && !cfg.isNullOrEmpty()) {
-                if (!SecurityUtil.isAppOutdated) {
-                    update(context, cfg)
-                } else {
-                }
-            }
-            */
         }
+
+        if (SP.config.isNullOrEmpty()) {
+            SP.config = DEFAULT_CONFIG_URL
+        }
+    }
+
+    private suspend fun loadFromRawSeed(context: Context) {
+        try {
+            context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8).use { reader ->
+                val result = parseUniversal(reader)
+                if (result.isNotEmpty()) {
+                    list = result
+                    refreshModelsInternal(context)
+                    saveToDatabase(result)
+                    Log.d(TAG, "SourceOfTruth: Successfully seeded ${result.size} channels")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "SourceOfTruth: Raw seed failed", e)
+        }
+    }
+
+    private fun loadFromRawFallback(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            loadFromRawFallbackInternal(context)
+            if (!initDeferred.isCompleted) initDeferred.complete(Unit)
+        }
+    }
+
+    private suspend fun loadFromRawFallbackInternal(context: Context) {
+        try {
+            context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8).use { reader ->
+                val result = parseUniversal(reader)
+                if (result.isNotEmpty()) {
+                    list = result
+                    refreshModelsInternal(context)
+                    saveToDatabase(result)
+                }
+            }
+        } catch (e: Exception) {}
+    }
+
+    private fun mapEntitiesToTV(entities: List<TVEntity>): List<TV> {
+        return entities.map { entity ->
+            TV(
+                id = entity.id,
+                apiId = entity.apiId,
+                name = entity.name,
+                title = entity.title,
+                description = entity.description,
+                logo = entity.logo,
+                image = entity.image,
+                uris = entity.uris,
+                headers = entity.headers,
+                group = entity.group,
+                type = try { Type.valueOf(entity.type) } catch(e: Exception) { Type.WEB },
+                drmScheme = entity.drmScheme,
+                drmLicenseUrl = entity.drmLicenseUrl,
+                catchupType = entity.catchupType,
+                catchupDays = entity.catchupDays,
+                catchupSource = entity.catchupSource,
+                child = if (!entity.childJson.isNullOrEmpty()) {
+                    try {
+                        val listType = object : com.google.gson.reflect.TypeToken<List<TV>>() {}.type
+                        gson.fromJson(entity.childJson, listType)
+                    } catch (e: Exception) { emptyList() }
+                } else emptyList()
+            )
+        }
+    }
+
+    private suspend fun saveToDatabase(tvList: List<TV>) {
+        val entities = tvList.map { tv ->
+            TVEntity(
+                id = tv.id,
+                apiId = tv.apiId,
+                name = tv.name,
+                title = tv.title,
+                description = tv.description,
+                logo = tv.logo,
+                image = tv.image,
+                uris = tv.uris,
+                headers = tv.headers,
+                group = tv.group,
+                type = tv.type.name,
+                drmScheme = tv.drmScheme,
+                drmLicenseUrl = tv.drmLicenseUrl,
+                catchupType = tv.catchupType,
+                catchupDays = tv.catchupDays,
+                catchupSource = tv.catchupSource,
+                childJson = if (tv.child.isNotEmpty()) gson.toJson(tv.child) else null
+            )
+        }
+        database.channelDao().refreshChannels(entities)
     }
 
 
@@ -414,117 +477,56 @@ object TVList {
                      return@launch
                  }
 
-                 if (successCount > 0) {
-                      if (showUi) {
-                           withContext(Dispatchers.Main) {
-                                _importStatus.value = "Finalizing..."
-                           }
-                      }
-                     
-                      // UNROLL: If one channel contains multiple sources, show them all in the list
-                      val finalChannels = mutableListOf<TV>()
-                      allChannels.forEach { tv ->
-                          if (tv.uris.size > 1) {
-                              tv.uris.forEachIndexed { index, uri ->
-                                  finalChannels.add(tv.copy(
-                                      id = tv.id * 100 + index, // Generate a unique sub-id
-                                      title = "${tv.title} (S${index + 1})",
-                                      uris = listOf(uri)
-                                  ))
-                              }
-                          } else {
-                              finalChannels.add(tv)
-                          }
-                      }
-                      
-                      // FIX: Re-index securely
-                      finalChannels.forEachIndexed { index, tv ->
-                          tv.id = index
-                      }
-
-                      // DIFF OPTIMIZATION: Only update if anything actually changed
-                      val newListHash = finalChannels.sumOf { (it.uris.firstOrNull() ?: "").hashCode() } + finalChannels.size
-                      if (newListHash == lastListHash && list.isNotEmpty()) {
-                          withContext(Dispatchers.Main) {
-                              if (showUi) {
-                                  _importProgress.value = 100
-                                  _importStatus.value = "Up to date"
-                              }
-                          }
-                          return@launch
-                      }
-                      lastListHash = newListHash
-
-                      val gson = com.google.gson.Gson()
-                      val jsonStr = gson.toJson(finalChannels)
-                      
-                      val file = File(ctx.filesDir, FILE_NAME)
-                      file.writeText(jsonStr) // Save formatted JSON
-                      
-                      // Update timestamp
-                      SP.lastUpdateTime = System.currentTimeMillis()
-                      
-                      // Update memory
-                      list = finalChannels
-                      
-                       withContext(Dispatchers.Main) {
-                           refreshModelsInternal(ctx)
-                           checkChannelsInBackground()
-                           
-                           // Always update status to "Complete" only if we were showing progress
-                           if (showUi) {
-                              _importProgress.value = 100
-                              _importStatus.value = "Complete"
-                           }
-                          
-                          if (!silent && SP.config != DEFAULT_CONFIG_URL) {
-                              "Channels updated from $successCount sources".showToast()
-                          }
-                          
-                          // OPTIMIZATION: Defer EPG loading to avoid blocking startup
-                          // Load EPG 10 seconds after channels are ready
-                          if (SP.epgEnabled) {
-                              android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                  EPGManager.init(ctx)
-                                  CoroutineScope(Dispatchers.IO).launch {
-                                       withContext(Dispatchers.Main) { 
-                                           if (showUi) _importStatus.value = "Updating Guide..." 
-                                       } 
-                                      EPGManager.fetchEPG(force = false)
-                                      withContext(Dispatchers.Main) {
-                                          listModel.forEach { it.updateEPG() }
-                                      }
-                                  }
-                              }, 10000) // 10 second delay
-                          }
-                      }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        if (!silent) "Failed to update channels, using cached data".showToast()
-                        _importProgress.value = 0
-                        _importStatus.value = "Failed"
-                        
-                        // FIX: Try to load from cache if no channels in memory
-                        if (list.isEmpty()) {
-                            val file = File(ctx.filesDir, FILE_NAME)
-                            if (file.exists()) {
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    try {
-                                        val cached = parseUniversalFile(file)
-                                        if (cached.isNotEmpty()) {
-                                            list = cached
-                                            withContext(Dispatchers.Main) {
-                                                refreshModelsInternal(ctx)
-                                                "Loaded ${cached.size} channels from cache".showToast()
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                    }
-                                }
-                            } else {
+                if (successCount > 0) {
+                    if (showUi) {
+                        withContext(Dispatchers.Main) {
+                            _importStatus.value = "Finalizing..."
+                        }
+                    }
+                    
+                    // UNROLL: If one channel contains multiple sources, show them all in the list
+                    val finalChannels = mutableListOf<TV>()
+                    allChannels.forEach { tv ->
+                        if (tv.uris.size > 1) {
+                            tv.uris.forEachIndexed { index, uri ->
+                                finalChannels.add(tv.copy(
+                                    id = tv.id * 100 + index, 
+                                    title = "${tv.title} (S${index + 1})",
+                                    uris = listOf(uri)
+                                ))
                             }
                         } else {
+                            finalChannels.add(tv)
                         }
+                    }
+                    
+                    finalChannels.forEachIndexed { index, tv ->
+                        tv.id = index
+                    }
+
+                    saveToDatabase(finalChannels)
+                    SP.lastUpdateTime = System.currentTimeMillis()
+                    
+                    withContext(Dispatchers.Main) {
+                        // RECURSIVE: The DB Observer will trigger refreshModelsInternal(ctx)
+                        // No need to call it manually here.
+                        
+                        checkChannelsInBackground()
+                        
+                        if (showUi) {
+                            _importProgress.value = 100
+                            _importStatus.value = "Complete"
+                        }
+                        
+                        if (!silent && SP.config != DEFAULT_CONFIG_URL) {
+                            "Channels updated from $successCount sources".showToast()
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        if (!silent) "Failed to update channels".showToast()
+                        _importProgress.value = 0
+                        _importStatus.value = "Failed"
                     }
                 }
                 
@@ -570,8 +572,8 @@ object TVList {
     suspend fun str2List(str: String): Boolean {
          val result = parseContentHelper(str)
          if (result.isNotEmpty()) {
-             list = result
-             refreshModels(MyTVApplication.getInstance())
+             // WRITING ONLY TO DB: The observer in init() will handle memory update and UI refresh
+             saveToDatabase(result)
              return true
          }
          return false
@@ -598,11 +600,11 @@ object TVList {
                 if (!content.isNullOrBlank()) {
                     val parsed = parseUniversal(content)
                     if (parsed.isNotEmpty()) {
-                        list = parsed
-                        SP.addPlaylistUrl(uri.toString()) // Optional: Save URI? Maybe not readable later.
+                        // WRITING ONLY TO DB: Reactive observer handles the rest
+                        saveToDatabase(parsed)
+                        SP.addPlaylistUrl(uri.toString()) 
                         withContext(Dispatchers.Main) {
-                            refreshModels(context)
-                            Toast.makeText(context, "Loaded ${parsed.size} channels from file", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "File import complete: ${parsed.size} channels", Toast.LENGTH_SHORT).show()
                         }
                     } else {
                          withContext(Dispatchers.Main) {
@@ -760,87 +762,13 @@ object TVList {
     }
 
     private suspend fun parseUniversalFile(file: File): List<TV> = withContext(Dispatchers.IO) {
-        // OPTIMIZATION: Direct Stream Parsing for Cache (Avoids reading 50MB string into memory)
-        val filename = file.name
-        
-        // 1. FASTEST PATH: If it's the internal cache file, we KNOW it is JSON.
-        // Skip all guessing and sniffing.
-        if (filename == FILE_NAME || filename.endsWith(".json")) {
-            try {
-                // Open standard BufferedReader for performance
-                val reader = java.io.BufferedReader(java.io.FileReader(file), 8192)
-                // Use the streamlined GenericJsonParser which now supports streaming
-                val result = GenericJsonParser.parse(reader)
-                reader.close()
-                if (result.isNotEmpty()) return@withContext result
-            } catch (e: Exception) {
-                // If JSON fails, fall back to legacy sniffing below
-            }
-        }
-
-        // 2. Legacy/Universal Logic for unknown files
-        // Peek Header
-        val peekBuilder = StringBuilder()
         try {
-            java.io.BufferedReader(java.io.FileReader(file)).use { br ->
-                val buffer = CharArray(1024)
-                val read = br.read(buffer)
-                if (read > 0) peekBuilder.append(buffer, 0, read)
+            file.bufferedReader().use { reader ->
+                parseUniversal(reader)
             }
         } catch (e: Exception) {
+            emptyList()
         }
-        
-        val peekContent = peekBuilder.toString().trim()
-        
-        // Strategy A: JSON
-        if (peekContent.startsWith("[") || peekContent.startsWith("{")) {
-            try {
-                val reader = java.io.BufferedReader(java.io.FileReader(file))
-                val result = GenericJsonParser.parse(reader)
-                reader.close()
-                if (result.isNotEmpty()) {
-                     return@withContext expandNestedPlaylists(result)
-                }
-            } catch (e: Exception) {
-            }
-        }
-        
-        // 3. Strategy B: Gua / Encrypted (Legacy String requirement)
-        if (peekContent.isNotEmpty() && (peekContent[0].toInt() >= 0x4D00 && peekContent[0].toInt() <= 0x4DFF)) {
-            try {
-                val content = file.readText()
-                val g = Gua()
-                val decodedFromGua = if (g.verify(content)) g.decode(content) else content
-                val secretKey = SecretManager.getAppKey()
-                val finalContent = SecurityUtil.decryptChannelData(decodedFromGua, secretKey)
-                val result = parseUniversal(finalContent)
-                if (result.isNotEmpty()) return@withContext expandNestedPlaylists(result)
-            } catch (e: Exception) {
-            }
-        }
-
-        // 4. Strategy C: M3U / Universal Stream
-        try {
-            val reader = java.io.BufferedReader(java.io.FileReader(file))
-            val result = M3UParser.parse(reader)
-            reader.close()
-            
-            if (result.isNotEmpty()) {
-                 return@withContext expandNestedPlaylists(result)
-            }
-        } catch (e: Exception) {
-        }
-        
-        // 5. Strategy D: Legacy String Fallback
-        try {
-            val reader = file.bufferedReader()
-            val result = parseUniversal(reader)
-            reader.close()
-            if (result.isNotEmpty()) return@withContext expandNestedPlaylists(result)
-        } catch (e: Exception) {
-        }
-        
-        return@withContext emptyList<TV>()
     }
 
     private suspend fun expandNestedPlaylists(originalList: List<TV>, depth: Int = 0): List<TV> = withContext(Dispatchers.IO) {
@@ -954,15 +882,35 @@ object TVList {
         }
     }
 
+    private fun resetModelsInternal() {
+        listModel = emptyList()
+        val emptyGroups = listOf(
+            TVListModel("My Collection", "My Collection", 0),
+            TVListModel("All channels", "All channels", 1)
+        )
+        groupModel.setTVListModelList(emptyGroups)
+        groupModel.setChange()
+        _position.postValue(-1)
+    }
+
     private suspend fun refreshModelsInternal(ctx: Context) {
         if (SecurityUtil.isMaintenanceMode || SecurityUtil.isAppOutdated) {
+            Log.d(TAG, "refreshModelsInternal: Skipped (Maintenance/Outdated)")
+            withContext(Dispatchers.Main) {
+                resetModelsInternal()
+            }
             return
         }
-        if (!::list.isInitialized || list.isEmpty()) {
+        if (list.isEmpty()) {
+            Log.d(TAG, "refreshModelsInternal: Resetting due to empty list")
+            withContext(Dispatchers.Main) {
+                resetModelsInternal()
+            }
             return
         }
 
         try {
+                Log.d(TAG, "refreshModelsInternal: Processing ${list.size} channels...")
                 // Preparation Phase (Background)
                 val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
                 for (v in list) {
@@ -971,6 +919,7 @@ object TVList {
                     }
                     map[v.group]?.add(v)
                 }
+                Log.d(TAG, "refreshModelsInternal: Found ${map.size} categories")
 
                 val categoryOrder = OrderPreferenceManager.getCategoryOrder()
                 val categoryRenames = OrderPreferenceManager.getCategoryRenames()
@@ -1115,7 +1064,7 @@ object TVList {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                if (!::list.isInitialized || list.isEmpty()) return@launch
+                if (list.isEmpty()) return@launch
 
                 val initialSize = list.size
 

@@ -373,10 +373,16 @@ class SettingFragment : Fragment() {
             try { SP.reset() } catch (e: Exception) { e.printStackTrace() }
             try { OrderPreferenceManager.resetAll() } catch (e: Exception) { e.printStackTrace() }
 
-            // 2. Delete all local files (channels.txt, etc)
+            // 2. Clear Room Database
+            try { 
+                val db = com.codesrahul.exclusivetv.db.AppDatabase.getDatabase(requireContext())
+                db.clearAllTables() 
+            } catch (e: Exception) { e.printStackTrace() }
+
+            // 3. Delete all local files (legacy channels.txt, etc)
             try { deleteRecursive(requireContext().filesDir) } catch (e: Exception) { e.printStackTrace() }
             
-            // 3. Delete cache (epg_cache.xml.gz, etc)
+            // 4. Delete cache (epg_cache.xml.gz, etc)
             try { deleteRecursive(requireContext().cacheDir) } catch (e: Exception) { e.printStackTrace() }
             
             // 4. Clear WebViews/Cookies if any

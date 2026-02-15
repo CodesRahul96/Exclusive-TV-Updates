@@ -9,6 +9,7 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.multidex.MultiDex
 import androidx.multidex.MultiDexApplication
+import com.codesrahul.exclusivetv.models.TVList
 
 class MyTVApplication : MultiDexApplication() {
 
@@ -77,6 +78,9 @@ class MyTVApplication : MultiDexApplication() {
         
         // Initialize SP (SharedPreferences) - Critical fix for startup crash
         SP.init(this)
+
+        // Initialize TVList (Channels)
+        TVList.init(this)
     }
 
     fun getDisplayMetrics(): DisplayMetrics {

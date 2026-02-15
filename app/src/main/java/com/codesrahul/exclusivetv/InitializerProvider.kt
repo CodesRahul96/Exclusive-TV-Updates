@@ -11,7 +11,7 @@ internal class InitializerProvider : ContentProvider() {
     override fun onCreate(): Boolean {
         try {
             SP.init(context!!)
-            TVList.init(context!!)
+            // TVList.init now happens in MyTVApplication.onCreate for safety
         } catch (e: Exception) {
         }
         return true
