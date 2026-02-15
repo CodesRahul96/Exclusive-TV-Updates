@@ -200,6 +200,18 @@ object TVList {
                     return@launch
                 }
                 
+                // PROFESSIONAL OPTIMIZATION: Check cache freshness for silent updates
+                if (silent && listModel.isNotEmpty()) {
+                    val now = System.currentTimeMillis()
+                    val lastUpdate = SP.lastUpdateTime
+                    val thirtyMinutes = 30 * 60 * 1000L
+                    
+                    if (now - lastUpdate < thirtyMinutes) {
+                        Log.d(TAG, "Update skipped: Cache is fresh (${(now - lastUpdate)/1000}s old)")
+                        return@launch
+                    }
+                }
+                
                 val showUi = !silent || size() == 0
                 
                 try {
@@ -448,6 +460,9 @@ object TVList {
                       
                       val file = File(ctx.filesDir, FILE_NAME)
                       file.writeText(jsonStr) // Save formatted JSON
+                      
+                      // Update timestamp
+                      SP.lastUpdateTime = System.currentTimeMillis()
                       
                       // Update memory
                       list = finalChannels
@@ -1018,74 +1033,70 @@ object TVList {
                     groupIndex++
                 }
 
-                // Update Phase (Main Thread)
-                withContext(Dispatchers.Main) {
-                    val listModelSnapshot = listModel 
-                    val listModelNew: MutableList<TVModel> = mutableListOf()
-                    val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
-                    
-                    var id = 0
-                    val currentGroupModels = groupModel.getTVListModelList()
-                    val oldGroupMap = currentGroupModels.associateBy { it.getOriginalName() }
-                    
-                    val newGroupList = mutableListOf<TVListModel>()
-                    
-                    // 1. Preserve/Create Special Groups (Collection, All)
-                    val collectionGroup = groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0)
-                    val allChannelsGroup = groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1)
-                    
+                // Update Phase (Prepare snapshot in background)
+                val listModelSnapshot = listModel 
+                val listModelNew: MutableList<TVModel> = mutableListOf()
+                val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
+                
+                var id = 0
+                val currentGroupModels = groupModel.getTVListModelList()
+                val oldGroupMap = currentGroupModels.associateBy { it.getOriginalName() }
+                
+                val newGroupList = mutableListOf<TVListModel>()
+                
+                // 1. Preserve/Create Special Groups (Collection, All)
+                val collectionGroup = groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0)
+                val allChannelsGroup = groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1)
+                
+                newGroupList.add(collectionGroup)
+                newGroupList.add(allChannelsGroup)
 
+                // 2. Process Prepared Groups
+                for ((itemOriginalName, itemDisplayName, idx, channels) in preparedGroups) {
+                    val isUncategorized = itemOriginalName.isBlank() || itemOriginalName == "Uncategorized"
                     
-                    newGroupList.add(collectionGroup)
-                    newGroupList.add(allChannelsGroup)
+                    val tvListModel = if (!isUncategorized) {
+                        val model = oldGroupMap[itemOriginalName] ?: TVListModel(itemDisplayName, itemOriginalName, idx)
+                        model.updateMetadata(itemDisplayName, idx)
+                        model
+                    } else null
 
-                    // 2. Process Prepared Groups
-                    for ((itemOriginalName, itemDisplayName, idx, channels) in preparedGroups) {
-                        // SKIP adding empty/Uncategorized groups to the UI menu (newGroupList)
-                        // but we MUST still process their channels to populate listModelNew (for "All channels")
-                        val isUncategorized = itemOriginalName.isBlank() || itemOriginalName == "Uncategorized"
-                        
-                        val tvListModel = if (!isUncategorized) {
-                            val model = oldGroupMap[itemOriginalName] ?: TVListModel(itemDisplayName, itemOriginalName, idx)
-                            model.updateMetadata(itemDisplayName, idx)
-                            model
-                        } else null
-
-                        val groupChannels = mutableListOf<TVModel>()
-                        for (tv in channels) {
-                             tv.id = id
-                             val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
-                             tvModel.groupIndex = idx
-                             tvModel.listIndex = groupChannels.size
-                             
-                             groupChannels.add(tvModel)
-                             listModelNew.add(tvModel)
-                             id++
-                        }
-
-                        if (tvListModel != null) {
-                            tvListModel.setTVListModel(groupChannels)
-                            newGroupList.add(tvListModel)
-                        }
+                    val groupChannels = mutableListOf<TVModel>()
+                    for (tv in channels) {
+                         tv.id = id
+                         val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
+                         tvModel.groupIndex = idx
+                         tvModel.listIndex = groupChannels.size
+                         
+                         groupChannels.add(tvModel)
+                         listModelNew.add(tvModel)
+                         id++
                     }
 
-                    // --- POPULATE "My Collection" (Correctly placed after list is built) ---
-                    val likedChannels = listModelNew.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
-                    collectionGroup.setTVListModel(likedChannels)
+                    if (tvListModel != null) {
+                        tvListModel.setTVListModel(groupChannels)
+                        newGroupList.add(tvListModel)
+                    }
+                }
 
+                // --- POPULATE "My Collection" ---
+                val likedChannels = listModelNew.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
+                collectionGroup.setTVListModel(likedChannels)
+
+                // --- POPULATE "All channels" ---
+                allChannelsGroup.setTVListModel(listModelNew)
+
+                // Final commit to UI thread
+                withContext(Dispatchers.Main) {
                     listModel = listModelNew
                     groupModel.setTVListModelList(newGroupList)
-                    
-                    // All channels
-                    allChannelsGroup.setTVListModel(listModel)
-
                     groupModel.setChange()
                     
                     if (SP.epgEnabled) {
                         EPGManager.init(ctx)
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                EPGManager.fetchEPG(force = false) // Don't force every refresh
+                                EPGManager.fetchEPG(force = false)
                                 withContext(Dispatchers.Main) {
                                     listModel.forEach { it.updateEPG() }
                                 }

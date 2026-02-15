@@ -54,7 +54,7 @@ object SP {
  
     private const val KEY_EPG_SHIFT = "epg_shift"
     
-    // Dynamic API & Update URLs
+    private const val KEY_LAST_UPDATE_TIME = "last_update_time"
     private const val KEY_API_HOST = "api_host"
     private const val KEY_API_DOWNLOAD_HOST = "api_download_host"
     private const val KEY_API_HOST_FALLBACK = "api_host_fallback"
@@ -64,6 +64,11 @@ object SP {
     private lateinit var sp: SharedPreferences
 
     private val listeners = java.util.concurrent.CopyOnWriteArrayList<OnSharedPreferenceChangeListener>()
+
+
+    var lastUpdateTime: Long
+        get() = sp.getLong(KEY_LAST_UPDATE_TIME, 0L)
+        set(value) = sp.edit().putLong(KEY_LAST_UPDATE_TIME, value).apply()
 
 
     // Multiple playlist URLs

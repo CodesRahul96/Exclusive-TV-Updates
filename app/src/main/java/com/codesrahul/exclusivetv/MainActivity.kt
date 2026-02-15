@@ -545,20 +545,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     if (apiUrl != currentConfig) {
                         SP.config = apiUrl
                         SP.addPlaylistUrl(apiUrl)
-                        // Trigger update with the new URL
-                        TVList.update(this, silent = true)
-                    } else {
-                        // Optimization: Avoid redundant update if already updating or data loaded
-                        if (!TVList.isUpdating() && TVList.listModel.isEmpty()) {
-                             TVList.update(this, silent = true)
-                        }
-                    }
-                } else {
-                    // Fallback to initial update
-                     if (!TVList.isUpdating() && TVList.listModel.isEmpty()) {
-                        TVList.update(this, silent = true)
                     }
                 }
+                
+                // FINAL SYNC (Smart update will handle caching)
+                TVList.update(this, silent = true)
             }
     }
 
@@ -572,7 +563,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 val config = SP.config
                 if (!config.isNullOrEmpty() && config.startsWith("http")) {
                     handler.post {
-                        TVList.update(this, config, silent = true)
+                        TVList.update(this, silent = true)
                     }
                     lastRefreshTime = now
                 }
