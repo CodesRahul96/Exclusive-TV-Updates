@@ -37,6 +37,12 @@ class UpdateManager(
     private var downloadReceiver: DownloadReceiver? = null
 
     private var checkingDialog: android.app.Dialog? = null
+    @Suppress("DEPRECATION")
+    private var progressDialog: android.app.ProgressDialog? = null
+
+    fun resumeDownload() {
+         release?.let { startDownload(it) }
+    }
 
     fun checkAndUpdate(isManualCheck: Boolean = false) {
         CoroutineScope(Dispatchers.Main).launch {
@@ -152,15 +158,24 @@ class UpdateManager(
     }
 
     private fun startDownload(release: ReleaseResponse) {
+        if (isDownloading) {
+            Toast.makeText(context, "Update download already in progress", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!context.packageManager.canRequestPackageInstalls()) {
                 val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
                     data = Uri.parse("package:${context.packageName}")
                 }
                 (context as FragmentActivity).startActivityForResult(intent, 123)
-                // Might want to return here and ask user to retry after granting permission
+                // Return here - we will resume in onActivityResult
+                return
             }
         }
+
+        // Show Progress Dialog
+        showProgressDialog()
 
         val apkName = "ExclusiveTV"
         val apkFileName = "$apkName-${release.version_name}.apk"
@@ -188,8 +203,9 @@ class UpdateManager(
         request.setAllowedOverRoaming(false)
         request.setMimeType("application/vnd.android.package-archive")
 
-        // èŽ·å–ä¸‹è½½ä»»åŠ¡çš„å¼•ç”¨
+        // èŽ·å –ä¸‹è½½ä»»åŠ¡çš„å¼•ç”¨
         val downloadReference = downloadManager.enqueue(request)
+        isDownloading = true
 
         downloadReceiver = DownloadReceiver(context, apkFileName, downloadReference)
 
@@ -208,7 +224,37 @@ class UpdateManager(
         }
 
         getDownloadProgress(context, downloadReference) { progress ->
+             updateProgress(progress)
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun showProgressDialog() {
+        try {
+            if (progressDialog == null) {
+                progressDialog = android.app.ProgressDialog(context)
+                progressDialog?.setTitle("Downloading Update")
+                progressDialog?.setMessage("Please wait...")
+                progressDialog?.isIndeterminate = false
+                progressDialog?.setProgressStyle(android.app.ProgressDialog.STYLE_HORIZONTAL)
+                progressDialog?.max = 100
+                progressDialog?.setCancelable(false)
+            }
+            progressDialog?.progress = 0
+            progressDialog?.show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun updateProgress(progress: Int) {
+        try {
+            progressDialog?.progress = progress
+            if (progress >= 100) {
+                progressDialog?.dismiss()
+            }
+        } catch (e: Exception) {}
     }
 
     private fun getDownloadProgress(
@@ -252,7 +298,7 @@ class UpdateManager(
         })
     }
 
-    private class DownloadReceiver(
+    private inner class DownloadReceiver(
         private val context: Context,
         private val apkFileName: String,
         private val downloadReference: Long
@@ -287,11 +333,14 @@ class UpdateManager(
 
                     when (status) {
                         DownloadManager.STATUS_SUCCESSFUL -> {
+                            isDownloading = false
                             installNewVersion()
                         }
 
                         DownloadManager.STATUS_FAILED -> {
-                            // Handle download failure
+                            isDownloading = false
+                            try { progressDialog?.dismiss() } catch (e: Exception) {}
+                            Toast.makeText(context, "Download failed. Please try again.", Toast.LENGTH_LONG).show()
                         }
 
                         else -> {
@@ -305,6 +354,7 @@ class UpdateManager(
 
         private fun installNewVersion() {
             try {
+                try { progressDialog?.dismiss() } catch (e: Exception) {} // Ensure dialog is dismissed
                 val downloadManager =
                     context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                 var apkUri: Uri? = downloadManager.getUriForDownloadedFile(downloadReference)
@@ -343,6 +393,8 @@ class UpdateManager(
 
     companion object {
         private const val TAG = "UpdateManager"
+        @Volatile
+        var isDownloading = false
     }
 
     override fun onConfirm() {
@@ -356,6 +408,12 @@ class UpdateManager(
         try {
             if (checkingDialog?.isShowing == true) {
                 checkingDialog?.dismiss()
+            }
+        } catch (e: Exception) { }
+
+        try {
+            if (progressDialog?.isShowing == true) {
+                progressDialog?.dismiss()
             }
         } catch (e: Exception) { }
 

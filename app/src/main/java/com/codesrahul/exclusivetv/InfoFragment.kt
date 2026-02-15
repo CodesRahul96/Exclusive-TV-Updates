@@ -22,7 +22,8 @@ import com.codesrahul.exclusivetv.models.TVList
 import com.codesrahul.exclusivetv.models.TVListModel
 import com.codesrahul.exclusivetv.ui.TvUiUtils
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 
 class InfoFragment : Fragment() {
@@ -52,6 +53,75 @@ class InfoFragment : Fragment() {
         }
     }
 
+    private val updateProgressRunnable = object : Runnable {
+        override fun run() {
+            try {
+                if (!isShowing()) return
+                val act = activity as? MainActivity ?: return
+                val webFragment = act.webFragment
+                
+                if (webFragment.isLive()) {
+                    // LIVE TV MODE: Show EPG Progress
+                    val tvModel = TVList.getTVModel() ?: return
+                    val program = tvModel.currentProgram.value
+                    
+                    _binding?.let { b ->
+                        b.programProgress.visibility = View.VISIBLE
+                        b.currentTimeLabel.visibility = View.GONE
+                        b.totalTimeLabel.visibility = View.GONE
+                        b.programProgress.isEnabled = false // Disable seeking for Live TV
+
+                        if (program != null) {
+                            val epgShiftMs = SP.epgShift * 3600_000L
+                            val now = (Utils.getDateTimestamp() * 1000L) - epgShiftMs
+                            val start = program.start
+                            val stop = program.stop
+                            
+                            if (now in start until stop) {
+                                val total = stop - start
+                                val elapsed = now - start
+                                val progress = (elapsed.toFloat() / total.toFloat() * 100).toInt()
+                                b.programProgress.max = 100
+                                b.programProgress.progress = progress.coerceIn(0, 100)
+                            } else {
+                                b.programProgress.progress = 0
+                            }
+                        } else {
+                            b.programProgress.progress = 0
+                        }
+                    }
+                } else {
+                    // VOD MODE: Show Video Progress & Enable Seeking
+                    val duration = webFragment.getDuration()
+                    val current = webFragment.getCurrentPosition()
+                    
+                    if (duration > 0) {
+                        _binding?.let { b ->
+                            b.programProgress.visibility = View.VISIBLE
+                            b.currentTimeLabel.visibility = View.VISIBLE
+                            b.totalTimeLabel.visibility = View.VISIBLE
+                            b.programProgress.isEnabled = true // Enable seeking for VOD
+
+                            b.programProgress.max = duration.toInt()
+                            if (!isSeeking) {
+                                b.programProgress.progress = current.toInt()
+                            }
+                            
+                            b.currentTimeLabel.text = Utils.formatTime(current)
+                            b.totalTimeLabel.text = Utils.formatTime(duration)
+                        }
+                    }
+                }
+                
+                handler.postDelayed(this, 1000)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    private var isSeeking = false
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -59,11 +129,37 @@ class InfoFragment : Fragment() {
         _binding = InfoBinding.inflate(inflater, container, false)
         tvUiUtils = TvUiUtils(requireContext())
 
-        val application = requireActivity().applicationContext as MyTVApplication
-
         // Legacy layout code removed. Sizing is now handled by XML ConstraintLayout.
 
         _binding!!.root.visibility = View.GONE
+        
+        // Tap outside to close
+        _binding!!.root.setOnClickListener {
+            dismiss()
+        }
+        
+        // SeekBar Listener
+        _binding!!.programProgress.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    _binding?.currentTimeLabel?.text = Utils.formatTime(progress.toLong())
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {
+                isSeeking = true
+                handler.removeCallbacks(removeRunnable) // Pause auto-hide while seeking
+            }
+
+            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {
+                isSeeking = false
+                if (seekBar != null) {
+                    (requireActivity() as MainActivity).webFragment.seekTo(seekBar.progress.toLong())
+                }
+                handler.postDelayed(removeRunnable, delay) // Restart auto-hide
+            }
+        })
+        
         return binding.root
     }
 
@@ -108,64 +204,51 @@ class InfoFragment : Fragment() {
 
         // --- EPG BINDING ---
         if (SP.epgEnabled) {
-            // Current Program
-            val program: EPGProgram? = tvViewModel.currentProgram.value
-            if (program != null) {
-                b.programTitle.text = program.title
-                b.programTitle.visibility = View.VISIBLE
-                
-                 val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-                 val shiftMs = SP.epgShift * 3600_000L
-                 val timeRange = "${timeSdf.format(Date(program.start + shiftMs))} - ${timeSdf.format(Date(program.stop + shiftMs))}"
-                b.programTime.text = timeRange
-                b.programTime.visibility = View.VISIBLE
-                
-                b.desc.text = program.description
-                b.desc.visibility = if (program.description.isNotEmpty()) View.VISIBLE else View.GONE
-                
-                // --- Progress Calculation ---
-                val epgShiftMs = SP.epgShift * 3600_000L
-                val now = (Utils.getDateTimestamp() * 1000L) - epgShiftMs
-                val start = program.start
-                val stop = program.stop
-                
-                if (now in start until stop) {
-                    val total = stop - start
-                    val elapsed = now - start
-                    val progress = (elapsed.toFloat() / total.toFloat() * 100).toInt()
-                    b.programProgress.progress = progress.coerceIn(0, 100)
-                    b.programProgress.visibility = View.VISIBLE
+            // Current Program Observation
+            tvViewModel.currentProgram.removeObservers(viewLifecycleOwner)
+            tvViewModel.currentProgram.observe(viewLifecycleOwner) { program ->
+                if (program != null) {
+                    b.programTitle.text = program.title
+                    b.programTitle.visibility = View.VISIBLE
+                    
+                     val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                     val shiftMs = SP.epgShift * 3600_000L
+                     val timeRange = "${timeSdf.format(Date(program.start + shiftMs))} - ${timeSdf.format(Date(program.stop + shiftMs))}"
+                    b.programTime.text = timeRange
+                    b.programTime.visibility = View.VISIBLE
+                    
+                    b.desc.text = program.description
+                    b.desc.visibility = if (program.description.isNotEmpty()) View.VISIBLE else View.GONE
+                    
+                    // Enable Marquee
+                    b.desc.isSelected = true
+                    b.programTitle.isSelected = true
                 } else {
-                    b.programProgress.visibility = View.GONE
+                    b.programTitle.visibility = View.GONE
+                    b.programTime.visibility = View.GONE
+                    b.desc.text = "No current program info\nStatus: ${EPGManager.epgStatus}"
+                    b.desc.visibility = View.VISIBLE
+                    b.desc.isSelected = false
                 }
-                
-                // Enable Marquee
-                b.desc.isSelected = true
-                b.programTitle.isSelected = true
-            } else {
-                b.programTitle.visibility = View.GONE
-                b.programTime.visibility = View.GONE
-                b.programProgress.visibility = View.GONE
-                b.desc.text = "No current program info\nStatus: ${EPGManager.epgStatus}"
-                b.desc.visibility = View.VISIBLE
-                b.desc.isSelected = false
             }
 
-            // Upcoming Program
-            val nextProg: EPGProgram? = tvViewModel.upcomingProgram.value
-            if (nextProg != null) {
-                b.nextProgramLabel.visibility = View.VISIBLE
-                b.nextProgramTitle.text = nextProg.title
-                b.nextProgramTitle.visibility = View.VISIBLE
-                
-                 val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-                 val shiftMs = SP.epgShift * 3600_000L
-                 b.nextProgramTime.text = timeSdf.format(Date(nextProg.start + shiftMs))
-                b.nextProgramTime.visibility = View.VISIBLE
-            } else {
-                b.nextProgramLabel.visibility = View.GONE
-                b.nextProgramTitle.visibility = View.GONE
-                b.nextProgramTime.visibility = View.GONE
+            // Upcoming Program Observation
+            tvViewModel.upcomingProgram.removeObservers(viewLifecycleOwner)
+            tvViewModel.upcomingProgram.observe(viewLifecycleOwner) { nextProg ->
+                if (nextProg != null) {
+                    b.nextProgramLabel.visibility = View.VISIBLE
+                    b.nextProgramTitle.text = nextProg.title
+                    b.nextProgramTitle.visibility = View.VISIBLE
+                    
+                     val timeSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                     val shiftMs = SP.epgShift * 3600_000L
+                     b.nextProgramTime.text = timeSdf.format(Date(nextProg.start + shiftMs))
+                    b.nextProgramTime.visibility = View.VISIBLE
+                } else {
+                    b.nextProgramLabel.visibility = View.GONE
+                    b.nextProgramTitle.visibility = View.GONE
+                    b.nextProgramTime.visibility = View.GONE
+                }
             }
         } else {
             b.programTitle.visibility = View.GONE
@@ -179,25 +262,30 @@ class InfoFragment : Fragment() {
         // -------------------
 
         handler.removeCallbacks(removeRunnable)
+        handler.removeCallbacks(updateProgressRunnable)
         view?.visibility = View.VISIBLE
         handler.postDelayed(removeRunnable, delay)
+        handler.post(updateProgressRunnable) // Start updates
     }
 
 
     override fun onResume() {
         super.onResume()
         handler.postDelayed(removeRunnable, delay)
+        handler.post(updateProgressRunnable)
     }
 
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(removeRunnable)
         handler.removeCallbacks(timeRunnable)
+        handler.removeCallbacks(updateProgressRunnable)
     }
 
     private val removeRunnable = Runnable {
         view?.visibility = View.GONE
         handler.removeCallbacks(timeRunnable)
+        handler.removeCallbacks(updateProgressRunnable)
     }
 
     override fun onDestroyView() {

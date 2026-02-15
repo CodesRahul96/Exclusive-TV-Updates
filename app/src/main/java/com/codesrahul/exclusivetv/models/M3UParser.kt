@@ -351,7 +351,7 @@ object M3UParser {
     ): TV {
         // Default name if still empty
         val finalName = if (name.isEmpty()) "ExclusiveTV ${id + 1}" else name
-        val finalGroup = if (group.isNotEmpty()) group else "Uncategorized"
+        val finalGroup = group
 
         return TV(
             id = id,

@@ -39,7 +39,7 @@ import com.google.firebase.remoteconfig.remoteConfigSettings
 
 class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
-    private var webFragment = WebFragment()
+    var webFragment = WebFragment()
     private var errorFragment = ErrorFragment()
     private var loadingFragment = LoadingFragment()
     private var infoFragment = InfoFragment()
@@ -284,7 +284,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
              }
         }
 
-        gestureListener = GestureListener(this)
+        gestureListener = GestureListener()
         gestureDetector = GestureDetector(this, gestureListener)
 
         showTime()
@@ -706,26 +706,24 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         return super.onTouchEvent(event)
     }
 
-    inner class GestureListener(private val context: Context) :
-        GestureDetector.SimpleOnGestureListener() {
+    inner class GestureListener : GestureDetector.SimpleOnGestureListener() {
 
-        private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        private val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         private val longPressHandler = Handler(Looper.getMainLooper())
         private var isLongPressActive = false
         private val audioRunnable = Runnable {
             if (isLongPressActive) {
                 showAudioSelector()
-                isLongPressActive = false // Prevent 5s callback
-            }
-        }
-        private val settingsRunnable = Runnable {
-            if (isLongPressActive) {
-                showSetting()
-                isLongPressActive = false
+                isLongPressActive = false 
             }
         }
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            val screenWidth = windowManager.defaultDisplay.width
+            val screenHeight = windowManager.defaultDisplay.height
+            val x = e.x
+            val y = e.y
+            
             // Close settings or audio track selector if they're open
             if (!settingFragment.isHidden) {
                 hideSettingFragment()
@@ -737,33 +735,74 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 return true
             }
             
-            // Single tap anywhere â†’ menu
             if (infoFragment.isShowing()) {
                 infoFragment.dismiss()
+                return true
             }
-            showFragment(menuFragment)
+            
+            if (!menuFragment.isHidden) {
+                // If menu is open, let standard touch handling work (or close if outside)
+                // For now, simple toggle behavior
+                 hideMenuFragment()
+                 return true
+            }
+            
+            // 1. Left Side Tap (< 20% width) -> Channels & Categories
+            if (x < screenWidth * 0.2) {
+                showFragment(menuFragment)
+                return true
+            }
+            
+            // 2. Bottom Tap (> 80% height) -> Info Card
+            if (y > screenHeight * 0.8) {
+                val tvModel = TVList.getTVModel()
+                if (tvModel != null) {
+                    infoFragment.show(tvModel)
+                }
+                return true
+            }
+
+            // 3. Default: Main Menu (or do nothing if preferred, but user said "Tap Left... Opens Channels")
+            // User request implies strict zones. 
+            // "Tap outside channel management menu" implies closing it.
+            
+            // If we are here, no special zone was tapped. 
+            // We can show the menu as a fallback or do nothing.
+            // Let's stick to the specific requests.
             return true
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            showSetting()
+            val screenWidth = windowManager.defaultDisplay.width
+            val x = e.x
+            
+            // Double Tap Right Side (> 60% width) -> Settings
+            if (x > screenWidth * 0.6) {
+                showSetting()
+                return true
+            }
             return true
         }
 
         fun startTimedLongPress() {
+            // Check if right side for Audio Menu
+            // We don't have coordinates here easily without passing them.
+            // But onTouchEvent sets isRightHalf.
+            // Let's rely on that or simplify.
+            // The onTouchEvent logic checked isRightHalf.
+            
             isLongPressActive = true
             
-            // Schedule 3-second callback for audio selector
+            // Schedule 3-second callback for audio selector (Right Side Long Press)
             longPressHandler.postDelayed(audioRunnable, 3000)
             
-            // Schedule 5-second callback for settings
-            longPressHandler.postDelayed(settingsRunnable, 5000)
+            // Removing 5s settings callback as it clashes/is redundant with double tap
+            // longPressHandler.postDelayed(settingsRunnable, 5000) 
         }
 
         fun cancelTimedLongPress() {
             isLongPressActive = false
             longPressHandler.removeCallbacks(audioRunnable)
-            longPressHandler.removeCallbacks(settingsRunnable)
         }
 
         override fun onFling(
@@ -772,17 +811,28 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             velocityX: Float,
             velocityY: Float
         ): Boolean {
-            if ((e1?.x ?: 0f) > windowManager.defaultDisplay.width / 3
-                && (e1?.x ?: 0f) < windowManager.defaultDisplay.width * 2 / 3
-            ) {
-                if (velocityY > 0) {
-                    if (menuFragment.isHidden && settingFragment.isHidden) {
+            if (e1 == null) return false
+            
+            val screenWidth = windowManager.defaultDisplay.width
+            val screenHeight = windowManager.defaultDisplay.height
+            val x = e1.x
+            val y = e1.y
+            
+            // Top Middle Zone: Width 30%-70%, Height < 50%
+            val isTopMiddle = x > screenWidth * 0.3 && x < screenWidth * 0.7 && y < screenHeight * 0.5
+            
+            if (isTopMiddle) {
+                if (velocityY > 0) { // Swipe Down -> Previous Channel (Logic invert/standard check)
+                     // Usually Swipe Up (velocityY < 0) is Next, Down is Prev
+                     if (menuFragment.isHidden && settingFragment.isHidden) {
                         prev()
+                        return true
                     }
                 }
-                if (velocityY < 0) {
+                if (velocityY < 0) { // Swipe Up -> Next Channel
                     if (menuFragment.isHidden && settingFragment.isHidden) {
                         next()
+                        return true
                     }
                 }
             }
@@ -790,10 +840,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             return super.onFling(e1, e2, velocityX, velocityY)
         }
 
+        private var currentToast: Toast? = null
+
         private fun adjustVolume(deltaY: Float) {
             val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-            val deltaVolume = deltaY / 1000 * maxVolume / windowManager.defaultDisplay.height
+            val deltaVolume = (deltaY / 1000f) * maxVolume.toFloat() / windowManager.defaultDisplay.height
 
             var newVolume = currentVolume + deltaVolume
             if (newVolume < 0) {
@@ -804,8 +856,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
             audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume.toInt(), 0)
 
-            // You can add a toast to display the current volume
-            Toast.makeText(context, "Volume: $newVolume / $maxVolume", Toast.LENGTH_SHORT).show()
+            // Cancel previous toast to prevent queue buildup
+            currentToast?.cancel()
+            currentToast = Toast.makeText(this@MainActivity, "Volume: ${newVolume.toInt()} / $maxVolume", Toast.LENGTH_SHORT)
+            currentToast?.show()
         }
     }
 
@@ -1022,6 +1076,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     if (isRightArrowPressed) {
                         isRightArrowPressed = false
                         rightArrowHandler.removeCallbacks(rightArrowHoldRunnable)
+                        
+                        // Short Press: Toggle Info Card
+                        if (infoFragment.isShowing()) {
+                            infoFragment.dismiss()
+                        } else {
+                            val tvModel = TVList.getTVModel()
+                            if (tvModel != null) {
+                                infoFragment.show(tvModel)
+                            }
+                        }
                     }
                     return true
                 }
@@ -1403,6 +1467,33 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
 
         }
+
+        
+        if (event != null && event.action == KeyEvent.ACTION_DOWN) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    webFragment.safeTogglePlayback()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                    webFragment.safeSeekForward()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                    webFragment.safeSeekBackward()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                    next() // Utilize existing next() channel logic
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                    prev() // Utilize existing prev() channel logic
+                    return true
+                }
+            }
+        }
+
         return false
     }
 
@@ -1412,6 +1503,21 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             val query = intent.getStringExtra(android.app.SearchManager.QUERY)
             if (!query.isNullOrEmpty()) {
                 handleVoiceSearch(query)
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 123) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                if (packageManager.canRequestPackageInstalls()) {
+                    // Permission granted, resume download/install
+                    Toast.makeText(this, "Permission granted. Resuming update...", Toast.LENGTH_SHORT).show()
+                    updateManager.resumeDownload()
+                } else {
+                    Toast.makeText(this, "Permission denied. Cannot install update.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

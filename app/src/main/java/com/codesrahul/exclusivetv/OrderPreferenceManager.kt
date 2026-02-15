@@ -125,7 +125,7 @@ object OrderPreferenceManager {
 
     // Reset all order and rename data
     fun resetAll() {
-        prefs.edit().clear().apply()
+        prefs.edit().clear().commit()
     }
 
     // Reset only order (keep renames)

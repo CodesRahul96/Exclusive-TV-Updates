@@ -57,8 +57,7 @@ object TVList {
     }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    // const val DEFAULT_CONFIG_URL = "https://exclusivetv.indevs.in/"
-    val DEFAULT_CONFIG_URL: String get() = SP.config ?: "https://exclusivetv.indevs.in/" // Dynamic fallback
+    const val DEFAULT_CONFIG_URL = "https://exclusivetvapi.indevs.in/api/channels"
     private lateinit var appDirectory: File
 
     private lateinit var serverUrl: String
@@ -221,12 +220,21 @@ object TVList {
                 if (customUrls.isNotEmpty()) {
                     urls.addAll(customUrls)
                 } else if (mainUrl.isNotEmpty()) {
-                    // Load Main API (Split into 4 parts for performance/reliability)
-                    val baseUrl = if (mainUrl.endsWith("/")) mainUrl else "$mainUrl/"
-                    urls.add(baseUrl + "part1.txt")
-                    urls.add(baseUrl + "part2.txt")
-                    urls.add(baseUrl + "part3.txt")
-                    urls.add(baseUrl + "part4.txt")
+                    // NEW LOGIC: support single file/API
+                    if (mainUrl.contains("/api/", ignoreCase = true) || 
+                        mainUrl.endsWith(".json", ignoreCase = true) || 
+                        mainUrl.endsWith(".txt", ignoreCase = true) || 
+                        mainUrl.endsWith(".m3u", ignoreCase = true) || 
+                        mainUrl.endsWith(".m3u8", ignoreCase = true)) {
+                        urls.add(mainUrl)
+                    } else {
+                        // Legacy: Load Main API (Split into 4 parts for performance/reliability)
+                        val baseUrl = if (mainUrl.endsWith("/")) mainUrl else "$mainUrl/"
+                        urls.add(baseUrl + "part1.txt")
+                        urls.add(baseUrl + "part2.txt")
+                        urls.add(baseUrl + "part3.txt")
+                        urls.add(baseUrl + "part4.txt")
+                    }
                 }
 
                 
@@ -1033,11 +1041,16 @@ object TVList {
 
                     // 2. Process Prepared Groups
                     for ((itemOriginalName, itemDisplayName, idx, channels) in preparedGroups) {
-                        // REUSE existing TVListModel if found, otherwise create new
-                        val tvListModel = oldGroupMap[itemOriginalName] ?: TVListModel(itemDisplayName, itemOriginalName, idx)
-                        // Update metadata in case display name or index changed
-                        tvListModel.updateMetadata(itemDisplayName, idx)
+                        // SKIP adding empty/Uncategorized groups to the UI menu (newGroupList)
+                        // but we MUST still process their channels to populate listModelNew (for "All channels")
+                        val isUncategorized = itemOriginalName.isBlank() || itemOriginalName == "Uncategorized"
                         
+                        val tvListModel = if (!isUncategorized) {
+                            val model = oldGroupMap[itemOriginalName] ?: TVListModel(itemDisplayName, itemOriginalName, idx)
+                            model.updateMetadata(itemDisplayName, idx)
+                            model
+                        } else null
+
                         val groupChannels = mutableListOf<TVModel>()
                         for (tv in channels) {
                              tv.id = id
@@ -1050,8 +1063,10 @@ object TVList {
                              id++
                         }
 
-                        tvListModel.setTVListModel(groupChannels)
-                        newGroupList.add(tvListModel)
+                        if (tvListModel != null) {
+                            tvListModel.setTVListModel(groupChannels)
+                            newGroupList.add(tvListModel)
+                        }
                     }
 
                     // --- POPULATE "My Collection" (Correctly placed after list is built) ---

@@ -369,7 +369,7 @@ class SettingFragment : Fragment() {
         try {
             Toast.makeText(requireContext(), "Resetting...", Toast.LENGTH_SHORT).show()
             
-            // 1. Clear all Preference Managers
+            // 1. Clear all Preference Managers (Synchronously using commit())
             try { SP.reset() } catch (e: Exception) { e.printStackTrace() }
             try { OrderPreferenceManager.resetAll() } catch (e: Exception) { e.printStackTrace() }
 
@@ -380,28 +380,33 @@ class SettingFragment : Fragment() {
             try { deleteRecursive(requireContext().cacheDir) } catch (e: Exception) { e.printStackTrace() }
             
             // 4. Clear WebViews/Cookies if any
-            try { android.webkit.WebStorage.getInstance().deleteAllData() } catch (e: Exception) {}
+            try { 
+                android.webkit.WebStorage.getInstance().deleteAllData()
+                android.webkit.CookieManager.getInstance().removeAllCookies(null)
+                android.webkit.CookieManager.getInstance().flush() // Force write
+            } catch (e: Exception) { e.printStackTrace() }
 
             Toast.makeText(requireContext(), "Factory Reset Complete. Restarting...", Toast.LENGTH_LONG).show()
 
-            // 5. Force Restart App
+            // 5. Force Restart App using Phoenix Process Pattern (Professional Approach)
             val ctx = context ?: return
             binding.root.postDelayed({
                 try {
-                    val pm = ctx.packageManager
-                    val intent = pm.getLaunchIntentForPackage(ctx.packageName)
-                    if (intent != null) {
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(intent)
-                    }
-                    activity?.finishAffinity()
-                    System.exit(0)
+                    // Trigger Phoenix Restart
+                    PhoenixActivity.trigger(ctx)
                 } catch (e: Exception) {
                     e.printStackTrace()
+                     // Fallback to simple restart if Phoenix fails for some reason
+                     val pm = ctx.packageManager
+                     val launchIntent = pm.getLaunchIntentForPackage(ctx.packageName)
+                     if (launchIntent != null) {
+                         launchIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                         startActivity(launchIntent)
+                     }
+                    android.os.Process.killProcess(android.os.Process.myPid())
                     System.exit(0)
                 }
-            }, 1000)
+            }, 500)
 
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Reset failed: ${e.message}", Toast.LENGTH_SHORT).show()

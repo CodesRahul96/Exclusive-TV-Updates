@@ -11,6 +11,8 @@ import java.io.*
 import java.util.*
 import java.util.zip.GZIPInputStream
 import java.text.SimpleDateFormat
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 import com.codesrahul.exclusivetv.models.EPGProgram
 
@@ -46,36 +48,44 @@ object EPGManager {
     
     var epgStatus = "Not Loaded"
 
+    private val epgMutex = kotlinx.coroutines.sync.Mutex()
+
     suspend fun fetchEPG(force: Boolean = false) = withContext(Dispatchers.IO) {
         if (SecurityUtil.isMaintenanceMode) return@withContext
-        try {
-            val file = cacheFile ?: return@withContext
-            val now = System.currentTimeMillis()
-            
-            if (force || !file.exists() || (now - file.lastModified() > 12 * 3600_000L)) {
-                epgStatus = "Downloading..."
-                val request = Request.Builder().url(epgUrl).build()
-                client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        val body = response.body ?: return@use
-                        FileOutputStream(file).use { out ->
-                            body.byteStream().copyTo(out)
+        
+        // Prevent concurrent EPG updates
+        if (epgMutex.isLocked) return@withContext
+
+        epgMutex.withLock {
+            try {
+                val file = cacheFile ?: return@withContext
+                val now = System.currentTimeMillis()
+                
+                if (force || !file.exists() || (now - file.lastModified() > 12 * 3600_000L)) {
+                    epgStatus = "Downloading..."
+                    val request = Request.Builder().url(epgUrl).build()
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val body = response.body ?: return@use
+                            FileOutputStream(file).use { out ->
+                                body.byteStream().copyTo(out)
+                            }
                         }
                     }
                 }
-            }
 
-            if (file.exists()) {
-                epgStatus = "Parsing..."
-                val count = FileInputStream(file).use { fis ->
-                    GZIPInputStream(fis).use { gis ->
-                        parseXML(gis)
+                if (file.exists()) {
+                    epgStatus = "Parsing..."
+                    val count = FileInputStream(file).use { fis ->
+                        GZIPInputStream(fis).use { gis ->
+                            parseXML(gis)
+                        }
                     }
+                    epgStatus = "Loaded progs for $count channels"
                 }
-                epgStatus = "Loaded progs for $count channels"
+            } catch (e: Exception) {
+                epgStatus = "Error: ${e.message}"
             }
-        } catch (e: Exception) {
-            epgStatus = "Error: ${e.message}"
         }
     }
 

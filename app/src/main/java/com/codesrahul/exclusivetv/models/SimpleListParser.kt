@@ -27,7 +27,7 @@ object SimpleListParser {
                         image = null,
                         uris = arrayListOf(trimmed),
                         headers = null,
-                        group = "Uncategorized",
+                        group = "",
                         type = Type.STREAM, // Always default to STREAM
                         drmScheme = null,
                         drmLicenseUrl = null,

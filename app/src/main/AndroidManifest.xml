@@ -66,6 +66,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </receiver>
+        <!-- Phoenix Activity for Robust Restarts -->
+        <activity
+            android:name=".PhoenixActivity"
+            android:process=":phoenix"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:exported="false" />
         <provider
             android:name=".InitializerProvider"
             android:authorities="${applicationId}.InitializerProvider"

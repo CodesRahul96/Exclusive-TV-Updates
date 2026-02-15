@@ -143,7 +143,7 @@ object GenericJsonParser {
         val finalId = idStr?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: index
         val apiId = idStr ?: finalId.toString()
         val finalName = (name ?: "Channel $index").trim()
-        val finalGroup = group ?: "Uncategorized"
+        val finalGroup = group ?: ""
         
         // Auto-detect DRM if not explicit
         if (drmScheme == null && drmLicense != null) {

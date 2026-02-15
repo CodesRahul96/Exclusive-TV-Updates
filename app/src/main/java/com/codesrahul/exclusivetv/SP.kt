@@ -229,7 +229,7 @@ object SP {
         set(value) = sp.edit().putString(KEY_LAST_ETAG, value).apply()
 
     var epgEnabled: Boolean
-        get() = sp.getBoolean(KEY_EPG_ENABLED, false)
+        get() = sp.getBoolean(KEY_EPG_ENABLED, true)
         set(value) {
             if (value != this.epgEnabled) {
                 sp.edit().putBoolean(KEY_EPG_ENABLED, value).apply()
@@ -333,6 +333,6 @@ object SP {
         set(value) = sp.edit().putBoolean(KEY_PIP_MODE, value).apply()
 
     fun reset() {
-        sp.edit().clear().apply()
+        sp.edit().clear().commit()
     }
 }

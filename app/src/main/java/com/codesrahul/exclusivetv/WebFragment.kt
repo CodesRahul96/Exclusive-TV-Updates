@@ -1483,4 +1483,52 @@ class WebFragment : Fragment() {
             false
         }
     }
+
+    fun safeTogglePlayback() {
+        if (exoPlayer != null) {
+            if (exoPlayer!!.isPlaying) {
+                exoPlayer!!.pause()
+            } else {
+                exoPlayer!!.play()
+            }
+        }
+    }
+
+    fun safeSeekForward() {
+        if (exoPlayer != null) {
+            val current = exoPlayer!!.currentPosition
+            val duration = exoPlayer!!.duration
+            if (duration != C.TIME_UNSET) {
+                val newPos = (current + 10000).coerceAtMost(duration)
+                exoPlayer!!.seekTo(newPos)
+            } else {
+                // Live stream or unknown duration - just try to seek safely or do nothing
+                exoPlayer!!.seekTo(current + 10000)
+            }
+        }
+    }
+
+    fun safeSeekBackward() {
+        if (exoPlayer != null) {
+            val current = exoPlayer!!.currentPosition
+            val newPos = (current - 10000).coerceAtLeast(0)
+            exoPlayer!!.seekTo(newPos)
+        }
+    }
+
+    fun getDuration(): Long {
+        return exoPlayer?.duration ?: 0L
+    }
+
+    fun getCurrentPosition(): Long {
+        return exoPlayer?.currentPosition ?: 0L
+    }
+
+    fun seekTo(positionMs: Long) {
+        exoPlayer?.seekTo(positionMs)
+    }
+
+    fun isLive(): Boolean {
+        return exoPlayer?.isCurrentMediaItemLive == true || exoPlayer?.duration == C.TIME_UNSET
+    }
 }

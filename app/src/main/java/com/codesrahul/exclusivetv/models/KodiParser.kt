@@ -311,7 +311,7 @@ object KodiParser {
             image = null,
             uris = ArrayList(uris), // Copy list
             headers = if (headers.isNotEmpty()) HashMap(headers) else null,
-            group = if (group.isNotEmpty()) group else "Uncategorized",
+            group = if (group.isNotEmpty()) group else "",
             type = type,
             drmScheme = drmScheme,
             drmLicenseUrl = drmLicense,
