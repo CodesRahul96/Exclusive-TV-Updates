@@ -511,7 +511,15 @@ class SettingFragment : Fragment() {
         if (permissionsList.isNotEmpty()) {
             ActivityCompat.requestPermissions(requireActivity(), permissionsList.toTypedArray(), PERMISSIONS_REQUEST_CODE)
         } else {
-            updateManager.checkAndUpdate(isManualCheck = true)
+            updateManager.checkAndUpdate(isManualCheck = true, listener = object : UpdateManager.CheckListener {
+                override fun onCheckStart() {
+                    binding.rlCheckingUpdate.visibility = View.VISIBLE
+                }
+
+                override fun onCheckEnd() {
+                    binding.rlCheckingUpdate.visibility = View.GONE
+                }
+            })
         }
     }
 

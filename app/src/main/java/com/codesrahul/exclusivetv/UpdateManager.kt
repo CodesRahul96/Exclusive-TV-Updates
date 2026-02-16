@@ -36,7 +36,6 @@ class UpdateManager(
 
     private var downloadReceiver: DownloadReceiver? = null
 
-    private var checkingDialog: android.app.Dialog? = null
     @Suppress("DEPRECATION")
     private var progressDialog: android.app.ProgressDialog? = null
 
@@ -44,23 +43,15 @@ class UpdateManager(
          release?.let { startDownload(it) }
     }
 
-    fun checkAndUpdate(isManualCheck: Boolean = false) {
+    interface CheckListener {
+        fun onCheckStart()
+        fun onCheckEnd()
+    }
+
+    fun checkAndUpdate(isManualCheck: Boolean = false, listener: CheckListener? = null) {
         CoroutineScope(Dispatchers.Main).launch {
             if (isManualCheck) {
-                try {
-                    if (context is FragmentActivity && 
-                        !(context as FragmentActivity).isFinishing && 
-                        (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || !(context as FragmentActivity).isDestroyed)) {
-                        
-                        checkingDialog = android.app.Dialog(context, android.R.style.Theme_Translucent_NoTitleBar)
-                        checkingDialog?.setContentView(R.layout.dialog_checking)
-                        checkingDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
-                        checkingDialog?.setCancelable(false)
-                        checkingDialog?.show()
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                listener?.onCheckStart()
             }
 
             // Check if we already have the release info from TVList's early check
@@ -70,6 +61,7 @@ class UpdateManager(
                 if (SecurityUtil.isAppOutdated) {
                     val text = "New version available: ${release?.version_name}\n\nPlease update to continue using the app."
                     updateUI(text, update = true, force = true)
+                    listener?.onCheckEnd()
                     return@launch
                 }
             }
@@ -115,17 +107,14 @@ class UpdateManager(
                 }
             }
             
+            if (isManualCheck) {
+                listener?.onCheckEnd()
+            }
             updateUI(text, update, update, isManualCheck) // Force update is true if update is available
         }
     }
 
     private fun updateUI(text: String, update: Boolean, force: Boolean = false, isManualCheck: Boolean = false) {
-        try { 
-            if (checkingDialog?.isShowing == true) {
-                checkingDialog?.dismiss() 
-            }
-        } catch (e: Exception) {}
-
         if (context is FragmentActivity) {
             val activity = context as FragmentActivity
             if (activity.isFinishing || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed)) {
@@ -405,11 +394,7 @@ class UpdateManager(
     }
 
     fun destroy() {
-        try {
-            if (checkingDialog?.isShowing == true) {
-                checkingDialog?.dismiss()
-            }
-        } catch (e: Exception) { }
+
 
         try {
             if (progressDialog?.isShowing == true) {
