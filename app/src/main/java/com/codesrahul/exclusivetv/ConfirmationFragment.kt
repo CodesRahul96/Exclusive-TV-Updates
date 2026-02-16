@@ -46,7 +46,7 @@ class ConfirmationFragment : DialogFragment() {
         val force = arguments?.getBoolean(ARG_FORCE) ?: false
 
         return activity?.let {
-            val dialog = Dialog(it, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
+            val dialog = Dialog(it, android.R.style.Theme_Translucent_NoTitleBar)
             
             val inflater = requireActivity().layoutInflater
             val view = inflater.inflate(R.layout.dialog_update, null)

@@ -513,11 +513,11 @@ class SettingFragment : Fragment() {
         } else {
             updateManager.checkAndUpdate(isManualCheck = true, listener = object : UpdateManager.CheckListener {
                 override fun onCheckStart() {
-                    binding.rlCheckingUpdate.visibility = View.VISIBLE
+                    _binding?.rlCheckingUpdate?.visibility = View.VISIBLE
                 }
 
                 override fun onCheckEnd() {
-                    binding.rlCheckingUpdate.visibility = View.GONE
+                    _binding?.rlCheckingUpdate?.visibility = View.GONE
                 }
             })
         }
