@@ -493,6 +493,55 @@ class SettingFragment : Fragment() {
         idleHandler.removeCallbacks(idleRunnable)
     }
 
+    private val updateCheckListener = object : UpdateManager.CheckListener {
+        override fun onCheckStart() {
+            _binding?.rlCheckingUpdate?.visibility = View.VISIBLE
+            _binding?.rlCheckingUpdate?.bringToFront()
+        }
+
+        override fun onCheckEnd() {
+            _binding?.rlCheckingUpdate?.visibility = View.GONE
+        }
+
+        override fun onShowResult(title: String, message: String, isUpdate: Boolean, changelog: String, force: Boolean) {
+            val binding = _binding ?: return
+            binding.rlMessageOverlay.visibility = View.VISIBLE
+            binding.rlMessageOverlay.bringToFront()
+            binding.tvOverlayTitle.text = title
+
+            var fullMessage = message
+            if (changelog.isNotEmpty()) {
+                fullMessage += "\n\n$changelog"
+            }
+            binding.tvOverlayMessage.text = fullMessage
+
+            if (isUpdate) {
+                binding.btnOverlayAction.text = "Update Now"
+                binding.btnOverlayAction.setOnClickListener {
+                    binding.rlMessageOverlay.visibility = View.GONE
+                    updateManager.onConfirm()
+                }
+                binding.btnOverlayAction.requestFocus()
+
+                if (force) {
+                    binding.btnOverlayCancel.visibility = View.GONE
+                } else {
+                    binding.btnOverlayCancel.visibility = View.VISIBLE
+                    binding.btnOverlayCancel.setOnClickListener {
+                        binding.rlMessageOverlay.visibility = View.GONE
+                    }
+                }
+            } else {
+                binding.btnOverlayAction.text = "OK"
+                binding.btnOverlayAction.setOnClickListener {
+                    binding.rlMessageOverlay.visibility = View.GONE
+                }
+                binding.btnOverlayAction.requestFocus()
+                binding.btnOverlayCancel.visibility = View.GONE
+            }
+        }
+    }
+
     private fun requestInstallPermissions() {
         val permissionsList: MutableList<String> = mutableListOf()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
@@ -511,54 +560,7 @@ class SettingFragment : Fragment() {
         if (permissionsList.isNotEmpty()) {
             ActivityCompat.requestPermissions(requireActivity(), permissionsList.toTypedArray(), PERMISSIONS_REQUEST_CODE)
         } else {
-            updateManager.checkAndUpdate(isManualCheck = true, listener = object : UpdateManager.CheckListener {
-                override fun onCheckStart() {
-                    _binding?.rlCheckingUpdate?.visibility = View.VISIBLE
-                    _binding?.rlCheckingUpdate?.bringToFront()
-                }
-
-                override fun onCheckEnd() {
-                    _binding?.rlCheckingUpdate?.visibility = View.GONE
-                }
-
-                override fun onShowResult(title: String, message: String, isUpdate: Boolean, changelog: String, force: Boolean) {
-                     val binding = _binding ?: return
-                     binding.rlMessageOverlay.visibility = View.VISIBLE
-                     binding.rlMessageOverlay.bringToFront()
-                     binding.tvOverlayTitle.text = title
-                     
-                     var fullMessage = message
-                     if (changelog.isNotEmpty()) {
-                         fullMessage += "\n\n$changelog"
-                     }
-                     binding.tvOverlayMessage.text = fullMessage
-                     
-                     if (isUpdate) {
-                         binding.btnOverlayAction.text = "Update Now"
-                         binding.btnOverlayAction.setOnClickListener {
-                             binding.rlMessageOverlay.visibility = View.GONE
-                             updateManager.onConfirm()
-                         }
-                         binding.btnOverlayAction.requestFocus()
-                         
-                         if (force) {
-                             binding.btnOverlayCancel.visibility = View.GONE
-                         } else {
-                             binding.btnOverlayCancel.visibility = View.VISIBLE
-                             binding.btnOverlayCancel.setOnClickListener {
-                                 binding.rlMessageOverlay.visibility = View.GONE
-                             }
-                         }
-                     } else {
-                         binding.btnOverlayAction.text = "OK"
-                         binding.btnOverlayAction.setOnClickListener {
-                             binding.rlMessageOverlay.visibility = View.GONE
-                         }
-                         binding.btnOverlayAction.requestFocus()
-                         binding.btnOverlayCancel.visibility = View.GONE
-                     }
-                }
-            })
+            updateManager.checkAndUpdate(isManualCheck = true, listener = updateCheckListener)
         }
     }
 
@@ -567,57 +569,8 @@ class SettingFragment : Fragment() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSIONS_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                // Permission granted, retry update check
-                // We need to duplicate the listener logic or extract it.
-                // For simplicity, we'll re-call checkAndUpdate with the same logic.
-                 updateManager.checkAndUpdate(isManualCheck = true, listener = object : UpdateManager.CheckListener {
-                    override fun onCheckStart() {
-                        _binding?.rlCheckingUpdate?.visibility = View.VISIBLE
-                        _binding?.rlCheckingUpdate?.bringToFront()
-                    }
-
-                    override fun onCheckEnd() {
-                        _binding?.rlCheckingUpdate?.visibility = View.GONE
-                    }
-
-                    override fun onShowResult(title: String, message: String, isUpdate: Boolean, changelog: String, force: Boolean) {
-                         val binding = _binding ?: return
-                         binding.rlMessageOverlay.visibility = View.VISIBLE
-                         binding.rlMessageOverlay.bringToFront()
-                         binding.tvOverlayTitle.text = title
-                         
-                         var fullMessage = message
-                         if (changelog.isNotEmpty()) {
-                             fullMessage += "\n\n$changelog"
-                         }
-                         binding.tvOverlayMessage.text = fullMessage
-                         
-                         if (isUpdate) {
-                             binding.btnOverlayAction.text = "Update Now"
-                             binding.btnOverlayAction.setOnClickListener {
-                                 binding.rlMessageOverlay.visibility = View.GONE
-                                 updateManager.onConfirm()
-                             }
-                             binding.btnOverlayAction.requestFocus()
-                             
-                             if (force) {
-                                 binding.btnOverlayCancel.visibility = View.GONE
-                             } else {
-                                 binding.btnOverlayCancel.visibility = View.VISIBLE
-                                 binding.btnOverlayCancel.setOnClickListener {
-                                     binding.rlMessageOverlay.visibility = View.GONE
-                                 }
-                             }
-                         } else {
-                             binding.btnOverlayAction.text = "OK"
-                             binding.btnOverlayAction.setOnClickListener {
-                                 binding.rlMessageOverlay.visibility = View.GONE
-                             }
-                             binding.btnOverlayAction.requestFocus()
-                             binding.btnOverlayCancel.visibility = View.GONE
-                         }
-                    }
-                })
+                // Permission granted, retry update check using reused listener
+                updateManager.checkAndUpdate(isManualCheck = true, listener = updateCheckListener)
             } else {
                 Toast.makeText(requireContext(), "Permission required to download update", Toast.LENGTH_SHORT).show()
             }

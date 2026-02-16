@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="space_between_items">1dp</dimen>
+    <!-- Removed invalid dimensions -->
 </resources>
