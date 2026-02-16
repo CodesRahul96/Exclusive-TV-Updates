@@ -1383,8 +1383,10 @@ class WebFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        if (exoPlayer == null && playerView.visibility == View.VISIBLE) {
-            tvModel?.let { play(it) }
+        // Robust Resume: If we have a TVModel (active channel) but no player, restart it.
+        // We removed the visibility check because visibility might be unreliable during transitions.
+        if (exoPlayer == null && tvModel != null) {
+            play(tvModel!!)
         }
         webView.onResume()
     }

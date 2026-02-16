@@ -52,7 +52,7 @@ class UpdateManager(
                         !(context as FragmentActivity).isFinishing && 
                         (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || !(context as FragmentActivity).isDestroyed)) {
                         
-                        checkingDialog = android.app.Dialog(context, android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen)
+                        checkingDialog = android.app.Dialog(context, android.R.style.Theme_DeviceDefault_Dialog)
                         checkingDialog?.setContentView(R.layout.dialog_checking)
                         checkingDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
                         checkingDialog?.setCancelable(false)
