@@ -514,6 +514,7 @@ class SettingFragment : Fragment() {
             updateManager.checkAndUpdate(isManualCheck = true, listener = object : UpdateManager.CheckListener {
                 override fun onCheckStart() {
                     _binding?.rlCheckingUpdate?.visibility = View.VISIBLE
+                    _binding?.rlCheckingUpdate?.bringToFront()
                 }
 
                 override fun onCheckEnd() {
@@ -523,6 +524,7 @@ class SettingFragment : Fragment() {
                 override fun onShowResult(title: String, message: String, isUpdate: Boolean, changelog: String, force: Boolean) {
                      val binding = _binding ?: return
                      binding.rlMessageOverlay.visibility = View.VISIBLE
+                     binding.rlMessageOverlay.bringToFront()
                      binding.tvOverlayTitle.text = title
                      
                      var fullMessage = message

@@ -582,7 +582,7 @@
             android:orientation="vertical"
             android:padding="32dp"
             android:gravity="center"
-            android:elevation="12dp">
+            android:elevation="100dp">
 
             <ProgressBar
                 android:layout_width="48dp"
@@ -619,7 +619,7 @@
             android:background="@drawable/bg_premium_glass"
             android:orientation="vertical"
             android:padding="24dp"
-            android:elevation="12dp">
+            android:elevation="100dp">
 
             <TextView
                 android:id="@+id/tv_overlay_title"
