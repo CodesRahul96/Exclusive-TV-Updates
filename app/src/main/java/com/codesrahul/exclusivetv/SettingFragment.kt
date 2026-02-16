@@ -644,6 +644,12 @@ class SettingFragment : Fragment() {
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
         
         val btnClose = dialog.findViewById<android.widget.Button>(R.id.btn_close)
+        val rootContainer = dialog.findViewById<android.view.View>(R.id.root_container)
+
+        rootContainer.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            dialog.dismiss()
+        }
         
         btnClose.setOnClickListener {
             tvUiUtils?.playClickSound()

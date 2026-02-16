@@ -120,7 +120,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var lastRefreshTime = 0L
     private val refreshHandler = Handler(Looper.getMainLooper())
     private val refreshInterval: Long = 30 * 60 * 1000L // 30 minutes
-    private val resumeRefreshThreshold: Long = 15 * 60 * 1000L // 15 minutes
+    private val resumeRefreshThreshold: Long = 60 * 1000L // 1 minute
 
     private lateinit var connectivityManager: ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -568,7 +568,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 val config = SP.config
                 if (!config.isNullOrEmpty() && config.startsWith("http")) {
                     handler.post {
-                        TVList.update(this, silent = true)
+                        TVList.update(this, silent = true, force = true)
                     }
                     lastRefreshTime = now
                 }

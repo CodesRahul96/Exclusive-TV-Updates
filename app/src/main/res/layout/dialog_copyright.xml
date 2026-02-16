@@ -2,6 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/overlay_background">
@@ -12,6 +13,8 @@
         android:layout_gravity="center"
         android:background="@drawable/bg_copyright_glass"
         android:orientation="vertical"
+        android:clickable="true"
+        android:focusable="true"
         android:padding="32dp"
         android:elevation="12dp">
 
