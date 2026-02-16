@@ -614,6 +614,7 @@
         android:visibility="gone"
         android:elevation="100dp"
         android:translationZ="100dp"
+        android:descendantFocusability="afterDescendants"
         tools:visibility="visible">
 
         <LinearLayout
@@ -635,13 +636,16 @@
                 android:layout_marginBottom="16dp"/>
 
             <ScrollView
+                android:id="@+id/sv_overlay_content"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:layout_marginBottom="24dp"
                 android:fillViewport="true"
                 android:scrollbars="vertical"
-                android:fadeScrollbars="false">
+                android:fadeScrollbars="false"
+                android:focusable="true"
+                android:nextFocusDown="@+id/btn_overlay_action">
                  <TextView
                     android:id="@+id/tv_overlay_message"
                     android:layout_width="match_parent"
