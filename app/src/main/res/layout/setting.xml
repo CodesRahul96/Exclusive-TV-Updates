@@ -602,4 +602,80 @@
         </LinearLayout>
     </RelativeLayout>
 
+    <RelativeLayout
+        android:id="@+id/rl_message_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="400dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_premium_glass"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:elevation="12dp">
+
+            <TextView
+                android:id="@+id/tv_overlay_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Update Available"
+                android:textColor="@color/accent_gold"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginBottom="16dp"/>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginBottom="24dp"
+                android:fillViewport="true"
+                android:scrollbars="vertical"
+                android:fadeScrollbars="false">
+                 <TextView
+                    android:id="@+id/tv_overlay_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="New version available..."
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="4dp"
+                    android:maxLines="10"/>
+            </ScrollView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="end">
+
+                <Button
+                    android:id="@+id/btn_overlay_cancel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cancel"
+                    android:textColor="@color/text_secondary"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:layout_marginEnd="8dp"/>
+
+                <Button
+                    android:id="@+id/btn_overlay_action"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Update"
+                    android:textColor="@color/text_primary"
+                    android:background="@drawable/tv_button_bg"
+                    android:paddingHorizontal="24dp"/>
+            </LinearLayout>
+        </LinearLayout>
+    </RelativeLayout>
+
 </FrameLayout>

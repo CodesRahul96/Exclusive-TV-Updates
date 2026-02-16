@@ -519,6 +519,43 @@ class SettingFragment : Fragment() {
                 override fun onCheckEnd() {
                     _binding?.rlCheckingUpdate?.visibility = View.GONE
                 }
+
+                override fun onShowResult(title: String, message: String, isUpdate: Boolean, changelog: String, force: Boolean) {
+                     val binding = _binding ?: return
+                     binding.rlMessageOverlay.visibility = View.VISIBLE
+                     binding.tvOverlayTitle.text = title
+                     
+                     var fullMessage = message
+                     if (changelog.isNotEmpty()) {
+                         fullMessage += "\n\n$changelog"
+                     }
+                     binding.tvOverlayMessage.text = fullMessage
+                     
+                     if (isUpdate) {
+                         binding.btnOverlayAction.text = "Update Now"
+                         binding.btnOverlayAction.setOnClickListener {
+                             binding.rlMessageOverlay.visibility = View.GONE
+                             updateManager.onConfirm()
+                         }
+                         binding.btnOverlayAction.requestFocus()
+                         
+                         if (force) {
+                             binding.btnOverlayCancel.visibility = View.GONE
+                         } else {
+                             binding.btnOverlayCancel.visibility = View.VISIBLE
+                             binding.btnOverlayCancel.setOnClickListener {
+                                 binding.rlMessageOverlay.visibility = View.GONE
+                             }
+                         }
+                     } else {
+                         binding.btnOverlayAction.text = "OK"
+                         binding.btnOverlayAction.setOnClickListener {
+                             binding.rlMessageOverlay.visibility = View.GONE
+                         }
+                         binding.btnOverlayAction.requestFocus()
+                         binding.btnOverlayCancel.visibility = View.GONE
+                     }
+                }
             })
         }
     }

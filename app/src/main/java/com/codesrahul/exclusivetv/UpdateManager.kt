@@ -46,6 +46,7 @@ class UpdateManager(
     interface CheckListener {
         fun onCheckStart()
         fun onCheckEnd()
+        fun onShowResult(title: String, message: String, isUpdate: Boolean, changelog: String, force: Boolean)
     }
 
     fun checkAndUpdate(isManualCheck: Boolean = false, listener: CheckListener? = null) {
@@ -109,8 +110,14 @@ class UpdateManager(
             
             if (isManualCheck) {
                 listener?.onCheckEnd()
+                
+                // Show result via listener if manual check
+                val title = if (update) "Update Available" else if (error) "Error" else "Up to Date"
+                val changelog = release?.changelog ?: ""
+                listener?.onShowResult(title, text, update, changelog, false) // Manual check logic
+            } else {
+                 updateUI(text, update, update, isManualCheck) // Auto check logic
             }
-            updateUI(text, update, update, isManualCheck) // Force update is true if update is available
         }
     }
 
@@ -121,22 +128,19 @@ class UpdateManager(
                 return
             }
 
-            if (update) {
-                val changelog = release?.changelog ?: "Bug fixes and performance improvements."
-                val dialog = ConfirmationFragment.newInstance(this@UpdateManager, text, changelog, update, force)
-                if (!activity.supportFragmentManager.isStateSaved) {
-                    dialog.show(activity.supportFragmentManager, TAG)
-                }
-                
-                // Notify listener to block usage
-                if (force && context is UpdateListener) {
-                    (context as UpdateListener).onForceUpdate()
-                }
-            } else if (isManualCheck) {
-                // Use ConfirmationFragment for "Up to Date" style too
-                val dialog = ConfirmationFragment.newInstance(this@UpdateManager, text, "", false, false)
-                if (!activity.supportFragmentManager.isStateSaved) {
-                    dialog.show(activity.supportFragmentManager, TAG)
+            // Only show dialog helper if NOT manual check (manual check handled by listener now)
+            if (!isManualCheck) {
+                if (update) {
+                    val changelog = release?.changelog ?: "Bug fixes and performance improvements."
+                    val dialog = ConfirmationFragment.newInstance(this@UpdateManager, text, changelog, update, force)
+                    if (!activity.supportFragmentManager.isStateSaved) {
+                        dialog.show(activity.supportFragmentManager, TAG)
+                    }
+                    
+                    // Notify listener to block usage
+                    if (force && context is UpdateListener) {
+                        (context as UpdateListener).onForceUpdate()
+                    }
                 }
             }
         }
