@@ -153,4 +153,10 @@
         <item name="android:background">#1AFFFFFF</item>
         <item name="android:layout_marginStart">56dp</item> 
     </style>
+
+    <style name="SettingsPanelStyle" parent="ExclusiveCard.Glass">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_gravity">end</item>
+    </style>
 </resources>

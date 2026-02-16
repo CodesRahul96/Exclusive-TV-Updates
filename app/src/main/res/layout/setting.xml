@@ -17,11 +17,8 @@
     <!-- Main Content Container restricted to right half -->
     <LinearLayout
         android:id="@+id/container"
-        android:layout_width="420dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="end"
+        style="@style/SettingsPanelStyle"
         android:orientation="vertical"
-        style="@style/ExclusiveCard.Glass"
         android:background="@color/surface_glass">
 
         <!-- Modern Header -->
