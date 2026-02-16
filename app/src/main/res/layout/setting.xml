@@ -573,6 +573,8 @@
         android:focusable="true"
         android:gravity="center"
         android:visibility="gone"
+        android:elevation="100dp"
+        android:translationZ="100dp"
         tools:visibility="visible">
 
         <LinearLayout
@@ -581,8 +583,7 @@
             android:background="@drawable/bg_premium_glass"
             android:orientation="vertical"
             android:padding="32dp"
-            android:gravity="center"
-            android:elevation="100dp">
+            android:gravity="center">
 
             <ProgressBar
                 android:layout_width="48dp"
@@ -611,6 +612,8 @@
         android:focusable="true"
         android:gravity="center"
         android:visibility="gone"
+        android:elevation="100dp"
+        android:translationZ="100dp"
         tools:visibility="visible">
 
         <LinearLayout
@@ -618,8 +621,7 @@
             android:layout_height="wrap_content"
             android:background="@drawable/bg_premium_glass"
             android:orientation="vertical"
-            android:padding="24dp"
-            android:elevation="100dp">
+            android:padding="24dp">
 
             <TextView
                 android:id="@+id/tv_overlay_title"
