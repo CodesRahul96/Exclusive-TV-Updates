@@ -247,9 +247,12 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
                         }
                     } else {
                         // User is in a different group than the one playing.
-                        // We do NOT switch group automatically (standard behavior: stay in current nav),
-                        // OR we force switch? Logic above suggests we stay or reset:
-                        // Original logic called listAdapter.toPosition(0) here which implies 'stay where we are' or 'reset to top'
+                        // Fix for Disappearing Channels: Ensure adapter is showing the current selected group
+                        // If adapter index is stale (e.g., cleared or pointing to old group), force update
+                        if (listAdapter.tvListModel.getIndex() != currentGroupPosition) { 
+                             updateList(currentGroupPosition)
+                        }
+                        
                         view?.post {
                             listAdapter.toPosition(0)
                         }

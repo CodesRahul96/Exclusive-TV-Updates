@@ -1348,13 +1348,22 @@ class WebFragment : Fragment() {
         } catch (e: Exception) {
         }
 
-        if (wakeLock?.isHeld == true) {
-            wakeLock?.release()
-        }
-        if (wifiLock?.isHeld == true) {
-            wifiLock?.release()
-        }
-        exoPlayer?.release()
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Exception) { }
+
+        try {
+            if (wifiLock?.isHeld == true) {
+                wifiLock?.release()
+            }
+        } catch (e: Exception) { }
+
+        try {
+            exoPlayer?.release()
+        } catch (e: Exception) { }
+
         exoPlayer = null
     }
 
@@ -1459,15 +1468,15 @@ class WebFragment : Fragment() {
         }
 
         val maxBuffer = when (bufferMode) {
-            1 -> 60000 // 60s
+            1 -> 50000 // 50s (Reduced from 60s for better memory)
             2 -> 15000 // 15s
-            else -> 60000 // Increased default to 60s
+            else -> 50000 // 50s (Reduced from 60s)
         }
 
         val startBuffer = when (bufferMode) {
             1 -> 2500 // 2.5s start
             2 -> 1000 // 1s start
-            else -> 1000 // Optimized default: 1s start (was 2000)
+            else -> 1000 // Optimized default: 1s start
         }
         
         // DYNAMIC BUFFER SIZING (Professional Solution)
@@ -1478,20 +1487,21 @@ class WebFragment : Fragment() {
         val totalMemGb = memoryInfo.totalMem / (1024 * 1024 * 1024.0)
         val isHighEnd = totalMemGb > 2.0
         
-        // Target Buffer: 128MB for High-End, 50MB for Low-End
+        // Target Buffer: Optimized to prevent GC stutter
+        // 64MB for High-End (was 128MB), 32MB for Low-End (was 50MB)
         val targetBufferBytes = if (isHighEnd) {
-            128 * 1024 * 1024 
+            64 * 1024 * 1024 
         } else {
-            50 * 1024 * 1024
+            32 * 1024 * 1024
         }
         
-        // Priority: Time for High-End (Smoothness), Size for Low-End (Stability)
-        val prioritizeTime = isHighEnd
+        // Priority: ALWAYS prioritize time for smooth playback
+        val prioritizeTime = true
 
         return DefaultLoadControl.Builder()
             .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                if (isHighEnd) 30000 else minBuffer, // 30s min for High-End (Safe for 3GB RAM @ 50Mbps)
+                if (isHighEnd) 30000 else minBuffer, // 30s min for High-End
                 if (isHighEnd) 50000 else maxBuffer, // 50s max for High-End
                 startBuffer,
                 2500 

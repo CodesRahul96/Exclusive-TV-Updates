@@ -653,27 +653,21 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         
         observersSet = true
         
-        // Take a snapshot to avoid ConcurrentModificationException during iteration
-        val snapshot = com.codesrahul.exclusivetv.models.TVList.listModel.toList()
-        
-        snapshot.forEach { tvModel ->
-            tvModel.like.removeObservers(this)
-            tvModel.like.observe(this) { liked ->
-                if (liked != null) {
-                    val collectionModel = com.codesrahul.exclusivetv.models.TVList.groupModel.getTVListModel(0)
-                    if (liked) {
-                        collectionModel?.replaceTVModel(tvModel)
-                    } else {
-                        collectionModel?.removeTVModel(tvModel.tv.id)
-                    }
-                    com.codesrahul.exclusivetv.SP.setLike(tvModel.tv.id, liked)
-                    
-                    // Refresh menu if it's showing favorites or if we need to update hearts
-                    if (!menuFragment.isHidden) {
-                        handler.post { 
-                            if (!menuFragment.isHidden) { // Re-check visibility
-                                menuFragment.update() 
-                            }
+        // Single centralized observer for ALL channel "like" changes
+        com.codesrahul.exclusivetv.models.TVList.likeChangedEvent.observe(this) { (tvModel, liked) ->
+            if (tvModel != null) {
+                val collectionModel = com.codesrahul.exclusivetv.models.TVList.groupModel.getTVListModel(0)
+                if (liked) {
+                    collectionModel?.replaceTVModel(tvModel)
+                } else {
+                    collectionModel?.removeTVModel(tvModel.tv.id)
+                }
+                
+                // Refresh menu if it's showing favorites or if we need to update hearts
+                if (!menuFragment.isHidden) {
+                    handler.post { 
+                        if (!menuFragment.isHidden) { // Re-check visibility
+                            menuFragment.update() 
                         }
                     }
                 }

@@ -99,6 +99,12 @@ object M3UParser {
                         }
                     }
 
+                    if (trimmedLine.contains("#EXT-X-TARGETDURATION") || 
+                        trimmedLine.contains("#EXT-X-STREAM-INF") || 
+                        trimmedLine.contains("#EXT-X-MEDIA-SEQUENCE")) {
+                        return emptyList()
+                    }
+
                     if (trimmedLine.startsWith("#EXTM3U")) {
                         isM3U = true
                         // Extract global properties from #EXTM3U tag
@@ -333,32 +339,37 @@ object M3UParser {
     // Extracted name helper
     private fun extractNameFromUrl(url: String): String {
         try {
-            val uri = android.net.Uri.parse(url)
-            val pathSegments = uri.pathSegments
-            if (!pathSegments.isNullOrEmpty()) {
-                 var pIdx = pathSegments.lastIndex
-                 var candidate = pathSegments[pIdx]
-
-                 if (candidate.equals("index.mpd", ignoreCase = true) || 
-                     candidate.equals("master.m3u8", ignoreCase = true) ||
-                     candidate.equals("manifest.mpd", ignoreCase = true) ||
-                     candidate.startsWith("index", ignoreCase = true) ||
-                     candidate.startsWith("playlist", ignoreCase = true)) {
-                     pIdx--
-                 }
-
-                 if (pIdx >= 0) {
-                     candidate = pathSegments[pIdx]
-                     if (candidate.length > 20 && candidate.matches(Regex("[a-fA-F0-9]+"))) {
-                          pIdx--
+            // Fast Path: String manipulation to avoid expensive Uri.parse for thousands of items
+            val queryStart = url.indexOf('?')
+            val pathPart = if (queryStart != -1) url.substring(0, queryStart) else url
+            val segments = pathPart.split('/')
+            
+            if (segments.isEmpty()) return ""
+            
+            var pIdx = segments.lastIndex
+            while (pIdx >= 0 && (segments[pIdx].isEmpty() || segments[pIdx].contains("."))) {
+                val s = segments[pIdx].lowercase()
+                if (s.endsWith(".m3u8") || s.endsWith(".mpd") || s.endsWith(".ts") || s.endsWith(".m4s")) {
+                     val name = s.substringBeforeLast('.')
+                     if (name != "index" && name != "master" && name != "manifest" && name != "playlist" && name != "chunk") {
+                         // If it's a meaningful filename, use it
+                         return name.replace('_', ' ').replace('-', ' ').trim()
                      }
+                }
+                pIdx--
+            }
+            
+            if (pIdx >= 0) {
+                 var name = segments[pIdx]
+                 // Skip hash-like hex IDs
+                 if (name.length > 20 && name.matches(Regex("[a-fA-F0-9]+"))) {
+                     pIdx--
+                     if (pIdx >= 0) name = segments[pIdx]
                  }
-
-                 if (pIdx >= 0) {
-                     var params = pathSegments[pIdx]
-                     params = params.replace(Regex("[-_]\\d{8,}$"), "")
-                     return params.replace('_', ' ').replace('-', ' ').trim()
-                 }
+                 
+                 // Strip common segment/timestamp suffixes (e.g., _12345678)
+                 name = name.replace(Regex("[-_]\\d{5,}$"), "")
+                 return name.replace('_', ' ').replace('-', ' ').trim()
             }
         } catch (e: Exception) {
         }

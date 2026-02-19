@@ -73,6 +73,7 @@ class TVModel(var tv: TV) : ViewModel() {
     fun setLike(liked: Boolean) {
         _like.postValue(liked)
         SP.setLike(tv.id, liked)
+        TVList.notifyLikeChanged(this, liked)
     }
 
     fun setReady() {

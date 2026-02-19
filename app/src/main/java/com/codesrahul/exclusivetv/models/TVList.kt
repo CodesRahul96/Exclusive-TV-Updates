@@ -75,6 +75,13 @@ object TVList {
     val position: LiveData<Int>
         get() = _position
 
+    private val _likeChangedEvent = MutableLiveData<Pair<TVModel, Boolean>>()
+    val likeChangedEvent: LiveData<Pair<TVModel, Boolean>> get() = _likeChangedEvent
+
+    fun notifyLikeChanged(model: TVModel, liked: Boolean) {
+        _likeChangedEvent.postValue(Pair(model, liked))
+    }
+
     private val _importProgress = MutableLiveData<Int>()
     val importProgress: LiveData<Int>
         get() = _importProgress
@@ -811,29 +818,26 @@ object TVList {
             // Broader check for playlists
             // If it's NOT a clearly identified stream extension, treat it as a potential playlist
             // specially if coming from a dynamic API
-            val isStream = url.contains(".m3u8", ignoreCase = true) || 
+            val isStream = (url.contains(".m3u8", ignoreCase = true) || 
                            url.contains(".mpd", ignoreCase = true) ||
                            url.contains(".ts", ignoreCase = true) ||
                            url.contains(".mkv", ignoreCase = true) ||
                            url.contains(".mp4", ignoreCase = true) ||
-                           url.contains(".m3u", ignoreCase = true) || // If it has .m3u, it's a playlist we WANT to expand, but wait...
                            url.startsWith("rtsp://", ignoreCase = true) ||
                            url.startsWith("rtmp://", ignoreCase = true) ||
                            url.contains("/manifest", ignoreCase = true) ||
                            url.contains("playlist.m3u8", ignoreCase = true) ||
                            url.contains("stream/", ignoreCase = true) ||
                            url.contains("/live/", ignoreCase = true) ||
-                           url.contains("/play/", ignoreCase = true) ||
-                           url.contains("token=", ignoreCase = true) ||
-                           url.contains("key=", ignoreCase = true) ||
-                           url.contains("?", ignoreCase = true) // Query params usually imply dynamic streams
+                           url.contains("/play/", ignoreCase = true)) && 
+                           !url.contains(".m3u", ignoreCase = true) // .m3u is usually an IPTV list we WANT to expand
 
             // If it has children already, it's a group, don't expand
             if (tv.child.isNotEmpty()) {
                  async { listOf(tv) }
             }
-            // If it's a candidate, fetch asynchronously
-            else if (!isStream && url.startsWith("http")) {
+            // If it's a candidate (not a stream, or a .m3u), fetch asynchronously
+            else if ((!isStream || url.contains(".m3u", ignoreCase = true)) && url.startsWith("http")) {
                 async {
                     semaphore.acquire()
                     try {
@@ -913,7 +917,8 @@ object TVList {
         }
 
         try {
-                // Preparation Phase (Background)
+            // 1. Preparation Phase (Offloaded to Default dispatcher)
+            val preparedData = withContext(Dispatchers.Default) {
                 val map: MutableMap<String, MutableList<TV>> = mutableMapOf()
                 for (v in list) {
                     if (v.group !in map) {
@@ -941,7 +946,7 @@ object TVList {
 
                 data class PreparedGroup(val originalName: String, val displayName: String, val index: Int, val channels: List<TV>)
                 val preparedGroups = mutableListOf<PreparedGroup>()
-                var groupIndex = 2
+                var groupIdx = 2
                 
                 val hiddenCategories = OrderPreferenceManager.getHiddenCategories()
                 
@@ -979,89 +984,82 @@ object TVList {
                          }
                     }
                     
-                    preparedGroups.add(PreparedGroup(originalCategoryName, displayCategoryName, groupIndex, sortedChannels))
-                    groupIndex++
+                    preparedGroups.add(PreparedGroup(originalCategoryName, displayCategoryName, groupIdx, sortedChannels))
+                    groupIdx++
                 }
-
-                // Update Phase (Main Thread)
-                withContext(Dispatchers.Main) {
-                    val listModelSnapshot = listModel 
-                    val listModelNew: MutableList<TVModel> = mutableListOf()
-                    val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
-                    
-                    var id = 0
-                    val currentGroupModels = groupModel.getTVListModelList()
-                    val oldGroupMap = currentGroupModels.associateBy { it.getOriginalName() }
-                    
-                    val newGroupList = mutableListOf<TVListModel>()
-                    
-                    // 1. Preserve/Create Special Groups (Collection, All)
-                    val collectionGroup = groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0)
-                    val allChannelsGroup = groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1)
-                    
-
-                    
-                    newGroupList.add(collectionGroup)
-                    newGroupList.add(allChannelsGroup)
-
-                    // 2. Process Prepared Groups
-                    for ((itemOriginalName, itemDisplayName, idx, channels) in preparedGroups) {
-                        // SKIP adding empty/Uncategorized groups to the UI menu (newGroupList)
-                        // but we MUST still process their channels to populate listModelNew (for "All channels")
-                        val isUncategorized = itemOriginalName.isBlank() || itemOriginalName == "Uncategorized"
-                        
-                        val tvListModel = if (!isUncategorized) {
-                            val model = oldGroupMap[itemOriginalName] ?: TVListModel(itemDisplayName, itemOriginalName, idx)
-                            model.updateMetadata(itemDisplayName, idx)
-                            model
-                        } else null
-
-                        val groupChannels = mutableListOf<TVModel>()
-                        for (tv in channels) {
-                             tv.id = id
-                             val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
-                             tvModel.groupIndex = idx
-                             tvModel.listIndex = groupChannels.size
-                             
-                             groupChannels.add(tvModel)
-                             listModelNew.add(tvModel)
-                             id++
-                        }
-
-                        if (tvListModel != null) {
-                            tvListModel.setTVListModel(groupChannels)
-                            newGroupList.add(tvListModel)
-                        }
-                    }
-
-                    // --- POPULATE "My Collection" (Correctly placed after list is built) ---
-                    val likedChannels = listModelNew.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
-                    collectionGroup.setTVListModel(likedChannels)
-
-                    listModel = listModelNew
-                    groupModel.setTVListModelList(newGroupList)
-                    
-                    // All channels
-                    allChannelsGroup.setTVListModel(listModel)
-
-                    groupModel.setChange()
-                    
-                    if (SP.epgEnabled) {
-                        EPGManager.init(ctx)
-                        CoroutineScope(Dispatchers.IO).launch {
-                            try {
-                                EPGManager.fetchEPG(force = false) // Don't force every refresh
-                                withContext(Dispatchers.Main) {
-                                    listModel.forEach { it.updateEPG() }
-                                }
-                            } catch (e: Exception) {
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Refresh failed", e)
+                preparedGroups
             }
+
+            // 2. Update Phase (Main Thread)
+            withContext(Dispatchers.Main) {
+                val listModelSnapshot = listModel 
+                val listModelNew: MutableList<TVModel> = mutableListOf()
+                val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
+                
+                var id = 0
+                val currentGroupModels = groupModel.getTVListModelList()
+                val oldGroupMap = currentGroupModels.associateBy { it.getOriginalName() }
+                
+                val newGroupList = mutableListOf<TVListModel>()
+                
+                // Preserve/Create Special Groups
+                val collectionGroup = groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0)
+                val allChannelsGroup = groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1)
+                
+                newGroupList.add(collectionGroup)
+                newGroupList.add(allChannelsGroup)
+
+                for (group in preparedData) {
+                    val isUncategorized = group.originalName.isBlank() || group.originalName == "Uncategorized"
+                    
+                    val tvListModel = if (!isUncategorized) {
+                        val model = oldGroupMap[group.originalName] ?: TVListModel(group.displayName, group.originalName, group.index)
+                        model.updateMetadata(group.displayName, group.index)
+                        model
+                    } else null
+
+                    val groupChannels = mutableListOf<TVModel>()
+                    for (tv in group.channels) {
+                         tv.id = id
+                         val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
+                         tvModel.groupIndex = group.index
+                         tvModel.listIndex = groupChannels.size
+                         
+                         groupChannels.add(tvModel)
+                         listModelNew.add(tvModel)
+                         id++
+                    }
+
+                    if (tvListModel != null) {
+                        tvListModel.setTVListModel(groupChannels)
+                        newGroupList.add(tvListModel)
+                    }
+                }
+
+                val likedChannels = listModelNew.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
+                collectionGroup.setTVListModel(likedChannels)
+
+                listModel = listModelNew
+                groupModel.setTVListModelList(newGroupList)
+                allChannelsGroup.setTVListModel(listModel)
+                groupModel.setChange()
+                
+                if (SP.epgEnabled) {
+                    EPGManager.init(ctx)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            EPGManager.fetchEPG(force = false)
+                            withContext(Dispatchers.Main) {
+                                listModel.forEach { it.updateEPG() }
+                            }
+                        } catch (e: Exception) {
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Refresh failed", e)
+        }
     }
 
     private fun checkChannelsInBackground() {
