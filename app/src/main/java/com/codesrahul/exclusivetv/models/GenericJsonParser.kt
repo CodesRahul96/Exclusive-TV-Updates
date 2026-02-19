@@ -25,20 +25,8 @@ object GenericJsonParser {
             } else if (peek == JsonToken.BEGIN_OBJECT) {
                 // Check if root object has a known array field "channels", "list", etc.
                 jsonReader.beginObject()
-                while (jsonReader.hasNext()) {
-                    val name = jsonReader.nextName()
-                    val token = jsonReader.peek()
-                    if (token == JsonToken.BEGIN_ARRAY) {
-                        // Heuristic: If key looks like a list, parse it
-                        if (name.contains("channel") || name.contains("list") || name.contains("streams")) {
-                             parseArray(jsonReader, list)
-                        } else {
-                             jsonReader.skipValue()
-                        }
-                    } else {
-                        jsonReader.skipValue()
-                    }
-                }
+                // RECURSIVE SEARCH: We now delegate to a helper that can go deep
+                parseObjectRecursive(jsonReader, list)
                 jsonReader.endObject()
             }
         } catch (e: Exception) {
@@ -47,6 +35,33 @@ object GenericJsonParser {
             try { jsonReader.close() } catch (e: Exception) {}
         }
         return list
+    }
+
+    // New Recursive Helper
+    private fun parseObjectRecursive(reader: JsonReader, list: MutableList<TV>) {
+        while (reader.hasNext()) {
+             val name = reader.nextName()
+             val token = reader.peek()
+             
+             if (token == JsonToken.BEGIN_ARRAY) {
+                 // EXPANDED KEY LIST
+                 if (name.contains("channel") || name.contains("list") || name.contains("streams") ||
+                     name == "data" || name == "result" || name == "cats" || name == "categories" || name == "msg") {
+                      parseArray(reader, list)
+                 } else {
+                      // Fallback: Check if it's an unnamed array of objects? 
+                      // For now, let's skip unknown arrays to avoid junk
+                      reader.skipValue()
+                 }
+             } else if (token == JsonToken.BEGIN_OBJECT) {
+                 // RECURSION: If we find an object (e.g. "data": { ... }), go inside!
+                 reader.beginObject()
+                 parseObjectRecursive(reader, list) // Go deeper
+                 reader.endObject()
+             } else {
+                 reader.skipValue()
+             }
+        }
     }
 
     // Overload for String compatibility
@@ -176,7 +191,21 @@ object GenericJsonParser {
                     if (headers == null) headers = mutableMapOf()
                     headers["Referer"] = reader.nextString()
                 }
-                else -> reader.skipValue()
+                else -> {
+                    // HEURISTIC FALLBACK: If we haven't found strict high-confidence keys yet,
+                    // check if this unknown field looks like a URL or Name.
+                    if (token == JsonToken.STRING) {
+                        val value = reader.nextString()
+                        if (url == null && (value.startsWith("http") || value.startsWith("rtmp"))) {
+                            url = value // Found a potential stream link
+                        } else if (name == null && value.length < 60 && !value.startsWith("http") && !value.startsWith("{")) {
+                             // Assuming reasonable name length and not JSON or URL
+                             name = value
+                        }
+                    } else {
+                        reader.skipValue()
+                    }
+                }
             }
         }
         reader.endObject()

@@ -46,4 +46,9 @@
     <color name="title_blur">@color/text_secondary</color>
     <color name="description_blur">@color/text_tertiary</color>
     <color name="text_focus">#FFFFFF</color>
+    
+    <!-- Standard Material Colors -->
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="accent_green">#4CAF50</color>
 </resources>

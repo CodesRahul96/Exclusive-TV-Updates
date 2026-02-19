@@ -10,8 +10,8 @@ object RootCheckUtil {
     }
 
     private fun checkRootMethod1(): Boolean {
-        val buildTags = android.os.Build.TAGS
-        return buildTags != null && buildTags.contains("test-keys")
+        // Disabled: Many Android TV boxes use test-keys by default, which causes false positives.
+        return false
     }
 
     private fun checkRootMethod2(): Boolean {
@@ -26,11 +26,7 @@ object RootCheckUtil {
             "/system/bin/failsafe/su",
             "/data/local/su",
             "/su/bin/su",
-            "/system/xbin/daemonsu",
-            "/data/local/xbin/daemonsu",
-            "/sbin/.magisk",
-            "/node_modules",
-            "/ssh/bin/sudo"
+            "/system/xbin/daemonsu"
         )
         return paths.any { java.io.File(it).exists() }
     }
@@ -46,10 +42,6 @@ object RootCheckUtil {
     }
     
     private fun checkRootMethod4(): Boolean {
-        // Check for known Root Apps Package Names
-        // This requires Context to be accurate, but here we can't easily check packages without Context.
-        // We will skip package check in this Util unless we pass context. 
-        // For now, let's check for standard "su" executable execution
         var process: Process? = null
         return try {
             process = Runtime.getRuntime().exec("su")

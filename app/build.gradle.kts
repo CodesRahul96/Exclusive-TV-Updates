@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         applicationId = "com.codesrahul.exclusivetv"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 34
         multiDexEnabled = true
         versionCode = if (project.hasProperty("versionCodeOverride")) {
@@ -176,6 +176,8 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-config-ktx")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
 
 
     implementation("androidx.cardview:cardview:1.0.0")

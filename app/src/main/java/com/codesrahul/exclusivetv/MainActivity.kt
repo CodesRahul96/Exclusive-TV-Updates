@@ -52,6 +52,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var epgGridFragment = EpgGridFragment()
     private var offlineFragment = OfflineFragment()
     private var maintenanceFragment = MaintenanceFragment()
+    private var loginFragment = LoginFragment() // [NEW]
 
     private val spListener = object : OnSharedPreferenceChangeListener {
         override fun onSharedPreferenceChanged(key: String) {
@@ -155,70 +156,33 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
         
-        // Initialize Firebase Remote Config (Triggers parallel network request for Main API)
-        initRemoteConfig()
-        // Initial network check
-        if (!isNetworkAvailable()) {
-            handler.postDelayed({
-                showOfflineScreen()
-            }, 500) // Small delay to let fragments settle
-        }
-
-        startRootMonitoring()
+        // Phase 1: Basic UI & Security
+        initBasicSetup(savedInstanceState)
         
-        // Sync network clock
-        CoroutineScope(Dispatchers.IO).launch { Utils.init() }
+        // Phase 2: Start Professional Bootstrap (Async but Synchronized)
+        bootstrap()
+    }
 
-//        requestWindowFeature(FEATURE_NO_TITLE)
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN
-        )
-
-        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            windowInsetsController.let { controller ->
-                controller.isAppearanceLightNavigationBars = true
-                controller.isAppearanceLightStatusBars = true
-                controller.hide(WindowInsetsCompat.Type.statusBars())
-                controller.hide(WindowInsetsCompat.Type.navigationBars())
-                controller.systemBarsBehavior =
-                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        }
-
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.navigationBarDividerColor = Color.TRANSPARENT
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val lp = window.attributes
-            lp.layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            window.setAttributes(lp)
-        }
-
-        window.decorView.apply {
-            systemUiVisibility =
-                View.SYSTEM_UI_FLAG_FULLSCREEN or
-                        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                        View.SYSTEM_UI_FLAG_IMMERSIVE
-        }
-
+    private fun initBasicSetup(savedInstanceState: Bundle?) {
+        // Initial setup
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
         setContentView(R.layout.activity_main)
+        
+        // Hide System UI after view creation
+        try {
+            hideSystemUI()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to hide system UI", e)
+        }
+
+        // Initialize Gestures
+        gestureListener = GestureListener()
+        gestureDetector = GestureDetector(this, gestureListener)
 
         if (savedInstanceState == null) {
-            supportFragmentManager.beginTransaction()
+            val transaction = supportFragmentManager.beginTransaction()
                 .add(R.id.main_browse_fragment, webFragment)
                 .add(R.id.main_browse_fragment, errorFragment)
                 .add(R.id.main_browse_fragment, loadingFragment)
@@ -232,75 +196,112 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .add(R.id.main_browse_fragment, trackSelectionFragment)
                 .add(R.id.main_browse_fragment, offlineFragment)
                 .add(R.id.main_browse_fragment, maintenanceFragment)
-                .hide(menuFragment)
-                .hide(settingFragment)
-                .hide(importProgressFragment)
-                .hide(trackSelectionFragment)
-                .hide(offlineFragment)
-                .hide(maintenanceFragment)
-                .hide(epgGridFragment)
-                .hide(errorFragment)
-                .show(loadingFragment)
-                .hide(timeFragment)
+                .add(R.id.main_browse_fragment, loginFragment)
+                .hide(menuFragment).hide(settingFragment).hide(importProgressFragment)
+                .hide(trackSelectionFragment).hide(offlineFragment).hide(maintenanceFragment)
+                .hide(epgGridFragment).hide(errorFragment).hide(timeFragment)
                 .hide(webFragment)
-                .commit()
-        } else {
-             // restore fragments
-             val fragments = supportFragmentManager.fragments
-             for (fragment in fragments) {
-                 if (fragment is WebFragment) {
-                     webFragment = fragment
-                 }
-                 if (fragment is ErrorFragment) {
-                     errorFragment = fragment
-                 }
-                 if (fragment is LoadingFragment) {
-                     loadingFragment = fragment
-                 }
-                 if (fragment is InfoFragment) {
-                     infoFragment = fragment
-                 }
-                 if (fragment is ChannelFragment) {
-                     channelFragment = fragment
-                 }
-                 if (fragment is TimeFragment) {
-                     timeFragment = fragment
-                 }
-                 if (fragment is MenuFragment) {
-                     menuFragment = fragment
-                 }
-                 if (fragment is SettingFragment) {
-                     settingFragment = fragment
-                 }
-                 if (fragment is ImportProgressFragment) {
-                     importProgressFragment = fragment
-                 }
-                 if (fragment is TrackSelectionFragment) {
-                     trackSelectionFragment = fragment
-                 }
-                 if (fragment is MaintenanceFragment) {
-                     maintenanceFragment = fragment
-                 }
-             }
+
+            // Smart Startup: Check Login Status
+            if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+                // Logged in: Show Loading (Bootstrap will handle the rest)
+                transaction.hide(loginFragment).show(loadingFragment)
+            } else {
+                // Not Logged in: Show Login
+                transaction.show(loginFragment).hide(loadingFragment)
+            }
+            
+            transaction.commit()
         }
 
-        gestureListener = GestureListener()
-        gestureDetector = GestureDetector(this, gestureListener)
-
-        showTime()
-
-        updateManager = UpdateManager(this, com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
-        updateManager.checkAndUpdate()
-        
-        // Initialize watermark
         setupWatermark()
-        
-        startPeriodicRefresh()
-
-        // EPG Update Listener
-        SP.setOnSharedPreferenceChangeListener(spListener)
-
         setupObservers()
+        startRootMonitoring()
+        CoroutineScope(Dispatchers.IO).launch { Utils.init() }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            try {
+                hideSystemUI()
+            } catch (e: Exception) {
+                // Ignore errors during focus change
+            }
+        }
+    }
+
+    private fun hideSystemUI() {
+        // Use WindowCompat for backward compatibility and safety
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    private fun bootstrap() {
+        Log.i(TAG, "Starting Professional Bootstrap Flow...")
+        showFragment(loadingFragment)
+        
+        // Step 1: Initialize Remote Config
+        initRemoteConfig { 
+            // Step 2: Check Auth & Subscription (Only after config is fetched)
+            checkAuthAndSubscription { 
+                // Step 3: Trigger Final Data Load (Only after plan is known)
+                Log.i(TAG, "Bootstrap Complete. Triggering final TVList update.")
+                runOnUiThread {
+                    onBootstrapComplete()
+                }
+            }
+        }
+    }
+
+    private fun onBootstrapComplete() {
+        hideFragment(loginFragment)
+        com.codesrahul.exclusivetv.models.TVList.update(this, silent = true)
+        
+        // Auto-play last channel if available
+        val pos = TVList.position.value ?: -1
+        if (pos != -1 && TVList.getTVModel(pos) != null) {
+            playChannel(TVList.getTVModel(pos)!!)
+        } else if (TVList.listModel.isNotEmpty()) {
+            com.codesrahul.exclusivetv.models.TVList.setPosition(0)
+        }
+    }
+
+    private fun checkAuthAndSubscription(onFinished: () -> Unit) {
+        val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        if (user == null) {
+            runOnUiThread {
+                webFragment.stop()
+                showFragment(loginFragment)
+                hideFragment(loadingFragment)
+            }
+        } else {
+            runOnUiThread {
+                showFragment(loadingFragment)
+                hideFragment(loginFragment)
+            }
+            SubscriptionManager.checkSubscription(
+                onSuccess = { 
+                    runOnUiThread { onFinished() } 
+                },
+                onError = { error ->
+                    runOnUiThread {
+                        Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                        webFragment.stop() // Stop any previous playback
+                        showFragment(loginFragment)
+                        hideFragment(loadingFragment)
+                    }
+                }
+            )
+        }
+    }
+
+    fun onLoginSuccess() {
+        // Full re-bootstrap on manual login
+        bootstrap()
     }
 
     private fun setupObservers() {
@@ -397,10 +398,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         refreshHandler.postDelayed(object : Runnable {
             override fun run() {
                 if (!SecurityUtil.isAppOutdated && !isMaintenanceMode) {
-                    val config = SP.config
-                    if (!config.isNullOrEmpty() && config.startsWith("http")) {
-                        TVList.update(this@MainActivity, config, silent = true)
-                    }
+                    TVList.update(this@MainActivity, silent = true)
                     lastRefreshTime = Utils.getDateTimestamp() * 1000L
                 }
                 refreshHandler.postDelayed(this, refreshInterval)
@@ -500,22 +498,18 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         watermarkContainer.layoutParams = layoutParams
     }
 
-    private fun initRemoteConfig() {
+    private fun initRemoteConfig(onComplete: () -> Unit) {
         val remoteConfig = FirebaseRemoteConfig.getInstance()
         val configSettings = remoteConfigSettings {
             minimumFetchIntervalInSeconds = if (BuildConfig.DEBUG) 0 else 3600 // 0 for debug, 1 hour for prod
         }
         remoteConfig.setConfigSettingsAsync(configSettings)
 
-        // IMMEDIATE LOAD: Trigger update with cached config immediately
-        val cachedConfig = SP.config
-        if (!cachedConfig.isNullOrEmpty()) {
-             TVList.update(this, silent = true)
-        }
-        
         // Set defaults
         val defaults = mapOf(
             "main_api_url" to TVList.DEFAULT_CONFIG_URL,
+            "standard_api_url" to TVList.DEFAULT_CONFIG_URL,
+            "premium_api_url" to TVList.DEFAULT_PREMIUM_URL,
             SecretManager.getMaintenanceModeKey() to false
         )
         remoteConfig.setDefaultsAsync(defaults)
@@ -537,6 +531,17 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
                 val apiUrl = remoteConfig.getString("main_api_url")
                 
+                // Fetch Tiered Configs
+                val standardUrl = remoteConfig.getString("standard_api_url")
+                val premiumUrl = remoteConfig.getString("premium_api_url")
+                
+                if (standardUrl.isNotBlank()) {
+                    SP.standardConfig = standardUrl
+                }
+                if (premiumUrl.isNotBlank()) {
+                    SP.premiumConfig = premiumUrl
+                }
+                
                 isMaintenanceMode = remoteConfig.getBoolean(SecretManager.getMaintenanceModeKey())
                 SecurityUtil.isMaintenanceMode = isMaintenanceMode
                 if (isMaintenanceMode) {
@@ -550,11 +555,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         Log.d(TAG, "Config URL changed: $apiUrl")
                         SP.config = apiUrl
                         SP.addPlaylistUrl(apiUrl)
-                        
-                        // ONLY trigger update if URL changed (The initRemoteConfig call handles the startup sync)
-                        TVList.update(this, silent = true)
                     }
                 }
+                
+                // CRITICAL: Call the callback to advance the bootstrap
+                onComplete()
             }
     }
 
@@ -597,6 +602,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     fun playChannel(tvModel: TVModel) {
         if (isMaintenanceMode) return
+        if (!loginFragment.isHidden) return // Prevent playback behind login screen
         
         // Hide error and show loader
         hideErrorFragment()
@@ -930,6 +936,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             webFragment.refreshPlayback()
         }
     }
+
 
     private fun showFragment(fragment: Fragment) {
         if (!fragment.isHidden) {
@@ -1544,7 +1551,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         rightArrowHandler.removeCallbacksAndMessages(null)
         SP.removeOnSharedPreferenceChangeListener(spListener)
         server?.stop()
-        updateManager.destroy()
+        if (::updateManager.isInitialized) {
+            updateManager.destroy()
+        }
         super.onDestroy()
     }
 
@@ -1571,7 +1580,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onForceUpdate() {
         SecurityUtil.isAppOutdated = true
-        com.codesrahul.exclusivetv.models.TVList.clear()
+        com.codesrahul.exclusivetv.models.TVList.clear(this)
         
         // Stop playback
         webFragment.stop()
@@ -1586,19 +1595,24 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun onAppMaintenance() {
-        isMaintenanceMode = true
-    SecurityUtil.isMaintenanceMode = true
-        com.codesrahul.exclusivetv.models.TVList.clear()
-        
-        // Stop playback and server
-        webFragment.stop()
-        server?.stop()
-        server = null
-        
-        // Show maintenance screen
-        showFragment(maintenanceFragment)
-        
-        Toast.makeText(this, "System under maintenance", Toast.LENGTH_LONG).show()
+        runOnUiThread {
+            isMaintenanceMode = true
+            SecurityUtil.isMaintenanceMode = true
+            com.codesrahul.exclusivetv.models.TVList.clear(this)
+            
+            // Stop playback and server
+            webFragment.stop()
+            server?.stop()
+            server = null
+            
+            // Show maintenance screen
+            showFragment(maintenanceFragment)
+            hideFragment(loginFragment)
+            hideFragment(loadingFragment)
+            
+            Log.w(TAG, "System under maintenance. UI locked.")
+            Toast.makeText(this, "System under maintenance", Toast.LENGTH_LONG).show()
+        }
     }
 
     companion object {

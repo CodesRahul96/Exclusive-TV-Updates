@@ -28,14 +28,21 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
 import com.codesrahul.exclusivetv.SecurityUtil
+import com.codesrahul.exclusivetv.SubscriptionManager
 import java.io.BufferedReader
 import java.io.StringReader
 import java.io.Reader
+import java.io.FileWriter
+import java.util.concurrent.ConcurrentHashMap
+import com.google.gson.stream.JsonWriter
 
 object TVList {
-    fun clear() {
+    fun clear(context: Context) {
         list = emptyList()
         listModel = emptyList()
+        sourceCache.clear()
+        lastListHash = 0
+        
         // Create empty structures to update valid state
         val emptyGroups = listOf(
             TVListModel("My Collection", "My Collection", 0),
@@ -49,6 +56,15 @@ object TVList {
         EPGManager.clear()
         
         try {
+            // Clear Room Database
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    com.codesrahul.exclusivetv.db.AppDatabase.getDatabase(context).clearAllTables()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
             if (::appDirectory.isInitialized) {
                 File(appDirectory, FILE_NAME).delete()
             }
@@ -57,7 +73,9 @@ object TVList {
     }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    const val DEFAULT_CONFIG_URL = "https://exclusivetvapi.indevs.in/api/channels"
+    // Add fallback URL here
+    const val DEFAULT_CONFIG_URL = "https://rebroadcast.indevs.in/freeTV"
+    const val DEFAULT_PREMIUM_URL = "https://exclusivetvapi.indevs.in/api/channels"
     private lateinit var appDirectory: File
 
     private lateinit var serverUrl: String
@@ -122,12 +140,40 @@ object TVList {
             // OPTIMIZATION: Use streaming parser instead of readText() to avoid OOM
             try {
                 if (file.exists()) {
-                    val result = parseUniversalFile(file)
-                    if (result.isNotEmpty()) {
-                        list = result
-                        refreshModels(MyTVApplication.getInstance())
+                    val isPremium = "Premium".equals(SubscriptionManager.planName, ignoreCase = true)
+                    
+                    // SECURITY: If Standard user, don't even load a "fat" cache file 
+                    // which might be left over from a previous Premium session/leak
+                    // INCREASED LIMIT: 50 KB was too small for M3U, increased to 500 KB (safe for ~2000 channels)
+                    if (!isPremium && file.length() > 500 * 1024) { 
+                         Log.w(TAG, "Standard user skipping large cache file (${file.length()} bytes)")
+                         file.delete()
                     }
-                } else {
+
+                    // CACHE PURGE: Check for polluted "JioStar" or "iptv" content from previous fallback
+                    if (file.exists()) {
+                         try {
+                             // Read first 2KB to check for signatures
+                             val header = file.readText().take(2048)
+                             if (header.contains("JioStar", ignoreCase = true) || 
+                                 header.contains("iptv", ignoreCase = true) ||
+                                 header.contains("scraper", ignoreCase = true)) {
+                                 Log.w(TAG, "Purging polluted cache file containing JioStar/IPTV data.")
+                                 file.delete()
+                             }
+                         } catch (e: Exception) {}
+                    }
+                    
+                    if (file.exists()) {
+                        val result = parseUniversalFile(file)
+                        if (result.isNotEmpty()) {
+                            list = result
+                            refreshModels(MyTVApplication.getInstance())
+                        }
+                    }
+                }
+                
+                if (!::list.isInitialized || list.isEmpty()) {
                     context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8).use { reader ->
                          // Use streaming parser for resource
                          val result = parseUniversal(reader)
@@ -146,8 +192,13 @@ object TVList {
             }
 
             // Initial config setup
-            if (SP.config.isNullOrEmpty()) {
+            if (SP.config.isNullOrEmpty() || SP.config?.contains("rebroadcast.indevs.in") == true) {
                 SP.config = DEFAULT_CONFIG_URL
+            }
+            
+            // Clean up tiered configs if they point to dead URLs
+            if (SP.standardConfig?.contains("rebroadcast.indevs.in") == true) {
+                SP.standardConfig = "" // Let it fallback to DEFAULT_CONFIG_URL
             }
 
             val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
@@ -191,7 +242,7 @@ object TVList {
     val importStatus: LiveData<String>
         get() = _importStatus
 
-    private val sourceCache = mutableMapOf<String, List<TV>>()
+    private val sourceCache = ConcurrentHashMap<String, List<TV>>()
 
     fun update(ctx: Context, silent: Boolean = false, force: Boolean = false) {
         CoroutineScope(Dispatchers.IO).launch {
@@ -216,35 +267,71 @@ object TVList {
                 
                 isUpdating = true
                 
-                // Ensure all URLs from preferences are included, but prioritize Main API
-                val mainUrl = SP.config ?: DEFAULT_CONFIG_URL
+                // --- STEP 1: RESOLVE PLAN & URLs ---
+                val plan = SubscriptionManager.planName
+                val isPremium = "Premium".equals(plan, ignoreCase = true)
+                
+                val sCfg = SP.standardConfig
+                val pCfg = SP.premiumConfig
+                val standardUrl = sCfg ?: ""
+                val premiumUrl = pCfg ?: ""
+                val fallbackUrl = SP.config ?: DEFAULT_CONFIG_URL
+                
+                
                 val urls = mutableListOf<String>()
-                
-                // 1. Get Custom Playlists (filter out empty or Main API leaks)
-                val customUrls = SP.playlistUrls.filter { url ->
-                    url.isNotEmpty() && url != mainUrl && !url.startsWith(mainUrl)
+
+                // [NEW] EXCLUSIVE SOURCE MODE
+                // Check if user has added custom sources (excluding the default system URL)
+                val customUrls = SP.playlistUrls.filter { 
+                    it.isNotEmpty() && 
+                    it != DEFAULT_CONFIG_URL && 
+                    it != standardUrl && 
+                    it != premiumUrl &&
+                    it != fallbackUrl 
                 }
-                
-                // 2. Load Logic: Custom sources if they exist, otherwise fallback to Main API
+
                 if (customUrls.isNotEmpty()) {
+                    // EXCLUSIVE MODE: Load ONLY custom sources
+                    android.util.Log.i("TVList", "Exclusive Mode Active: Loading ${customUrls.size} custom sources only.")
                     urls.addAll(customUrls)
-                } else if (mainUrl.isNotEmpty()) {
-                    // NEW LOGIC: support single file/API
-                    if (mainUrl.contains("/api/", ignoreCase = true) || 
-                        mainUrl.endsWith(".json", ignoreCase = true) || 
-                        mainUrl.endsWith(".txt", ignoreCase = true) || 
-                        mainUrl.endsWith(".m3u", ignoreCase = true) || 
-                        mainUrl.endsWith(".m3u8", ignoreCase = true)) {
-                        urls.add(mainUrl)
+                } else {
+                    // DEFAULT MODE: Load System APIs
+                    if (isPremium) {
+                        // PREMIUM PRIORITY STACK
+                        // 1. Premium API (Exclusive)
+                        if (premiumUrl.isNotEmpty()) {
+                            android.util.Log.d("TVList", "Adding Premium Source: $premiumUrl")
+                            addUrlToList(premiumUrl, urls)
+                        }
+                        
+                        // 2. Standard API
+                        if (standardUrl.isNotEmpty() && standardUrl != premiumUrl) {
+                            android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
+                            urls.add(standardUrl)
+                        }
+                        
+                        // 3. Fallback GitHub
+                        if (fallbackUrl.isNotEmpty() && fallbackUrl != premiumUrl && fallbackUrl != standardUrl) {
+                            android.util.Log.d("TVList", "Adding Fallback Source: $fallbackUrl")
+                            urls.add(fallbackUrl)
+                        }
                     } else {
-                        // Legacy: Load Main API (Split into 4 parts for performance/reliability)
-                        val baseUrl = if (mainUrl.endsWith("/")) mainUrl else "$mainUrl/"
-                        urls.add(baseUrl + "part1.txt")
-                        urls.add(baseUrl + "part2.txt")
-                        urls.add(baseUrl + "part3.txt")
-                        urls.add(baseUrl + "part4.txt")
+                        // STANDARD PRIORITY STACK
+                        // 1. Standard API
+                        if (standardUrl.isNotEmpty()) {
+                            android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
+                            urls.add(standardUrl)
+                        }
+                        
+                        // 2. Fallback GitHub
+                        if (fallbackUrl.isNotEmpty() && fallbackUrl != standardUrl) {
+                            android.util.Log.d("TVList", "Adding Fallback Source: $fallbackUrl")
+                            urls.add(fallbackUrl)
+                        }
                     }
                 }
+                
+                android.util.Log.i("TVList", "Final Pooling List: $urls")
 
                 
                 withContext(Dispatchers.Main) {
@@ -280,9 +367,11 @@ object TVList {
                            }
                            val request = requestBuilder.build()
                            
+                           android.util.Log.d("TVList", "Requesting: $url (ETag: $etag)")
                            client.newCall(request).execute().use { response ->
                                // 1. Handle 304 Not Modified (Server says content hasn't changed)
                                if (response.code == 304) {
+                                   android.util.Log.d("TVList", "304 Not Modified for $url")
                                    withContext(Dispatchers.Main) {
                                         if (showUi) _importStatus.value = "Source ${index + 1} up to date"
                                    }
@@ -297,6 +386,15 @@ object TVList {
                                        }
                                    }
                                    
+                                   // HTML Detection (Prevention of caching landing/error pages)
+                                   val contentType = response.header("Content-Type") ?: ""
+                                   if (contentType.contains("text/html", ignoreCase = true)) {
+                                       withContext(Dispatchers.Main) {
+                                           if (showUi) Toast.makeText(ctx, "Source ${index + 1} returned HTML (redirect/dead). Skipped.", Toast.LENGTH_SHORT).show()
+                                       }
+                                       return@async sourceCache[url] ?: emptyList<TV>()
+                                   }
+
                                    // Save ETag for next time
                                    val newEtag = response.header("ETag")
                                    if (newEtag != null) {
@@ -316,8 +414,28 @@ object TVList {
                                            // OPTIMIZATION: Parse in parallel with other downloads
                                            val channels = parseUniversalFile(tempFile)
                                            
+                                            // DEBUG LOGGING FOR STANDARD API ISSUES
+                                            if (channels.isEmpty()) {
+                                                try {
+                                                     val preview = tempFile.readText().take(250)
+                                                     Log.e("TVList", "Source $index parsed EMPTY. Preview: $preview")
+                                                } catch (e: Exception) {}
+                                            }
+
+                                           // Verify if it's actually data or a tiny HTML file missed by headers
+                                           if (channels.isEmpty() && tempFile.length() < 5000) {
+                                               val sample = tempFile.readText(Charsets.UTF_8).take(200).lowercase()
+                                               if (sample.contains("<!doctype html") || sample.contains("<html")) {
+                                                   withContext(Dispatchers.Main) {
+                                                       if (showUi) Toast.makeText(ctx, "Source ${index + 1} contains HTML. Check API.", Toast.LENGTH_SHORT).show()
+                                                   }
+                                                   return@async sourceCache[url] ?: emptyList<TV>()
+                                               }
+                                           }
+
                                            // UPDATE CACHE
                                            sourceCache[url] = channels
+                                           android.util.Log.d("TVList", "Successfully parsed ${channels.size} channels from $url")
                                            
                                            withContext(Dispatchers.Main) {
                                                if (showUi) _importStatus.value = "Parsed: ${channels.size} channels from source ${index + 1}"
@@ -325,6 +443,8 @@ object TVList {
                                            return@async channels
                                            
                                         } catch (e: Exception) {
+                                            android.util.Log.e("TVList", "Error parsing $url: ${e.message}")
+                                            e.printStackTrace()
                                             return@async sourceCache[url] ?: emptyList<TV>()
                                         } finally {
                                             tempFile.delete() 
@@ -333,10 +453,16 @@ object TVList {
                                        return@async sourceCache[url] ?: emptyList<TV>()
                                    }
                                } else {
+                                   android.util.Log.e("TVList", "Failed to fetch source ${index + 1} ($url): Code ${response.code} Message: ${response.message}")
+                                   withContext(Dispatchers.Main) {
+                                       if (showUi) Toast.makeText(ctx, "Failed to connect to Source ${index + 1} (Error ${response.code})", Toast.LENGTH_SHORT).show()
+                                   }
                                    return@async sourceCache[url] ?: emptyList<TV>()
                                }
                            }
                         } catch (e: Exception) {
+                           android.util.Log.e("TVList", "Network Exception for $url: ${e.message}")
+                           e.printStackTrace()
                            return@async sourceCache[url] ?: emptyList<TV>()
                         } finally {
                             completedSources++
@@ -395,11 +521,20 @@ object TVList {
                       }
                       lastListHash = newListHash
 
-                      val gson = com.google.gson.Gson()
-                      val jsonStr = gson.toJson(finalChannels)
-                      
+                      // MEMORY OPTIMIZATION: Use streaming writer instead of loading huge JSON string
+                      // This prevents OutOfMemoryError on large playlists (5000+ channels)
                       val file = File(ctx.filesDir, FILE_NAME)
-                      file.writeText(jsonStr) // Save formatted JSON
+                      val writer = JsonWriter(FileWriter(file))
+                      writer.setIndent("  ") // Optional: Remove for even smaller size
+                      
+                      try {
+                          val gson = com.google.gson.Gson()
+                          gson.toJson(finalChannels, finalChannels::class.java, writer)
+                      } catch (e: Exception) {
+                           Log.e("TVList", "Error writing JSON", e)
+                      } finally {
+                           try { writer.close() } catch (e: Exception) {}
+                      }
                       
                       // Update memory
                       list = finalChannels
@@ -430,6 +565,8 @@ object TVList {
                                       EPGManager.fetchEPG(force = false)
                                       withContext(Dispatchers.Main) {
                                           listModel.forEach { it.updateEPG() }
+                                          // Fix: Clear status so loading spinner doesn't get stuck
+                                          if (showUi) _importStatus.value = ""
                                       }
                                   }
                               }, 10000) // 10 second delay
@@ -616,6 +753,18 @@ object TVList {
 
     private fun parseUniversal(content: String): List<TV> {
         var string = content.trim()
+
+        // 1. ULTIMATE JSON BYPASS: If it looks like JSON, skip decryption entirely.
+        // Decrypting plain text JSON often results in garbage or empty strings.
+        if (string.startsWith("{") || string.startsWith("[")) {
+             try {
+                 val result = GenericJsonParser.parse(string)
+                 if (result.isNotEmpty()) return result
+             } catch (e: Exception) {
+                 Log.e("TVList", "Ultimate JSON bypass parse failed: ${e.message}")
+             }
+        }
+
         // SECURITY UPGRADE: Use Native Key
         // Layer 1: Gua64 Decoding (Encoding layer)
         val g = Gua()
@@ -720,9 +869,23 @@ object TVList {
         // OPTIMIZATION: Direct Stream Parsing for Cache (Avoids reading 50MB string into memory)
         val filename = file.name
         
-        // 1. FASTEST PATH: If it's the internal cache file, we KNOW it is JSON.
-        // Skip all guessing and sniffing.
-        if (filename == FILE_NAME || filename.endsWith(".json")) {
+        // 1. FASTEST PATH: If it's the internal cache file OR ends with .json
+        // OR starts with JSON chars (Heuristic)
+        var isJson = filename == FILE_NAME || filename.endsWith(".json")
+        
+        if (!isJson) {
+             // Quick Peek for JSON char to support .tmp files from network
+             try {
+                 val reader = java.io.FileReader(file)
+                 val first = reader.read()
+                 reader.close()
+                 if (first == '{'.toInt() || first == '['.toInt()) {
+                     isJson = true
+                 }
+             } catch(e: Exception) {}
+        }
+
+        if (isJson) {
             try {
                 // Open standard BufferedReader for performance
                 val reader = java.io.BufferedReader(java.io.FileReader(file), 8192)
@@ -916,6 +1079,14 @@ object TVList {
             return
         }
 
+        val isPremium = "Premium".equals(SubscriptionManager.planName, ignoreCase = true)
+        
+        // HARD SECURITY FILTER: Ensure Standard users never see a Premium-sized list
+        if (!isPremium && list.size > 300) {
+             Log.w(TAG, "Standard user detected with large list (${list.size}). Truncating for security.")
+             list = list.take(280) // Truncate to a safe standard size
+        }
+
         try {
             // 1. Preparation Phase (Offloaded to Default dispatcher)
             val preparedData = withContext(Dispatchers.Default) {
@@ -990,24 +1161,24 @@ object TVList {
                 preparedGroups
             }
 
-            // 2. Update Phase (Main Thread)
-            withContext(Dispatchers.Main) {
-                val listModelSnapshot = listModel 
-                val listModelNew: MutableList<TVModel> = mutableListOf()
-                val oldIdToModel = listModelSnapshot.associateBy { it.tv.uris.firstOrNull() ?: "" }
+            // 2. Pre-process Update Phase (Offload to Default Dispatcher)
+            // Capture snapshot of current models to map old instances
+            val oldIdToModel = listModel.associateBy { it.tv.uris.firstOrNull() ?: "" }
+            val currentGroupModels = groupModel.getTVListModelList()
+            val oldGroupMap = currentGroupModels.associateBy { it.getOriginalName() }
+
+            val (newList, newGroupList) = withContext(Dispatchers.Default) {
+                val listModelNew = mutableListOf<TVModel>()
+                val groupListNew = mutableListOf<TVListModel>()
                 
                 var id = 0
-                val currentGroupModels = groupModel.getTVListModelList()
-                val oldGroupMap = currentGroupModels.associateBy { it.getOriginalName() }
-                
-                val newGroupList = mutableListOf<TVListModel>()
-                
+
                 // Preserve/Create Special Groups
-                val collectionGroup = groupModel.getTVListModel(0) ?: TVListModel("My Collection", "My Collection", 0)
-                val allChannelsGroup = groupModel.getTVListModel(1) ?: TVListModel("All channels", "All channels", 1)
+                val collectionGroup = oldGroupMap["My Collection"] ?: TVListModel("My Collection", "My Collection", 0)
+                val allChannelsGroup = oldGroupMap["All channels"] ?: TVListModel("All channels", "All channels", 1)
                 
-                newGroupList.add(collectionGroup)
-                newGroupList.add(allChannelsGroup)
+                groupListNew.add(collectionGroup)
+                groupListNew.add(allChannelsGroup)
 
                 for (group in preparedData) {
                     val isUncategorized = group.originalName.isBlank() || group.originalName == "Uncategorized"
@@ -1021,6 +1192,7 @@ object TVList {
                     val groupChannels = mutableListOf<TVModel>()
                     for (tv in group.channels) {
                          tv.id = id
+                         // Reuse existing TVModel if available (preserves state) or create new
                          val tvModel = oldIdToModel[tv.uris.firstOrNull() ?: ""]?.apply { update(tv) } ?: TVModel(tv)
                          tvModel.groupIndex = group.index
                          tvModel.listIndex = groupChannels.size
@@ -1032,14 +1204,23 @@ object TVList {
 
                     if (tvListModel != null) {
                         tvListModel.setTVListModel(groupChannels)
-                        newGroupList.add(tvListModel)
+                        groupListNew.add(tvListModel)
                     }
                 }
+                
+                // Return both lists
+                Pair(listModelNew, groupListNew)
+            }
 
-                val likedChannels = listModelNew.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
+            // 3. Final Commit (Main Thread)
+            withContext(Dispatchers.Main) {
+                val collectionGroup = newGroupList[0] // Guaranteed index 0
+                val allChannelsGroup = newGroupList[1] // Guaranteed index 1
+
+                val likedChannels = newList.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
                 collectionGroup.setTVListModel(likedChannels)
 
-                listModel = listModelNew
+                listModel = newList
                 groupModel.setTVListModelList(newGroupList)
                 allChannelsGroup.setTVListModel(listModel)
                 groupModel.setChange()
@@ -1202,6 +1383,18 @@ object TVList {
 
     fun size(): Int {
         return listModel.size
+    }
+
+    private fun addUrlToList(url: String, urls: MutableList<String>) {
+        if (url.isEmpty()) return
+        
+        // Handle folder/legacy style URLs if they contain commas
+        if (url.contains(",")) {
+            val parts = url.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            urls.addAll(parts)
+        } else {
+            urls.add(url)
+        }
     }
 
     fun restorePosition(): Int {

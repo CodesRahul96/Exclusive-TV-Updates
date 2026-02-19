@@ -19,7 +19,7 @@
         android:id="@+id/container"
         style="@style/SettingsPanelStyle"
         android:orientation="vertical"
-        android:background="@color/surface_glass">
+        android:background="@drawable/bg_transparent_glass">
 
         <!-- Modern Header -->
         <LinearLayout
@@ -102,6 +102,69 @@
                 android:orientation="vertical"
                 android:paddingHorizontal="16dp"
                 android:paddingTop="8dp">
+
+                <!-- Section: Account -->
+                <TextView
+                    style="@style/SettingsSectionHeader"
+                    android:text="Account" />
+
+                <LinearLayout
+                    style="@style/SettingsCardContainer"
+                    android:background="@drawable/bg_settings_card">
+                    
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="20dp">
+                        
+                        <ImageView
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:src="@drawable/ic_person"
+                            android:padding="8dp"
+                            android:background="@drawable/tv_button_bg"
+                            android:elevation="2dp"
+                            app:tint="@color/text_primary"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginStart="16dp">
+                            
+                            <TextView
+                                android:id="@+id/account_phone"
+                                style="@style/ExclusiveText.Header"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Not Logged In"
+                                android:textSize="16sp" />
+                            
+                            <TextView
+                                android:id="@+id/account_status"
+                                style="@style/ExclusiveText.Body"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Free Plan"
+                                android:textSize="12sp"
+                                android:alpha="0.7"/>
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider"/>
+
+                    <TextView
+                        android:id="@+id/btn_logout"
+                        style="@style/SettingsActionItem"
+                        android:text="Logout"
+                        android:drawableStart="@drawable/ic_logout"
+                        android:textColor="@color/accent_red"/>
+
+                </LinearLayout>
 
                 <!-- Section: Content -->
                 <TextView

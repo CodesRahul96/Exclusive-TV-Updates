@@ -3,6 +3,8 @@
 import android.util.Log
 import java.io.BufferedReader
 import java.io.StringReader
+import java.util.ArrayList
+import java.util.HashMap
 
 object M3UParser {
     private const val TAG = "M3UParser"
@@ -76,11 +78,23 @@ object M3UParser {
                 currentUris.clear()
             }
         }
-
+        
         var isM3U = false
         val plainUrls = mutableListOf<String>()
 
         try {
+            // Peek for JSON
+            reader.mark(1024)
+            var peekLine = reader.readLine()?.trim()
+            while (peekLine?.isEmpty() == true) peekLine = reader.readLine()?.trim()
+            
+            if (peekLine?.startsWith("{") == true || peekLine?.startsWith("[") == true) {
+                Log.d(TAG, "JSON content detected. Delegating to GenericJsonParser.")
+                reader.reset()
+                return GenericJsonParser.parse(reader)
+            }
+            reader.reset()
+            
             while (reader.readLine().also { line = it } != null) {
                 try {
                     var trimmedLine = line?.trim() ?: continue

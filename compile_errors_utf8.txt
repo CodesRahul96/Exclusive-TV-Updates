@@ -1,0 +1,85 @@
+﻿
+> Configure project :app
+Version Code from version.json: 16794368
+Version Name from version.json: v1.0.67
+Building with VersionCode: 16794368, VersionName: v1.0.67
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:injectCrashlyticsMappingFileIdDebug UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+
+> Task :app:compileDebugKotlin FAILED
+./gradlew : e: file:///D:/Android%20Projects/Exclusive
+TV-Development/ExclusiveTV_APP/app/src/main/java/com/c
+odesrahul/exclusivetv/models/TVList.kt:266:35 Only 
+safe (?.) or non-null asserted (!!.) calls are 
+allowed on a nullable receiver of type String?
+At line:1 char:1
++ ./gradlew :app:compileDebugKotlin > 
+compile_errors_4.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (e: file: 
+   ///D:/A...of type String?:String) [], RemoteExcep  
+  tion
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+e: file:///D:/Android%20Projects/ExclusiveTV-Developme
+nt/ExclusiveTV_APP/app/src/main/java/com/codesrahul/ex
+clusivetv/models/TVList.kt:268:38 Type mismatch: 
+inferred type is String? but String was expected
+e: file:///D:/Android%20Projects/ExclusiveTV-Developme
+nt/ExclusiveTV_APP/app/src/main/java/com/codesrahul/ex
+clusivetv/models/TVList.kt:272:36 Only safe (?.) or 
+non-null asserted (!!.) calls are allowed on a 
+nullable receiver of type String?
+e: file:///D:/Android%20Projects/ExclusiveTV-Developme
+nt/ExclusiveTV_APP/app/src/main/java/com/codesrahul/ex
+clusivetv/models/TVList.kt:274:34 Type mismatch: 
+inferred type is String? but String was expected
+e: file:///D:/Android%20Projects/ExclusiveTV-Developme
+nt/ExclusiveTV_APP/app/src/main/java/com/codesrahul/ex
+clusivetv/models/TVList.kt:293:36 Only safe (?.) or 
+non-null asserted (!!.) calls are allowed on a 
+nullable receiver of type String?
+e: file:///D:/Android%20Projects/ExclusiveTV-Developme
+nt/ExclusiveTV_APP/app/src/main/java/com/codesrahul/ex
+clusivetv/models/TVList.kt:295:34 Type mismatch: 
+inferred type is String? but String was expected
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kot
+lin.compilerRunner.GradleCompilerRunnerWithWorkers$Gra
+dleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log 
+output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 4s
+20 actionable tasks: 1 executed, 19 up-to-date

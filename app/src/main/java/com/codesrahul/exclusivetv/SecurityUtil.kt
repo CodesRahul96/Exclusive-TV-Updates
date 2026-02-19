@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Debug
 import android.provider.Settings
+import android.util.Log
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
@@ -25,11 +26,13 @@ object SecurityUtil {
     fun isDeviceRestricted(context: Context): Boolean {
         // 1. Maintenance Mode Check - Always check, very fast
         if (isMaintenanceMode) {
+            Log.e("SecurityUtil", "Security Violation: Maintenance Mode active")
             return true
         }
 
         // 2. Debugger Check - Always check, very fast
         if (Debug.isDebuggerConnected() || Debug.waitingForDebugger()) {
+            Log.e("SecurityUtil", "Security Violation: Debugger connected")
             return true
         }
 
@@ -48,16 +51,28 @@ object SecurityUtil {
 
     private fun performExtensiveChecks(context: Context): Boolean {
         // Proxy Check
-        if (isProxySet(context)) return true
+        if (isProxySet(context)) {
+            android.util.Log.e("SecurityUtil", "Security Violation: Proxy detected")
+            return true
+        }
 
         // Frida Check
-        if (checkFrida()) return true
+        if (checkFrida()) {
+            android.util.Log.e("SecurityUtil", "Security Violation: Frida detected")
+            return true
+        }
 
         // Root Check
-        if (RootCheckUtil.isDeviceRooted()) return true
+        if (RootCheckUtil.isDeviceRooted()) {
+            android.util.Log.e("SecurityUtil", "Security Violation: Root detected")
+            return true
+        }
 
         // Native Integrity Check (Signature)
-        if (SecretManager.verifyIntegrity(context)) return true
+        if (SecretManager.verifyIntegrity(context)) {
+            android.util.Log.e("SecurityUtil", "Security Violation: Signature mismatch")
+            return true
+        }
 
         return false
     }

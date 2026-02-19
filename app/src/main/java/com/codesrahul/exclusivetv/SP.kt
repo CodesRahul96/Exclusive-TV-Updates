@@ -26,6 +26,8 @@ object SP {
     private const val KEY_REPEAT_INFO = "repeat_info"
 
     private const val KEY_CONFIG = "config"
+    private const val KEY_STANDARD_CONFIG = "standard_config" // [NEW]
+    private const val KEY_PREMIUM_CONFIG = "premium_config"   // [NEW]
 
     private const val KEY_CONFIG_AUTO_LOAD = "config_auto_load"
 
@@ -59,6 +61,7 @@ object SP {
     private const val KEY_API_DOWNLOAD_HOST = "api_download_host"
     private const val KEY_API_HOST_FALLBACK = "api_host_fallback"
     private const val KEY_API_DOWNLOAD_HOST_FALLBACK = "api_download_host_fallback"
+    private const val KEY_PLAN_NAME = "plan_name" // [NEW] Persist plan for startup safety
 
 
     private lateinit var sp: SharedPreferences
@@ -151,6 +154,18 @@ object SP {
         get() = sp.getString(KEY_CONFIG, "")
         set(value) = sp.edit().putString(KEY_CONFIG, value).apply()
 
+    var standardConfig: String?
+        get() = sp.getString(KEY_STANDARD_CONFIG, "")
+        set(value) = sp.edit().putString(KEY_STANDARD_CONFIG, value).apply()
+
+    var premiumConfig: String?
+        get() = sp.getString(KEY_PREMIUM_CONFIG, "")
+        set(value) = sp.edit().putString(KEY_PREMIUM_CONFIG, value).apply()
+
+    var planName: String?
+        get() = sp.getString(KEY_PLAN_NAME, "Standard")
+        set(value) = sp.edit().putString(KEY_PLAN_NAME, value).apply()
+
     var playlistUrls: Set<String>
         get() = sp.getStringSet(KEY_PLAYLIST_URLS, emptySet()) ?: emptySet()
         set(value) = sp.edit().putStringSet(KEY_PLAYLIST_URLS, value).apply()
@@ -242,7 +257,7 @@ object SP {
     }
 
     var epgEnabled: Boolean
-        get() = sp.getBoolean(KEY_EPG_ENABLED, true)
+        get() = sp.getBoolean(KEY_EPG_ENABLED, false)
         set(value) {
             if (value != this.epgEnabled) {
                 sp.edit().putBoolean(KEY_EPG_ENABLED, value).apply()

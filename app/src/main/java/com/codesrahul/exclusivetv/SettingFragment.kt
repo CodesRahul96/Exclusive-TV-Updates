@@ -18,6 +18,8 @@ import androidx.fragment.app.Fragment
 import com.codesrahul.exclusivetv.databinding.SettingBinding
 import com.codesrahul.exclusivetv.models.TVList
 import com.codesrahul.exclusivetv.ui.TvUiUtils
+import com.google.firebase.auth.FirebaseAuth
+import com.codesrahul.exclusivetv.LogViewerActivity
 
 class SettingFragment : Fragment() {
 
@@ -53,6 +55,30 @@ class SettingFragment : Fragment() {
 
     private fun setupUI() {
         binding.name.text = getString(R.string.app_name)
+
+        // [NEW] User Info
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user != null) {
+            binding.accountPhone.text = user.phoneNumber ?: "Unknown User"
+            val plan = SubscriptionManager.planName ?: "Standard"
+            val expiryDate = SubscriptionManager.expiryDate
+            val isPremium = "Premium".equals(plan, ignoreCase = true)
+            
+            if (isPremium && expiryDate != null) {
+                val dateFormat = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.getDefault())
+                val formattedDate = dateFormat.format(expiryDate)
+                val daysLeft = SubscriptionManager.getDaysRemaining()
+                
+                binding.accountStatus.text = "Plan: $plan | Expires: $formattedDate ($daysLeft days left)"
+                binding.accountStatus.maxLines = 2
+            } else {
+                binding.accountStatus.text = "Plan: $plan"
+            }
+            binding.accountStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.accent_green))
+        } else {
+            binding.accountPhone.text = "Not Logged In"
+            binding.accountStatus.text = "Guest Mode"
+        }
         
         syncStatusUI()
 
@@ -217,6 +243,20 @@ class SettingFragment : Fragment() {
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
         binding.cardAudioLanguage.setOnClickListener { setupAudioLanguageDialog() }
         binding.cardAudioStabilizer.setOnClickListener { toggleSetting("audioStabilizer") }
+        
+        // [NEW] Logout Listener
+        binding.btnLogout.setOnClickListener {
+             tvUiUtils?.playClickSound()
+             android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Logout?")
+                .setMessage("Are you sure you want to logout? This will clear all app data.")
+                .setPositiveButton("Logout") { _, _ ->
+                    // Restart app to go back to login (logic inside performFullReset)
+                    performFullReset(justRestart = true) 
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
 
         binding.confirmConfig.setOnClickListener {
             tvUiUtils?.playClickSound()
@@ -286,6 +326,17 @@ class SettingFragment : Fragment() {
         binding.checkVersion.setOnClickListener {
             tvUiUtils?.playClickSound()
             requestInstallPermissions()
+        }
+        
+        // [searchable] Hidden Log Viewer
+        binding.checkVersion.setOnLongClickListener {
+            tvUiUtils?.playClickSound()
+             try {
+                startActivity(android.content.Intent(requireContext(), LogViewerActivity::class.java))
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Log Viewer not found", Toast.LENGTH_SHORT).show()
+            }
+            true
         }
 
         binding.copyrightInfo.setOnClickListener {
@@ -365,34 +416,18 @@ class SettingFragment : Fragment() {
         syncStatusUI()
     }
 
-    private fun performFullReset() {
+    private fun performFullReset(justRestart: Boolean = false) {
         try {
-            Toast.makeText(requireContext(), "Resetting...", Toast.LENGTH_SHORT).show()
+            if (!justRestart) {
+                Toast.makeText(requireContext(), "Resetting...", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Logging out...", Toast.LENGTH_SHORT).show()
+            }
             
-            // 1. Clear all Preference Managers (Synchronously using commit())
-            try { SP.reset() } catch (e: Exception) { e.printStackTrace() }
-            try { OrderPreferenceManager.resetAll() } catch (e: Exception) { e.printStackTrace() }
+            // Delegate comprehensive data clearing to SubscriptionManager
+            SubscriptionManager.signOut(requireContext())
 
-            // 2. Clear Room Database
-            try { 
-                val db = com.codesrahul.exclusivetv.db.AppDatabase.getDatabase(requireContext())
-                db.clearAllTables() 
-            } catch (e: Exception) { e.printStackTrace() }
-
-            // 3. Delete all local files (legacy channels.txt, etc)
-            try { deleteRecursive(requireContext().filesDir) } catch (e: Exception) { e.printStackTrace() }
-            
-            // 4. Delete cache (epg_cache.xml.gz, etc)
-            try { deleteRecursive(requireContext().cacheDir) } catch (e: Exception) { e.printStackTrace() }
-            
-            // 4. Clear WebViews/Cookies if any
-            try { 
-                android.webkit.WebStorage.getInstance().deleteAllData()
-                android.webkit.CookieManager.getInstance().removeAllCookies(null)
-                android.webkit.CookieManager.getInstance().flush() // Force write
-            } catch (e: Exception) { e.printStackTrace() }
-
-            Toast.makeText(requireContext(), "Factory Reset Complete. Restarting...", Toast.LENGTH_LONG).show()
+            Toast.makeText(requireContext(), if (justRestart) "Restarting..." else "Factory Reset Complete. Restarting...", Toast.LENGTH_LONG).show()
 
             // 5. Force Restart App using Phoenix Process Pattern (Professional Approach)
             val ctx = context ?: return
@@ -421,16 +456,6 @@ class SettingFragment : Fragment() {
         }
     }
 
-    private fun deleteRecursive(fileOrDirectory: java.io.File?) {
-        if (fileOrDirectory == null || !fileOrDirectory.exists()) return
-        
-        if (fileOrDirectory.isDirectory) {
-            fileOrDirectory.listFiles()?.forEach { child ->
-                deleteRecursive(child)
-            }
-        }
-        fileOrDirectory.delete()
-    }
 
     private fun requestReadPermissions() {
         val list = mutableListOf<String>()

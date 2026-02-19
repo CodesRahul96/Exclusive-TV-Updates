@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:clickable="true"
     android:focusable="false"
-    android:background="@color/overlay_background">
+    android:background="@drawable/bg_main_gradient">
 
     <!-- The 50% Guide (Left Half) -->
     <androidx.constraintlayout.widget.Guideline
