@@ -25,6 +25,29 @@ object SubscriptionManager {
         db.collection(COLLECTION_USERS).document(user.uid).get()
             .addOnSuccessListener { document ->
                 if (document != null && document.exists()) {
+                    
+                    // --- SECURITY PHASE 2: DEVICE BINDING CHECK ---
+                    val context = com.codesrahul.exclusivetv.MyTVApplication.getInstance()
+                    val currentDeviceId = SecurityUtil.getDeviceId(context)
+                    val storedDeviceId = document.getString("device_id")
+
+                    if (storedDeviceId.isNullOrEmpty()) {
+                        // Scenario A: First Login - Bind the device permanently
+                        android.util.Log.i("SubscriptionManager", "Binding account to Device ID: $currentDeviceId")
+                        db.collection(COLLECTION_USERS).document(user.uid)
+                            .update("device_id", currentDeviceId)
+                            .addOnFailureListener { e ->
+                                android.util.Log.e("SubscriptionManager", "Failed to bind device to Firestore: $e")
+                            }
+                    } else if (storedDeviceId != currentDeviceId) {
+                        // Scenario B: Device Mismatch - Reject Access
+                        android.util.Log.w("SubscriptionManager", "Login blocked! Account bound to $storedDeviceId. Current device is $currentDeviceId.")
+                        FirebaseAuth.getInstance().signOut()
+                        onError("This account is permanently bound to another device. You cannot share accounts.")
+                        return@addOnSuccessListener
+                    }
+                    // --- END DEVICE BINDING CHECK ---
+
                     // Resilient field retrieval: check for "plan", "plan " (common typo), and "Plan"
                     // RESILIENT FIELD EXTRACTION: Check multiple common keys
                     val planRaw = (document.getString("plan") 

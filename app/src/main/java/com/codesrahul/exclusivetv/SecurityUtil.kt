@@ -145,13 +145,56 @@ object SecurityUtil {
             return data
         }
     }
+
+    /**
+     * Retrieves the unique Android Device ID for account binding.
+     */
+    fun getDeviceId(context: Context): String {
+        return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown_device"
+    }
+
+    /**
+     * Generates an HMAC-SHA256 signature for API requests.
+     */
+    fun generateHmacSha256(data: String, key: String): String {
+        try {
+            val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+            val secretKeySpec = javax.crypto.spec.SecretKeySpec(key.toByteArray(Charsets.UTF_8), "HmacSHA256")
+            mac.init(secretKeySpec)
+            val hash = mac.doFinal(data.toByteArray(Charsets.UTF_8))
+            return android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
+        } catch (e: Exception) {
+            return ""
+        }
+    }
 }
 
 class SecurityInterceptor(private val context: Context) : Interceptor {
+    
     override fun intercept(chain: Interceptor.Chain): Response {
         if (SecurityUtil.isDeviceRestricted(context)) {
             throw IOException("Security Violation: Request blocked due to insecure environment.")
         }
-        return chain.proceed(chain.request())
+        
+        val original = chain.request()
+        
+        // --- API Request Signing (HMAC-SHA256) ---
+        val timestamp = (System.currentTimeMillis() / 1000).toString()
+        val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown_device"
+        
+        val url = original.url.toString()
+        val method = original.method
+        
+        // Payload format: URL|METHOD|TIMESTAMP|DEVICE_ID
+        val payload = "$url|$method|$timestamp|$deviceId"
+        val signature = SecurityUtil.generateHmacSha256(payload, SecretManager.getHmacKey())
+        
+        val requestWithAuth = original.newBuilder()
+            .header("X-Timestamp", timestamp)
+            .header("X-Device-ID", deviceId)
+            .header("X-App-Signature", signature)
+            .build()
+            
+        return chain.proceed(requestWithAuth)
     }
 }

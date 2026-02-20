@@ -26,6 +26,15 @@ object SecretManager {
         return getMaintenanceKey()
     }
 
+    private var cachedHmacKey: String? = null
+
+    fun getHmacKey(): String {
+        if (cachedHmacKey == null) {
+            cachedHmacKey = getNativeHmacKey()
+        }
+        return cachedHmacKey ?: ""
+    }
+
     fun verifyIntegrity(context: android.content.Context): Boolean {
         // Returns true if tampered (signature mismatch)
         return verifyNativeIntegrity(context)
@@ -33,5 +42,6 @@ object SecretManager {
 
     private external fun getNativeKey(): String
     private external fun getMaintenanceKey(): String
+    private external fun getNativeHmacKey(): String
     private external fun verifyNativeIntegrity(context: android.content.Context): Boolean
 }
