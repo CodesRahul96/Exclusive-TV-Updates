@@ -18,8 +18,10 @@
             android:layout_marginTop="16dp"
             android:layout_marginStart="16dp"
             android:background="@drawable/bg_clock_glass"
-            android:paddingHorizontal="20dp"
-            android:paddingVertical="8dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
             android:elevation="8dp">
 
             <TextView

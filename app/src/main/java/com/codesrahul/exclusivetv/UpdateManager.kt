@@ -150,6 +150,7 @@ class UpdateManager(
         fun onForceUpdate()
     }
 
+    @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun startDownload(release: ReleaseResponse) {
         if (isDownloading) {
             Toast.makeText(context, "Update download already in progress", Toast.LENGTH_SHORT).show()

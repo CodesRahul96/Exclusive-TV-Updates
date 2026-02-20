@@ -1019,6 +1019,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
     }
 
+    @android.annotation.SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (isMaintenanceMode) return true // Block all keys
         

@@ -45,7 +45,7 @@ object PlsParser {
             // Convert to TV list
             entries.values.forEachIndexed { i, entry ->
                 if (entry.url.isNotEmpty()) {
-                val type = Type.STREAM
+                    val type = Type.STREAM
 
                     list.add(TV(
                         id = i,

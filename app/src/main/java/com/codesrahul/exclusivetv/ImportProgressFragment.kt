@@ -60,13 +60,14 @@ class ImportProgressFragment : Fragment() {
         
         val current = progressBar?.progress ?: 0
         if (progressBar != null) {
+            val pb = progressBar!!
             if (progress > current) {
-                val animation = ObjectAnimator.ofInt(progressBar, "progress", current, progress)
+                val animation = ObjectAnimator.ofInt(pb, "progress", current, progress)
                 animation.duration = 300
                 animation.interpolator = DecelerateInterpolator()
                 animation.start()
             } else {
-                progressBar?.progress = progress
+                pb.progress = progress
             }
         }
     }
