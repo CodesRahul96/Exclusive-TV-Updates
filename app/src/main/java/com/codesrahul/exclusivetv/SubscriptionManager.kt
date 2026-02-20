@@ -15,14 +15,15 @@ object SubscriptionManager {
         set(value) { SP.planName = value }
 
     fun checkSubscription(onSuccess: () -> Unit, onError: (String) -> Unit) {
-        val user = FirebaseAuth.getInstance().currentUser
-        if (user == null) {
+        val phoneNumber = SP.userId
+        if (phoneNumber == null) {
             onError("User not logged in")
             return
         }
 
         val db = FirebaseFirestore.getInstance()
-        db.collection(COLLECTION_USERS).document(user.uid).get()
+        // Now using phoneNumber as the Document ID directly
+        db.collection(COLLECTION_USERS).document(phoneNumber).get()
             .addOnSuccessListener { document ->
                 if (document != null && document.exists()) {
                     
@@ -35,8 +36,8 @@ object SubscriptionManager {
 
                     if (storedDeviceId.isNullOrEmpty()) {
                         // Scenario A: First Login - Bind the device permanently
-                        android.util.Log.i("SubscriptionManager", "Binding account ${user.phoneNumber} to Device ID: $currentDeviceId")
-                        db.collection(COLLECTION_USERS).document(user.uid)
+                        android.util.Log.i("SubscriptionManager", "Binding account $phoneNumber to Device ID: $currentDeviceId")
+                        db.collection(COLLECTION_USERS).document(phoneNumber)
                             .update("device_id", currentDeviceId)
                             .addOnSuccessListener {
                                 android.util.Log.i("SubscriptionManager", "Device binding successful for account")
@@ -47,7 +48,7 @@ object SubscriptionManager {
                     } else if (storedDeviceId != currentDeviceId) {
                         // Scenario B: Device Mismatch - Reject Access
                         android.util.Log.w("SubscriptionManager", "ACCESS DENIED: Account bound to $storedDeviceId. Attempted from $currentDeviceId.")
-                        FirebaseAuth.getInstance().signOut()
+                        SP.userId = null // Sign out locally
                         onError("Security: This account is permanently tied to another device. Shared accounts are not allowed.")
                         return@addOnSuccessListener
                     }
@@ -63,7 +64,41 @@ object SubscriptionManager {
                     val plan = planRaw ?: "Standard"
                     android.util.Log.d("SubscriptionManager", "Firestore Plan: '$planRaw' -> Normalized: '$plan'")
                     
-                    val expiryDate = document.getTimestamp(FIELD_EXPIRY_DATE)?.toDate()
+                    // RESILIENT EXPIRY EXTRACTION: Check multiple common keys and types
+                    val expiryTimestamp = document.getTimestamp("expiry_date")
+                        ?: document.getTimestamp("Expiry Date")
+                        ?: document.getTimestamp("ExpiryDate")
+                        ?: document.getTimestamp("expiryDate")
+                        ?: document.getTimestamp("expiry")
+                        ?: document.getTimestamp("Expiry")
+                    
+                    var expiryDate = expiryTimestamp?.toDate()
+                    
+                    // Fallback: If it's a String (manual entry)
+                    if (expiryDate == null) {
+                        val expiryStr = (document.getString("expiry_date") 
+                                    ?: document.getString("Expiry Date")
+                                    ?: document.getString("ExpiryDate")
+                                    ?: document.getString("expiryDate")
+                                    ?: document.getString("expiry")
+                                    ?: document.getString("Expiry"))?.trim()
+                        
+                        if (!expiryStr.isNullOrEmpty()) {
+                            try {
+                                // Try common formats
+                                val formats = listOf("yyyy-MM-dd", "dd-MM-yyyy", "MMM dd, yyyy")
+                                for (format in formats) {
+                                    try {
+                                        expiryDate = java.text.SimpleDateFormat(format, java.util.Locale.getDefault()).parse(expiryStr)
+                                        if (expiryDate != null) break
+                                    } catch (e: Exception) {}
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("SubscriptionManager", "Failed to parse expiry string: $expiryStr")
+                            }
+                        }
+                    }
+
                     this.expiryDate = expiryDate
 
                     // DETECT PLAN CHANGE
@@ -99,12 +134,12 @@ object SubscriptionManager {
                         "plan" to "Standard",
                         "device_id" to currentDeviceId,
                         "created_at" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
-                        "phone_number" to (user.phoneNumber ?: "")
+                        "phone_number" to phoneNumber // Storing redundantly inside document for convenience
                     )
-                    db.collection(COLLECTION_USERS).document(user.uid)
+                    db.collection(COLLECTION_USERS).document(phoneNumber)
                         .set(newUser)
                         .addOnSuccessListener {
-                            android.util.Log.i("SubscriptionManager", "Auto-registered new user: ${user.uid}")
+                            android.util.Log.i("SubscriptionManager", "Auto-registered new user: $phoneNumber")
                             this.planName = "Standard"
                             onSuccess()
                         }
@@ -124,8 +159,8 @@ object SubscriptionManager {
     }
 
     private fun clearAppData(context: android.content.Context) {
-        // [NEW] Sign out from Firebase
-        FirebaseAuth.getInstance().signOut()
+        // [NEW] Clear local SP login state
+        SP.userId = null
         expiryDate = null
         planName = null
         

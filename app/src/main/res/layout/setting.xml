@@ -157,6 +157,15 @@
 
                     <View style="@style/SettingsDivider"/>
 
+                    <!-- [NEW] Change OTP Action Item -->
+                    <TextView
+                        android:id="@+id/btn_change_otp_dialog"
+                        style="@style/SettingsActionItem"
+                        android:text="Change Login PIN / OTP"
+                        android:textColor="@color/accent_gold"/>
+
+                    <View style="@style/SettingsDivider"/>
+
                     <TextView
                         android:id="@+id/btn_logout"
                         style="@style/SettingsActionItem"

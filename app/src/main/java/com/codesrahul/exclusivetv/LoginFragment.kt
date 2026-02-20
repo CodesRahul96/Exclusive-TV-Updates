@@ -32,9 +32,6 @@ class LoginFragment : Fragment() {
     private var _binding: LoginBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var auth: FirebaseAuth
-    private var storedVerificationId: String? = null
-    private var resendToken: PhoneAuthProvider.ForceResendingToken? = null
     private var lastPhoneNumber: String? = null // Track for resend logic
     
     private val watchdogHandler = Handler(Looper.getMainLooper())
@@ -56,7 +53,6 @@ class LoginFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        auth = FirebaseAuth.getInstance()
 
         // Initial Button States
         binding.btnSendOtp.isEnabled = false
@@ -125,7 +121,6 @@ class LoginFragment : Fragment() {
 
         // Change Number Logic
         binding.tvChangeNumber.setOnClickListener {
-            storedVerificationId = null
             // Note: We don't reset resendToken or lastPhoneNumber here 
             // to allow ForceResendingToken to work if they type the same number again.
             binding.etPhone.isEnabled = true
@@ -141,8 +136,8 @@ class LoginFragment : Fragment() {
 
         binding.btnVerify.setOnClickListener {
             val code = binding.etOtp.text.toString().trim()
-            if (code.isNotEmpty() && storedVerificationId != null) {
-                verifyPhoneNumberWithCode(storedVerificationId!!, code)
+            if (code.isNotEmpty()) {
+                verifyPhoneNumberWithCode("custom_auth_session", code)
             } else {
                 Toast.makeText(requireContext(), "Enter OTP", Toast.LENGTH_SHORT).show()
             }
@@ -157,40 +152,19 @@ class LoginFragment : Fragment() {
             return
         }
 
-        showLoading(true)
-        binding.tvStatus.text = "Initializing verification..."
-        Log.d(TAG, "Attempting OTP for: $phoneNumber (Last: $lastPhoneNumber)")
-
-        // Start 45s watchdog timer
-        watchdogHandler.removeCallbacks(watchdogRunnable)
-        watchdogHandler.postDelayed(watchdogRunnable, 45000)
-
-        try {
-            val builder = PhoneAuthOptions.newBuilder(auth)
-                .setPhoneNumber(phoneNumber)
-                .setTimeout(60L, TimeUnit.SECONDS)
-                .setActivity(requireActivity())
-                .setCallbacks(callbacks)
-            
-            // If same number, use resend token to bypass throttling/duplicate detection
-            if (phoneNumber == lastPhoneNumber && resendToken != null) {
-                Log.d(TAG, "Using ForceResendingToken for $phoneNumber")
-                builder.setForceResendingToken(resendToken!!)
-            }
-            
-            lastPhoneNumber = phoneNumber
-            
-            Log.d(TAG, "Calling PhoneAuthProvider.verifyPhoneNumber...")
-            PhoneAuthProvider.verifyPhoneNumber(builder.build())
-            Log.d(TAG, "PhoneAuthProvider.verifyPhoneNumber call dispatched.")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Crash starting verification: ${e.message}", e)
-            watchdogHandler.removeCallbacks(watchdogRunnable)
-            showLoading(false)
-            binding.tvStatus.text = "Error: ${e.message}"
-            Toast.makeText(requireContext(), "Verification failed to start", Toast.LENGTH_SHORT).show()
-        }
+        lastPhoneNumber = phoneNumber
+        
+        // Skip Firebase entirely. Just show OTP input screen immediately.
+        showLoading(false)
+        binding.tvStatus.text = "Enter OTP to login"
+        
+        // Switch UI to OTP mode
+        binding.etPhone.isEnabled = false
+        binding.btnSendOtp.visibility = View.GONE
+        binding.etOtp.visibility = View.VISIBLE
+        binding.tvChangeNumber.visibility = View.VISIBLE
+        binding.btnVerify.visibility = View.VISIBLE
+        binding.etOtp.requestFocus()
     }
 
     private fun isNetworkAvailable(): Boolean {
@@ -204,78 +178,65 @@ class LoginFragment : Fragment() {
         }
     }
 
-    private val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-
-        override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-            watchdogHandler.removeCallbacks(watchdogRunnable)
-            // Auto-retrieval or instant verification
-            Log.d(TAG, "onVerificationCompleted:$credential")
-            showLoading(false)
-            binding.tvStatus.text = "Auto-verified!"
-            signInWithPhoneAuthCredential(credential)
-        }
-
-        override fun onVerificationFailed(e: FirebaseException) {
-            watchdogHandler.removeCallbacks(watchdogRunnable)
-            Log.w(TAG, "onVerificationFailed", e)
-            showLoading(false)
-            binding.tvStatus.text = "Fail: ${e.message}"
-            Toast.makeText(requireContext(), "Verification failed: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onCodeSent(
-            verificationId: String,
-            token: PhoneAuthProvider.ForceResendingToken
-        ) {
-            watchdogHandler.removeCallbacks(watchdogRunnable)
-            Log.d(TAG, "onCodeSent:$verificationId")
-            storedVerificationId = verificationId
-            resendToken = token
-
-            showLoading(false)
-            binding.tvStatus.text = "OTP Sent Successfully"
-            
-            // Switch UI to OTP mode
-            binding.etPhone.isEnabled = false
-            binding.btnSendOtp.visibility = View.GONE
-            binding.etOtp.visibility = View.VISIBLE
-            binding.tvChangeNumber.visibility = View.VISIBLE
-            binding.btnVerify.visibility = View.VISIBLE
-            binding.etOtp.requestFocus()
-        }
-
-        override fun onCodeAutoRetrievalTimeOut(verificationId: String) {
-            watchdogHandler.removeCallbacks(watchdogRunnable)
-            Log.d(TAG, "onCodeAutoRetrievalTimeOut:$verificationId")
-            if (binding.etOtp.visibility == View.VISIBLE) {
-                // Already sent, just auto-retrieval timed out
-                return
-            }
-            showLoading(false)
-            binding.tvStatus.text = "OTP Retrieval Timed Out"
-        }
-    }
 
     private fun verifyPhoneNumberWithCode(verificationId: String, code: String) {
+        val phoneNumber = lastPhoneNumber ?: return
         showLoading(true)
         binding.tvStatus.text = "Verifying Code..."
-        val credential = PhoneAuthProvider.getCredential(verificationId, code)
-        signInWithPhoneAuthCredential(credential)
-    }
-
-    private fun signInWithPhoneAuthCredential(credential: PhoneAuthCredential) {
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener(requireActivity()) { task ->
-                if (task.isSuccessful) {
-                    Log.d(TAG, "signInWithCredential:success")
-                    checkSubscription()
+        
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        
+        db.collection("users").document(phoneNumber).get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val customOtp = document.getString("custom_otp")
+                    
+                    // Validation Logic:
+                    // 1. If custom_otp is set in DB, the user MUST enter that specific OTP.
+                    // 2. If custom_otp is not set or empty, the user can log in with the default "123321".
+                    val isValid = if (customOtp.isNullOrEmpty()) {
+                        code == "123321"
+                    } else {
+                        code == customOtp
+                    }
+                    
+                    if (isValid) {
+                        Log.d(TAG, "Custom OTP verified successfully.")
+                        signInWithPhoneAuthCredential(phoneNumber)
+                    } else {
+                        Log.w(TAG, "Invalid Custom OTP entered.")
+                        showLoading(false)
+                        binding.tvStatus.text = "Invalid OTP"
+                        Toast.makeText(requireContext(), "Incorrect OTP or PIN", Toast.LENGTH_SHORT).show()
+                    }
                 } else {
-                    Log.w(TAG, "signInWithCredential:failure", task.exception)
-                    showLoading(false)
-                    binding.tvStatus.text = "Sign In Failed"
-                    Toast.makeText(requireContext(), "Authentication Failed", Toast.LENGTH_SHORT).show()
+                    // Document doesn't exist -> New user trying to log in.
+                    // Only allow access with the default OTP "123321".
+                    if (code == "123321") {
+                        Log.d(TAG, "New user auto-registering with default OTP.")
+                        signInWithPhoneAuthCredential(phoneNumber)
+                    } else {
+                        Log.w(TAG, "New user attempted login with invalid OTP: $code")
+                        showLoading(false)
+                        binding.tvStatus.text = "Invalid OTP"
+                        Toast.makeText(requireContext(), "Incorrect Default OTP", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Firestore verification failed", e)
+                showLoading(false)
+                binding.tvStatus.text = "Verification Failed"
+                Toast.makeText(requireContext(), "Network Error. Please try again later.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun signInWithPhoneAuthCredential(phoneNumber: String) {
+        // We effectively bypass Firebase Auth sign in.
+        // Save the phone number into SharedPreferences (SP.userId) instead.
+        Log.d(TAG, "Saving phone number to SP: $phoneNumber")
+        SP.userId = phoneNumber
+        checkSubscription()
     }
 
     private fun checkSubscription() {

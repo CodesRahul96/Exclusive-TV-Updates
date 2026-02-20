@@ -62,7 +62,7 @@ object SP {
     private const val KEY_API_HOST_FALLBACK = "api_host_fallback"
     private const val KEY_API_DOWNLOAD_HOST_FALLBACK = "api_download_host_fallback"
     private const val KEY_PLAN_NAME = "plan_name" // [NEW] Persist plan for startup safety
-
+    private const val KEY_USER_ID = "user_id" // Persist phone number replacing Firebase Auth
 
     private lateinit var sp: SharedPreferences
 
@@ -165,6 +165,10 @@ object SP {
     var planName: String?
         get() = sp.getString(KEY_PLAN_NAME, "Standard")
         set(value) = sp.edit().putString(KEY_PLAN_NAME, value).apply()
+
+    var userId: String?
+        get() = sp.getString(KEY_USER_ID, null)
+        set(value) = sp.edit().putString(KEY_USER_ID, value).apply()
 
     var playlistUrls: Set<String>
         get() = sp.getStringSet(KEY_PLAYLIST_URLS, emptySet()) ?: emptySet()

@@ -169,6 +169,19 @@
                     android:textAlignment="center"
                     tools:text="Please enter your number" />
 
+                <!-- [NEW] Default OTP Note for New Users -->
+                <TextView
+                    android:id="@+id/tv_otp_note"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="New users: Use 123321 as default OTP.\nYou can change this later from Settings."
+                    android:textColor="#99FFFFFF"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="2dp"
+                    android:fontFamily="sans-serif-light"/>
+
             </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>

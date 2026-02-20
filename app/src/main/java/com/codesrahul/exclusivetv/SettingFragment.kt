@@ -18,7 +18,6 @@ import androidx.fragment.app.Fragment
 import com.codesrahul.exclusivetv.databinding.SettingBinding
 import com.codesrahul.exclusivetv.models.TVList
 import com.codesrahul.exclusivetv.ui.TvUiUtils
-import com.google.firebase.auth.FirebaseAuth
 import com.codesrahul.exclusivetv.LogViewerActivity
 
 class SettingFragment : Fragment() {
@@ -57,9 +56,9 @@ class SettingFragment : Fragment() {
         binding.name.text = getString(R.string.app_name)
 
         // [NEW] User Info
-        val user = FirebaseAuth.getInstance().currentUser
-        if (user != null) {
-            binding.accountPhone.text = user.phoneNumber ?: "Unknown User"
+        val userPhone = SP.userId
+        if (userPhone != null) {
+            binding.accountPhone.text = userPhone
             val plan = SubscriptionManager.planName ?: "Standard"
             val expiryDate = SubscriptionManager.expiryDate
             val isPremium = "Premium".equals(plan, ignoreCase = true)
@@ -237,7 +236,6 @@ class SettingFragment : Fragment() {
         binding.cardChannelCheck.setOnClickListener { toggleSetting("channelCheck") }
          binding.cardEpg.setOnClickListener { toggleSetting("epgEnabled") }
          binding.cardEpgShift.setOnClickListener { setupEpgShiftDialog() }
-         binding.cardEpgShift.setOnClickListener { setupEpgShiftDialog() }
          binding.cardWatermark.setOnClickListener { toggleSetting("watermark") }
          binding.cardPipMode.setOnClickListener { toggleSetting("pipMode") }
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
@@ -256,6 +254,12 @@ class SettingFragment : Fragment() {
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
+        }
+
+        // [NEW] Change OTP Dialog Trigger
+        binding.btnChangeOtpDialog.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            showChangeOtpDialog()
         }
 
         binding.confirmConfig.setOnClickListener {
@@ -567,6 +571,124 @@ class SettingFragment : Fragment() {
         }
     }
 
+    private fun showChangeOtpDialog() {
+        val dialog = android.app.Dialog(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_change_otp)
+        
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        
+        // Convert dp to px for the width
+        val widthPx = (350 * resources.displayMetrics.density).toInt()
+        dialog.window?.setLayout(
+            widthPx,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+        val etCurrentOtp = dialog.findViewById<android.widget.EditText>(R.id.et_current_otp)
+        val etNewOtp = dialog.findViewById<android.widget.EditText>(R.id.et_new_otp)
+        val etConfirmOtp = dialog.findViewById<android.widget.EditText>(R.id.et_confirm_otp)
+        val btnCancel = dialog.findViewById<android.widget.Button>(R.id.btn_cancel_otp)
+        val btnUpdate = dialog.findViewById<android.widget.Button>(R.id.btn_change_otp)
+
+        val otpTextWatcher = object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val current = etCurrentOtp.text.toString()
+                val newOtp = etNewOtp.text.toString()
+                val confirmOtp = etConfirmOtp.text.toString()
+
+                val isValid = current.length == 6 && newOtp.length == 6 && newOtp == confirmOtp
+                btnUpdate.isEnabled = isValid
+                btnUpdate.alpha = if (isValid) 1.0f else 0.5f
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        }
+        
+        etCurrentOtp.addTextChangedListener(otpTextWatcher)
+        etNewOtp.addTextChangedListener(otpTextWatcher)
+        etConfirmOtp.addTextChangedListener(otpTextWatcher)
+
+        btnCancel.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            dialog.dismiss()
+        }
+
+        btnUpdate.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            val phoneNumber = SP.userId
+            if (phoneNumber == null) {
+                Toast.makeText(requireContext(), "Error: Not logged in", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val currentOtpInput = etCurrentOtp.text.toString()
+            val newOtpInput = etNewOtp.text.toString()
+            
+            btnUpdate.isEnabled = false
+            btnUpdate.text = "Verifying..."
+
+            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            val userRef = db.collection("users").document(phoneNumber)
+
+            userRef.get().addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val dbCustomOtp = document.getString("custom_otp")
+                    val isValid = if (dbCustomOtp.isNullOrEmpty()) {
+                        currentOtpInput == "123321"
+                    } else {
+                        currentOtpInput == dbCustomOtp
+                    }
+
+                    if (isValid) {
+                        btnUpdate.text = "Updating..."
+                        userRef.update("custom_otp", newOtpInput)
+                            .addOnSuccessListener {
+                                Toast.makeText(requireContext(), "OTP Updated Successfully. Please login again.", Toast.LENGTH_LONG).show()
+                                dialog.dismiss()
+                                
+                                // FORCE LOGOUT & RESTART
+                                performFullReset(justRestart = true)
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e(TAG, "Failed to update OTP", e)
+                                Toast.makeText(requireContext(), "Failed to update OTP", Toast.LENGTH_SHORT).show()
+                                btnUpdate.text = "Update"
+                                btnUpdate.isEnabled = true
+                            }
+                    } else {
+                        Toast.makeText(requireContext(), "Incorrect Current OTP", Toast.LENGTH_LONG).show()
+                        etCurrentOtp.error = "Incorrect PIN"
+                        btnUpdate.text = "Update"
+                        btnUpdate.isEnabled = true
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "Profile not found", Toast.LENGTH_LONG).show()
+                    btnUpdate.text = "Update"
+                    btnUpdate.isEnabled = true
+                }
+            }.addOnFailureListener { e ->
+                Log.e(TAG, "Failed to fetch user data for OTP change", e)
+                Toast.makeText(requireContext(), "Network error", Toast.LENGTH_SHORT).show()
+                btnUpdate.text = "Update"
+                btnUpdate.isEnabled = true
+            }
+        }
+
+        // Focus handling
+        btnCancel.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
+            else v.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+        }
+        btnUpdate.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
+            else v.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+        }
+
+        dialog.show()
+        etCurrentOtp.requestFocus()
+    }
+
     private fun requestInstallPermissions() {
         val permissionsList: MutableList<String> = mutableListOf()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
@@ -681,7 +803,7 @@ class SettingFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        idleHandler.removeCallbacks(idleRunnable)
+        idleHandler.removeCallbacksAndMessages(null)
         _binding = null
     }
 

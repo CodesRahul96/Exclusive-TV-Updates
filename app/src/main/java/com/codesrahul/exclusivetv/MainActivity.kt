@@ -150,18 +150,23 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     private val bootstrapWatchdogHandler = Handler(Looper.getMainLooper())
     private val bootstrapWatchdogRunnable = Runnable {
-        if (!isFinishing && loadingFragment.isVisible) {
+        if (!isFinishing && isAddedToContext() && loadingFragment.isAdded && loadingFragment.isVisible) {
             Log.w(TAG, "Bootstrap safety watchdog triggered! Startup taking too long (45s).")
             Toast.makeText(this, "Network is slow. Attempting to load cached content...", Toast.LENGTH_LONG).show()
             
             // Emergency Recovery: Try to hide loader and show fragments if possible
-            if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+            if (SP.userId != null) {
                 onBootstrapComplete() 
             } else {
                 showFragment(loginFragment)
                 hideFragment(loadingFragment)
             }
         }
+    }
+
+    private fun isAddedToContext(): Boolean {
+        // Simple check to see if we can still show/hide fragments
+        return !supportFragmentManager.isDestroyed && !supportFragmentManager.isStateSaved
     }
 
     private val offlineHandler = Handler(Looper.getMainLooper())
@@ -278,7 +283,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .hide(webFragment)
 
             // Smart Startup: Check Login Status
-            if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+            if (SP.userId != null) {
                 // Logged in: Show Loading (Bootstrap will handle the rest)
                 transaction.hide(loginFragment).show(loadingFragment)
             } else {
@@ -315,8 +320,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
     }
 
-    private fun bootstrap() {
-        Log.i(TAG, "Starting Professional Bootstrap Flow...")
+    private fun bootstrap(skipSubCheck: Boolean = false) {
+        Log.i(TAG, "Starting Professional Bootstrap Flow (skipSubCheck=$skipSubCheck)...")
         showFragment(loadingFragment)
         
         // Start 45s safety watchdog
@@ -325,12 +330,17 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         
         // Step 1: Initialize Remote Config
         initRemoteConfig { 
-            // Step 2: Check Auth & Subscription (Only after config is fetched)
-            checkAuthAndSubscription { 
-                // Step 3: Trigger Final Data Load (Only after plan is known)
-                Log.i(TAG, "Bootstrap Complete. Triggering final TVList update.")
-                runOnUiThread {
-                    onBootstrapComplete()
+            if (skipSubCheck) {
+                 Log.i(TAG, "Skipping Sub Check (verified by LoginFragment).")
+                 runOnUiThread { onBootstrapComplete() }
+            } else {
+                // Step 2: Check Auth & Subscription (Only after config is fetched)
+                checkAuthAndSubscription { 
+                    // Step 3: Trigger Final Data Load (Only after plan is known)
+                    Log.i(TAG, "Bootstrap Complete. Triggering final TVList update.")
+                    runOnUiThread {
+                        onBootstrapComplete()
+                    }
                 }
             }
         }
@@ -354,14 +364,18 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun checkAuthAndSubscription(onFinished: () -> Unit) {
-        val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-        if (user == null) {
+        Log.d(TAG, "Bootstrap Step 2: Checking Auth and Subscriptions")
+        val currentUser = SP.userId
+        
+        if (currentUser == null) {
+            Log.d(TAG, "No user logged in, showing LoginFragment")
             runOnUiThread {
                 webFragment.stop()
                 showFragment(loginFragment)
                 hideFragment(loadingFragment)
             }
         } else {
+            Log.d(TAG, "User logged in: ${currentUser}, checking subscription...")
             runOnUiThread {
                 showFragment(loadingFragment)
                 hideFragment(loginFragment)
@@ -383,8 +397,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     fun onLoginSuccess() {
-        // Full re-bootstrap on manual login
-        bootstrap()
+        // Full re-bootstrap on manual login - skip sub check as it's just been verified
+        bootstrap(skipSubCheck = true)
     }
 
     private fun setupObservers() {
@@ -1656,6 +1670,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        bootstrapWatchdogHandler.removeCallbacksAndMessages(null)
+        offlineHandler.removeCallbacksAndMessages(null)
         connectivityManager.unregisterNetworkCallback(networkCallback)
         rootHandler.removeCallbacksAndMessages(null)
         refreshHandler.removeCallbacksAndMessages(null)
