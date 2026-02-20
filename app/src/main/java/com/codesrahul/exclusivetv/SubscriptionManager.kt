@@ -30,20 +30,25 @@ object SubscriptionManager {
                     val context = com.codesrahul.exclusivetv.MyTVApplication.getInstance()
                     val currentDeviceId = SecurityUtil.getDeviceId(context)
                     val storedDeviceId = document.getString("device_id")
+                    
+                    android.util.Log.d("SubscriptionManager", "Device Check -> Current: $currentDeviceId | Stored: $storedDeviceId")
 
                     if (storedDeviceId.isNullOrEmpty()) {
                         // Scenario A: First Login - Bind the device permanently
-                        android.util.Log.i("SubscriptionManager", "Binding account to Device ID: $currentDeviceId")
+                        android.util.Log.i("SubscriptionManager", "Binding account ${user.phoneNumber} to Device ID: $currentDeviceId")
                         db.collection(COLLECTION_USERS).document(user.uid)
                             .update("device_id", currentDeviceId)
+                            .addOnSuccessListener {
+                                android.util.Log.i("SubscriptionManager", "Device binding successful for account")
+                            }
                             .addOnFailureListener { e ->
-                                android.util.Log.e("SubscriptionManager", "Failed to bind device to Firestore: $e")
+                                android.util.Log.e("SubscriptionManager", "CRITICAL: Failed to bind device to Firestore: $e")
                             }
                     } else if (storedDeviceId != currentDeviceId) {
                         // Scenario B: Device Mismatch - Reject Access
-                        android.util.Log.w("SubscriptionManager", "Login blocked! Account bound to $storedDeviceId. Current device is $currentDeviceId.")
+                        android.util.Log.w("SubscriptionManager", "ACCESS DENIED: Account bound to $storedDeviceId. Attempted from $currentDeviceId.")
                         FirebaseAuth.getInstance().signOut()
-                        onError("This account is permanently bound to another device. You cannot share accounts.")
+                        onError("Security: This account is permanently tied to another device. Shared accounts are not allowed.")
                         return@addOnSuccessListener
                     }
                     // --- END DEVICE BINDING CHECK ---

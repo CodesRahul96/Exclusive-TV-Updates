@@ -1566,4 +1566,28 @@ class WebFragment : Fragment() {
     fun isLive(): Boolean {
         return exoPlayer?.isCurrentMediaItemLive == true || exoPlayer?.duration == C.TIME_UNSET
     }
+
+    fun setPlaybackSpeed(speed: Float) {
+        exoPlayer?.let {
+            val param = androidx.media3.common.PlaybackParameters(speed)
+            it.setPlaybackParameters(param)
+        }
+    }
+
+    fun setResizeMode(mode: Int) {
+        playerView.resizeMode = mode
+    }
+
+    fun seekRelative(deltaMs: Long) {
+        exoPlayer?.let {
+            val current = it.currentPosition
+            val duration = it.duration
+            val newPos = if (duration != C.TIME_UNSET) {
+                (current + deltaMs).coerceIn(0, duration)
+            } else {
+                (current + deltaMs).coerceAtLeast(0)
+            }
+            it.seekTo(newPos)
+        }
+    }
 }

@@ -1,0 +1,13 @@
+--------- beginning of system
+02-20 17:11:02.828  4321  4899 I SurfaceSyncGroup: onTransactionReady mName=wmsSync-ViewRootImpl@280b362[MainActivity]#13 callback=204038415
+02-20 17:11:03.003  4321  4321 I SurfaceSyncGroup: addLocalSync=ViewRootImpl@280b362[MainActivity]#16 to name=wmsSync-ViewRootImpl@280b362[MainActivity]#15, callers=android.window.SurfaceSyncGroup.add:109 android.window.SurfaceSyncGroup.add:3 android.window.SurfaceSyncGroup.add:11 android.view.ViewRootImpl.createSyncIfNeeded:87 android.view.ViewRootImpl.performTraversals:4651 android.view.ViewRootImpl.doTraversal:42 
+02-20 17:11:03.005  4321  4321 I ViewRootImpl@280b362[MainActivity]: New safeguard sync group Safeguard-ViewRootImpl@280b362[MainActivity]#17 @ 02-20 17:11:03.004, mPreviousSyncSafeguard=null, mFirstPreviousSyncSafeguardInfo=
+02-20 17:11:03.019  4321  4899 I SurfaceSyncGroup: onTransactionReady mName=wmsSync-ViewRootImpl@280b362[MainActivity]#15 callback=231221411
+02-20 17:13:03.482  4321  4321 D Activity: onKeyUp(KEYCODE_BACK) isTracking()=false isCanceled()=false hasCallback=false
+02-20 17:13:04.015  4321  4321 D Activity: onBackPressed
+02-20 17:13:04.018  4321  4321 D Activity: onKeyUp(KEYCODE_BACK) isTracking()=false isCanceled()=false hasCallback=false
+--------- beginning of main
+02-20 17:13:24.132  4321 16529 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_ACTIVE for client com.samsung.android.smartface API Level 2 User Id 0
+02-20 17:13:24.604  4321 16529 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_IDLE for client com.samsung.android.smartface API Level 2 User Id 0
+02-20 17:13:24.677  4321 16529 I CameraManagerGlobal: postSingleUpdate device: camera id 1 status STATUS_PRESENT
+02-20 17:13:24.677  4321 16529 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_CLOSED for client com.samsung.android.smartface API Level 2 User Id 0

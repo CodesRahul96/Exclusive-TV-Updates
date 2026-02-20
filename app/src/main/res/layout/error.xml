@@ -39,6 +39,7 @@
             android:layout_marginBottom="8dp"/>
 
         <TextView
+            android:id="@+id/tv_sub_msg"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Please check your internet connection and try again."

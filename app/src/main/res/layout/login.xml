@@ -114,14 +114,30 @@
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:nextFocusUp="@+id/btn_send_otp"
-                    android:nextFocusDown="@+id/btn_verify"/>
+                    android:nextFocusDown="@+id/tv_change_number"/>
+
+                <!-- Change Number (Initially Hidden) -->
+                <TextView
+                    android:id="@+id/tv_change_number"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Change Number?"
+                    android:textColor="@color/accent_gold"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:focusable="true"
+                    android:clickable="true"
+                    android:nextFocusUp="@+id/et_otp"
+                    android:nextFocusDown="@+id/btn_verify"
+                    tools:visibility="visible"/>
 
                 <!-- Verify Button (Initially Hidden) -->
                 <Button
                     android:id="@+id/btn_verify"
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="8dp"
                     android:background="@drawable/btn_gold_selector"
                     android:text="Verify &amp; Login"
                     android:textAllCaps="false"
@@ -131,7 +147,7 @@
                     android:visibility="gone"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
-                    android:nextFocusUp="@+id/et_otp"/>
+                    android:nextFocusUp="@+id/tv_change_number"/>
 
                 <!-- Progress Indicator -->
                 <ProgressBar

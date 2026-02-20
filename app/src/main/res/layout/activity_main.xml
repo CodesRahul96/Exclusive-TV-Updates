@@ -16,4 +16,6 @@
     
     <include layout="@layout/watermark_overlay" />
     
+    <include layout="@layout/gesture_hud" />
+    
 </FrameLayout>

@@ -1,6 +1,7 @@
 ﻿package com.codesrahul.exclusivetv
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.media.AudioManager
 import android.net.ConnectivityManager
@@ -18,7 +19,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.Gravity
+import android.view.ScaleGestureDetector
 import android.widget.FrameLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
@@ -52,7 +55,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var epgGridFragment = EpgGridFragment()
     private var offlineFragment = OfflineFragment()
     private var maintenanceFragment = MaintenanceFragment()
-    private var loginFragment = LoginFragment() // [NEW]
+    private val loginFragment = LoginFragment() // [NEW]
 
     private val spListener = object : OnSharedPreferenceChangeListener {
         override fun onSharedPreferenceChanged(key: String) {
@@ -111,6 +114,28 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     lateinit var gestureDetector: GestureDetector
     lateinit var gestureListener: GestureListener
+    private lateinit var scaleDetector: ScaleGestureDetector
+
+    // Gesture HUD Views
+    private lateinit var gestureHudRoot: View
+    private lateinit var hudBrightness: View
+    private lateinit var brightnessValue: TextView
+    private lateinit var brightnessProgress: ProgressBar
+    private lateinit var hudVolume: View
+    private lateinit var volumeValue: TextView
+    private lateinit var volumeProgress: ProgressBar
+    private lateinit var hudSeek: View
+    private lateinit var seekDelta: TextView
+    private lateinit var seekTime: TextView
+    private lateinit var seekProgress: ProgressBar
+    private lateinit var hudSpeed: TextView
+
+    // Gesture State
+    private var isScrolling = false
+    private var scrollSeekDelta = 0L
+    private var scrollBasePosition = 0L
+    private var scrollBaseVolume = 0f
+    private var scrollBaseBrightness = 0f
 
     private var server: SimpleServer? = null
 
@@ -122,6 +147,29 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val refreshHandler = Handler(Looper.getMainLooper())
     private val refreshInterval: Long = 30 * 60 * 1000L // 30 minutes
     private val resumeRefreshThreshold: Long = 60 * 1000L // 1 minute
+
+    private val bootstrapWatchdogHandler = Handler(Looper.getMainLooper())
+    private val bootstrapWatchdogRunnable = Runnable {
+        if (!isFinishing && loadingFragment.isVisible) {
+            Log.w(TAG, "Bootstrap safety watchdog triggered! Startup taking too long (45s).")
+            Toast.makeText(this, "Network is slow. Attempting to load cached content...", Toast.LENGTH_LONG).show()
+            
+            // Emergency Recovery: Try to hide loader and show fragments if possible
+            if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+                onBootstrapComplete() 
+            } else {
+                showFragment(loginFragment)
+                hideFragment(loadingFragment)
+            }
+        }
+    }
+
+    private val offlineHandler = Handler(Looper.getMainLooper())
+    private val showOfflineRunnable = Runnable {
+        if (!isFinishing) {
+             showOfflineScreenActual()
+        }
+    }
 
     private lateinit var connectivityManager: ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -157,6 +205,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         super.onCreate(savedInstanceState)
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
+        SP.setOnSharedPreferenceChangeListener(spListener)
         
         // Phase 1: Basic UI & Security
         initBasicSetup(savedInstanceState)
@@ -180,6 +229,32 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // Initialize Gestures
         gestureListener = GestureListener()
         gestureDetector = GestureDetector(this, gestureListener)
+        
+        // Initialize HUD
+        gestureHudRoot = findViewById(R.id.gesture_hud_root)
+        hudBrightness = findViewById(R.id.hud_brightness)
+        brightnessValue = findViewById(R.id.brightness_value)
+        brightnessProgress = findViewById(R.id.brightness_progress)
+        hudVolume = findViewById(R.id.hud_volume)
+        volumeValue = findViewById(R.id.volume_value)
+        volumeProgress = findViewById(R.id.volume_progress)
+        hudSeek = findViewById(R.id.hud_seek)
+        seekDelta = findViewById(R.id.seek_delta)
+        seekTime = findViewById(R.id.seek_time)
+        seekProgress = findViewById(R.id.seek_progress)
+        hudSpeed = findViewById(R.id.hud_speed)
+
+        scaleDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScaleEnd(detector: ScaleGestureDetector) {
+                if (detector.scaleFactor > 1.1f) {
+                    webFragment.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM)
+                    Toast.makeText(this@MainActivity, "Zoom Mode", Toast.LENGTH_SHORT).show()
+                } else if (detector.scaleFactor < 0.9f) {
+                    webFragment.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT)
+                    Toast.makeText(this@MainActivity, "Fit Mode", Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
 
         if (savedInstanceState == null) {
             val transaction = supportFragmentManager.beginTransaction()
@@ -244,6 +319,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         Log.i(TAG, "Starting Professional Bootstrap Flow...")
         showFragment(loadingFragment)
         
+        // Start 45s safety watchdog
+        bootstrapWatchdogHandler.removeCallbacks(bootstrapWatchdogRunnable)
+        bootstrapWatchdogHandler.postDelayed(bootstrapWatchdogRunnable, 45000)
+        
         // Step 1: Initialize Remote Config
         initRemoteConfig { 
             // Step 2: Check Auth & Subscription (Only after config is fetched)
@@ -258,6 +337,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun onBootstrapComplete() {
+        bootstrapWatchdogHandler.removeCallbacks(bootstrapWatchdogRunnable)
+        if (!loadingFragment.isVisible && !loginFragment.isVisible) return // Already handled or done
+
+        Log.i(TAG, "Bootstrap Complete. Triggering final TVList update.")
         hideFragment(loginFragment)
         com.codesrahul.exclusivetv.models.TVList.update(this, silent = true)
         
@@ -688,16 +771,20 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    if (isRightHalf && menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
-                        gestureListener.startTimedLongPress()
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && loginFragment.isHidden) {
+                        gestureListener.startTimedLongPress(event.x, event.y)
                     }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     gestureListener.cancelTimedLongPress()
+                    gestureListener.onScrollEnd()
                 }
             }
             
-            gestureDetector.onTouchEvent(event)
+            if (loginFragment.isHidden) {
+                scaleDetector.onTouchEvent(event)
+                gestureDetector.onTouchEvent(event)
+            }
         }
         return super.onTouchEvent(event)
     }
@@ -707,10 +794,20 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         private val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         private val longPressHandler = Handler(Looper.getMainLooper())
         private var isLongPressActive = false
+        /* Commented out mobile audio track long-press - re-enable if requested
         private val audioRunnable = Runnable {
             if (isLongPressActive) {
                 showAudioSelector()
                 isLongPressActive = false 
+            }
+        }
+        */
+        private val speedRunnable = Runnable {
+            if (isLongPressActive) {
+                webFragment.setPlaybackSpeed(2.0f)
+                gestureHudRoot.visibility = View.VISIBLE
+                hudSpeed.visibility = View.VISIBLE
+                hudSpeed.text = "2X Speed"
             }
         }
 
@@ -769,37 +866,38 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            val screenWidth = windowManager.defaultDisplay.width
-            val x = e.x
-            
-            // Double Tap Right Side (> 60% width) -> Settings
-            if (x > screenWidth * 0.6) {
-                showSetting()
-                return true
-            }
+            // Double Tap anywhere on screen -> Settings
+            showSetting()
             return true
         }
 
-        fun startTimedLongPress() {
-            // Check if right side for Audio Menu
-            // We don't have coordinates here easily without passing them.
-            // But onTouchEvent sets isRightHalf.
-            // Let's rely on that or simplify.
-            // The onTouchEvent logic checked isRightHalf.
-            
+        fun startTimedLongPress(x: Float, y: Float) {
+            val screenWidth = windowManager.defaultDisplay.width
             isLongPressActive = true
             
-            // Schedule 3-second callback for audio selector (Right Side Long Press)
-            longPressHandler.postDelayed(audioRunnable, 3000)
-            
-            // Removing 5s settings callback as it clashes/is redundant with double tap
-            // longPressHandler.postDelayed(settingsRunnable, 5000) 
+            if (x > screenWidth * 0.8) {
+                // Right side -> Audio Menu - DISABLED for Mobile as per user request
+                // longPressHandler.postDelayed(audioRunnable, 2000)
+            } else if (x > screenWidth * 0.3 && x < screenWidth * 0.7) {
+                // Center -> 2x Speed
+                longPressHandler.postDelayed(speedRunnable, 500)
+            }
         }
 
         fun cancelTimedLongPress() {
+            if (isLongPressActive) {
+                webFragment.setPlaybackSpeed(1.0f)
+                if (hudSpeed.visibility == View.VISIBLE) {
+                    gestureHudRoot.visibility = View.GONE
+                    hudSpeed.visibility = View.GONE
+                }
+            }
             isLongPressActive = false
-            longPressHandler.removeCallbacks(audioRunnable)
+            // longPressHandler.removeCallbacks(audioRunnable) // DISABLED
+            longPressHandler.removeCallbacks(speedRunnable)
         }
+        // showSeekHud moved below GestureListener
+
 
         override fun onFling(
             e1: MotionEvent?,
@@ -807,25 +905,26 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             velocityX: Float,
             velocityY: Float
         ): Boolean {
-            if (e1 == null) return false
+            if (e1 == null || isScrolling) return false
             
             val screenWidth = windowManager.defaultDisplay.width
             val screenHeight = windowManager.defaultDisplay.height
             val x = e1.x
             val y = e1.y
             
-            // Top Middle Zone: Width 30%-70%, Height < 50%
-            val isTopMiddle = x > screenWidth * 0.3 && x < screenWidth * 0.7 && y < screenHeight * 0.5
+            // Top Middle Zone: Swipe for Volume/Brightness is handled by onScroll now.
+            // Fling for Channel Change only if not scrolling.
             
-            if (isTopMiddle) {
-                if (velocityY > 0) { // Swipe Down -> Previous Channel (Logic invert/standard check)
-                     // Usually Swipe Up (velocityY < 0) is Next, Down is Prev
+            val isMiddle = x > screenWidth * 0.3 && x < screenWidth * 0.7
+            
+            if (isMiddle) {
+                if (velocityY > 2000) { 
                      if (menuFragment.isHidden && settingFragment.isHidden) {
                         prev()
                         return true
                     }
                 }
-                if (velocityY < 0) { // Swipe Up -> Next Channel
+                if (velocityY < -2000) { 
                     if (menuFragment.isHidden && settingFragment.isHidden) {
                         next()
                         return true
@@ -836,27 +935,156 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             return super.onFling(e1, e2, velocityX, velocityY)
         }
 
+        override fun onScroll(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            distanceX: Float,
+            distanceY: Float
+        ): Boolean {
+            if (e1 == null) return false
+            
+            val screenWidth = windowManager.defaultDisplay.width
+            val screenHeight = windowManager.defaultDisplay.height
+            
+            if (!isScrolling) {
+                hideAllHud()
+                gestureHudRoot.visibility = View.VISIBLE
+                isScrolling = true
+                scrollBasePosition = webFragment.getCurrentPosition()
+                scrollBaseVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat()
+                
+                val lp = window.attributes
+                scrollBaseBrightness = if (lp.screenBrightness < 0) 0.5f else lp.screenBrightness
+            }
+
+            val x = e1.x
+            
+            // 1. Vertical Swipe on Left 30% -> Brightness
+            if (x < screenWidth * 0.3) {
+                adjustBrightness(distanceY)
+                return true
+            }
+            
+            // 2. Vertical Swipe on Right 30% -> Volume
+            if (x > screenWidth * 0.7) {
+                adjustVolume(distanceY)
+                return true
+            }
+            
+            return true
+        }
+
+        fun onScrollEnd() {
+            if (isScrolling) {
+                isScrolling = false
+                scrollSeekDelta = 0
+                
+                // Hide HUD after a short delay
+                longPressHandler.postDelayed({
+                    if (!isScrolling) {
+                        gestureHudRoot.visibility = View.GONE
+                        hideAllHud()
+                    }
+                }, 1000)
+            }
+        }
+
+        private fun hideAllHud() {
+            this@MainActivity.hideAllHud()
+        }
+
+        private fun adjustBrightness(deltaY: Float) {
+            val lp = window.attributes
+            val screenHeight = windowManager.defaultDisplay.height
+            
+            // Total swipe of screen height = 100% brightness change
+            val delta = deltaY / screenHeight 
+            val newBrightness = (scrollBaseBrightness + delta).coerceIn(0.01f, 1.0f)
+            
+            // Update base for next scroll delta if we want it relative or just rely on total delta
+            // Actually distanceY in onScroll is delta since last call. 
+            // My scrollBaseBrightness is from the START of the scroll.
+            // So I should accumulate deltaY into a scrollTotalDeltaY.
+            // Wait, onScroll distanceY is indeed delta since LAST call.
+            // So I should update scrollBaseBrightness continuously or accumulate.
+            
+            scrollBaseBrightness = newBrightness
+            
+            lp.screenBrightness = newBrightness
+            window.attributes = lp
+            
+            hudBrightness.visibility = View.VISIBLE
+            brightnessValue.text = "${(newBrightness * 100).toInt()}%"
+            brightnessProgress.progress = (newBrightness * 100).toInt()
+        }
+
+        fun resetHudTimeout() {
+            longPressHandler.removeCallbacksAndMessages(null)
+            longPressHandler.postDelayed({
+                if (!isScrolling) {
+                    gestureHudRoot.visibility = View.GONE
+                    hideAllHud()
+                }
+            }, 1000)
+        }
+
+
         private var currentToast: Toast? = null
 
         private fun adjustVolume(deltaY: Float) {
             val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-            val deltaVolume = (deltaY / 1000f) * maxVolume.toFloat() / windowManager.defaultDisplay.height
-
-            var newVolume = currentVolume + deltaVolume
-            if (newVolume < 0) {
-                newVolume = 0F
-            } else if (newVolume > maxVolume) {
-                newVolume = maxVolume.toFloat()
-            }
-
+            val screenHeight = windowManager.defaultDisplay.height
+            
+            // Total swipe of screen height = 100% volume change
+            val deltaVolume = (deltaY / screenHeight) * maxVolume.toFloat()
+            val newVolume = (scrollBaseVolume + deltaVolume).coerceIn(0f, maxVolume.toFloat())
+            
+            scrollBaseVolume = newVolume
+            
             audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume.toInt(), 0)
-
-            // Cancel previous toast to prevent queue buildup
-            currentToast?.cancel()
-            currentToast = Toast.makeText(this@MainActivity, "Volume: ${newVolume.toInt()} / $maxVolume", Toast.LENGTH_SHORT)
-            currentToast?.show()
+            
+            hudVolume.visibility = View.VISIBLE
+            volumeValue.text = "${(newVolume / maxVolume * 100).toInt()}%"
+            volumeProgress.progress = (newVolume / maxVolume * 100).toInt()
         }
+    }
+
+    private fun showSeekHud(deltaMs: Long) {
+        val duration = webFragment.getDuration()
+        val currentPos = webFragment.getCurrentPosition()
+        
+        gestureHudRoot.visibility = View.VISIBLE
+        hideAllHud()
+        hudSeek.visibility = View.VISIBLE
+        seekDelta.text = (if (deltaMs >= 0) "+" else "-") + formatTime(Math.abs(deltaMs))
+        seekTime.text = "${formatTime(currentPos)} / ${formatTime(duration)}"
+        
+        if (duration > 0) {
+            seekProgress.progress = (currentPos * 100 / duration).toInt()
+            seekProgress.visibility = View.VISIBLE
+        } else {
+            seekProgress.visibility = View.GONE
+        }
+        
+        gestureListener.resetHudTimeout()
+    }
+
+    private fun formatTime(ms: Long): String {
+        val seconds = (ms / 1000) % 60
+        val minutes = (ms / (1000 * 60)) % 60
+        val hours = ms / (1000 * 60 * 60)
+        return if (hours > 0) {
+            String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format("%02d:%02d", minutes, seconds)
+        }
+    }
+
+    private fun hideAllHud() {
+        hudBrightness.visibility = View.GONE
+        hudVolume.visibility = View.GONE
+        hudSeek.visibility = View.GONE
+        hudSpeed.visibility = View.GONE
     }
 
     fun onPlayEnd() {
@@ -925,12 +1153,19 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     fun showOfflineScreen() {
+        // Add 3s debounce to prevent flickering during network switching
+        offlineHandler.removeCallbacks(showOfflineRunnable)
+        offlineHandler.postDelayed(showOfflineRunnable, 3000)
+    }
+
+    private fun showOfflineScreenActual() {
         if (offlineFragment.isHidden) {
             showFragment(offlineFragment)
         }
     }
 
     fun hideOfflineScreen() {
+        offlineHandler.removeCallbacks(showOfflineRunnable)
         if (!offlineFragment.isHidden) {
             hideFragment(offlineFragment)
             webFragment.refreshPlayback()
@@ -1022,6 +1257,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     @android.annotation.SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (isMaintenanceMode) return true // Block all keys
+
+        // If login screen is shown, let it handle keys (numeric entry, navigation, etc.)
+        if (!loginFragment.isHidden) {
+            return super.dispatchKeyEvent(event)
+        }
         
         // Reset ALL auto-hide timers on ANY key event before dispatching it to views
         if (!menuFragment.isHidden) menuActive()
@@ -1086,6 +1326,78 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         }
                     }
                     return true
+                }
+            }
+        }
+
+        // Media Keys Handling
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                    webFragment.seekRelative(10000)
+                    showSeekHud(10000)
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                    webFragment.seekRelative(-10000)
+                    showSeekHud(-10000)
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    webFragment.safeTogglePlayback()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                    next()
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                    prev()
+                    return true
+                }
+            }
+        }
+
+        // DPAD & Navigation Logic
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_UP -> {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                        channelUp()
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                        channelDown()
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                        showFragment(menuFragment)
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
+                    back()
+                    return true
+                }
+                KeyEvent.KEYCODE_SETTINGS, KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_HELP, KeyEvent.KEYCODE_BOOKMARK -> {
+                    showSetting()
+                    return true
+                }
+                KeyEvent.KEYCODE_M -> {
+                    SP.moveMode = !SP.moveMode
+                    Toast.makeText(this, "Move mode: ${if(SP.moveMode) "on" else "off"}", Toast.LENGTH_SHORT).show()
+                    return true
+                }
+                // Numeric Entry
+                in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                        showChannel((event.keyCode - KeyEvent.KEYCODE_0).toString())
+                        return true
+                    }
                 }
             }
         }
@@ -1272,6 +1584,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     private fun showErrorFragment(msg: String) {
         errorFragment.show(msg)
+        
+        // Dynamic sub-message based on actual connectivity
+        if (isNetworkAvailable()) {
+            errorFragment.showSubMsg("Low speed or server issue detected. Please wait...")
+        } else {
+            errorFragment.showSubMsg("Please check your internet connection and try again.")
+        }
+
         if (!errorFragment.isHidden) {
             return
         }
@@ -1296,203 +1616,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         supportFragmentManager.beginTransaction()
             .hide(errorFragment)
             .commitAllowingStateLoss()
-    }
-
-    fun onKey(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_0 -> {
-                showChannel("0")
-                return true
-            }
-
-            KeyEvent.KEYCODE_1 -> {
-                showChannel("1")
-                return true
-            }
-
-            KeyEvent.KEYCODE_2 -> {
-                showChannel("2")
-                return true
-            }
-
-            KeyEvent.KEYCODE_3 -> {
-                showChannel("3")
-                return true
-            }
-
-            KeyEvent.KEYCODE_4 -> {
-                showChannel("4")
-                return true
-            }
-
-            KeyEvent.KEYCODE_5 -> {
-                showChannel("5")
-                return true
-            }
-
-            KeyEvent.KEYCODE_6 -> {
-                showChannel("6")
-                return true
-            }
-
-            KeyEvent.KEYCODE_7 -> {
-                showChannel("7")
-                return true
-            }
-
-            KeyEvent.KEYCODE_8 -> {
-                showChannel("8")
-                return true
-            }
-
-            KeyEvent.KEYCODE_9 -> {
-                showChannel("9")
-                return true
-            }
-
-            KeyEvent.KEYCODE_ESCAPE -> {
-                back()
-                return true
-            }
-
-            KeyEvent.KEYCODE_BACK -> {
-                back()
-                return true
-            }
-
-             KeyEvent.KEYCODE_BOOKMARK -> {
-                 showSetting()
-                 return true
-             }
-
-             KeyEvent.KEYCODE_M -> {
-                 SP.moveMode = !SP.moveMode
-                 Toast.makeText(this, "Move mode: ${if(SP.moveMode) "on" else "off"}", Toast.LENGTH_SHORT).show()
-                 return true
-             }
-
-             KeyEvent.KEYCODE_UNKNOWN -> {
-                return true
-            }
-
-            KeyEvent.KEYCODE_HELP -> {
-                showSetting()
-                return true
-            }
-
-            KeyEvent.KEYCODE_SETTINGS -> {
-                showSetting()
-                return true
-            }
-
-            KeyEvent.KEYCODE_MENU -> {
-                showSetting()
-                return true
-            }
-
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
-                    if (channelFragment.isNumberEntering()) {
-                        channelFragment.playNow()
-                        return true
-                    }
-                    if (infoFragment.isShowing()) {
-                        infoFragment.dismiss()
-                    } else {
-                        val tvModel = TVList.getTVModel()
-                        if (tvModel != null) {
-                            infoFragment.show(tvModel)
-                        }
-                    }
-                    return true
-                }
-                return !trackSelectionFragment.isHidden || !menuFragment.isHidden || !settingFragment.isHidden
-            }
-
-            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_UP -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
-                    channelUp()
-                    return true
-                }
-                // If menu is open, let the RecyclerView handle it naturally - return false
-                if (!menuFragment.isHidden) {
-                    return false
-                }
-                // For settings and track selection, let them handle navigation naturally
-                return false
-            }
-
-            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
-                    channelDown()
-                    return true
-                }
-                // If menu is open, let the RecyclerView handle it naturally - return false
-                if (!menuFragment.isHidden) {
-                    return false
-                }
-                // For settings and track selection, let them handle navigation naturally
-                return false
-            }
-            
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                // 1. If menu is open, let menu handle it for navigation (e.g. Categories -> Channel List)
-                if (!menuFragment.isHidden) {
-                    if (menuFragment.onKey(keyCode)) return true
-                }
-                
-                // 2. For settings and track selection, let them handle navigation naturally
-                if (!settingFragment.isHidden || !trackSelectionFragment.isHidden || !epgGridFragment.isHidden) {
-                    return false
-                }
-                
-                // 3. Handle right arrow for audio track selector (3s hold) when all fragments are hidden
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden) {
-                    // Logic moved to dispatchKeyEvent()
-                }
-                
-                return false
-            }
-
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
-                if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
-                    showFragment(menuFragment)
-                    return true
-                }
-                // Let fragments handle their own left navigation
-                return false
-            }
-
-
-        }
-
-        
-        if (event != null && event.action == KeyEvent.ACTION_DOWN) {
-            when (keyCode) {
-                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                    webFragment.safeTogglePlayback()
-                    return true
-                }
-                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                    webFragment.safeSeekForward()
-                    return true
-                }
-                KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                    webFragment.safeSeekBackward()
-                    return true
-                }
-                KeyEvent.KEYCODE_MEDIA_NEXT -> {
-                    next() // Utilize existing next() channel logic
-                    return true
-                }
-                KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
-                    prev() // Utilize existing prev() channel logic
-                    return true
-                }
-            }
-        }
-
-        return false
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -1529,18 +1652,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         } else {
             Toast.makeText(this, "Channel not found: $query", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (onKey(keyCode, event)) {
-            return true
-        }
-
-        return super.onKeyDown(keyCode, event)
-    }
-
-    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        return super.onKeyUp(keyCode, event)
     }
 
     override fun onDestroy() {

@@ -37,6 +37,10 @@ class ErrorFragment : Fragment() {
         _binding?.let { it.msg.text = msg }
     }
 
+    fun showSubMsg(subMsg: String) {
+        _binding?.let { it.tvSubMsg.text = subMsg }
+    }
+
 
     override fun onDestroyView() {
         super.onDestroyView()

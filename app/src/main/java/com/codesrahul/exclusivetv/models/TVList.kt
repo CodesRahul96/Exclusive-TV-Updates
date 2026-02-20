@@ -559,14 +559,21 @@ object TVList {
                               android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                                   EPGManager.init(ctx)
                                   CoroutineScope(Dispatchers.IO).launch {
-                                       withContext(Dispatchers.Main) { 
-                                           if (showUi) _importStatus.value = "Updating Guide..." 
-                                       } 
-                                      EPGManager.fetchEPG(force = false)
-                                      withContext(Dispatchers.Main) {
-                                          listModel.forEach { it.updateEPG() }
-                                          // Fix: Clear status so loading spinner doesn't get stuck
-                                          if (showUi) _importStatus.value = ""
+                                      try {
+                                          withContext(Dispatchers.Main) { 
+                                              if (showUi) _importStatus.value = "Updating Guide..." 
+                                          } 
+                                          EPGManager.fetchEPG(force = false)
+                                          withContext(Dispatchers.Main) {
+                                              listModel.forEach { it.updateEPG() }
+                                          }
+                                      } catch (e: Exception) {
+                                          Log.e("TVList", "EPG Fetch Error: ${e.message}")
+                                      } finally {
+                                          withContext(Dispatchers.Main) {
+                                              // Fix: Clear status so loading spinner doesn't get stuck
+                                              if (showUi) _importStatus.value = ""
+                                          }
                                       }
                                   }
                               }, 10000) // 10 second delay
