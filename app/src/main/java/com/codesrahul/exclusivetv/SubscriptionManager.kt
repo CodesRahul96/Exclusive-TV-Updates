@@ -92,7 +92,26 @@ object SubscriptionManager {
                         onSuccess()
                     }
                 } else {
-                    onError("No subscription found")
+                    // Auto-register new user as "Standard"
+                    val context = com.codesrahul.exclusivetv.MyTVApplication.getInstance()
+                    val currentDeviceId = SecurityUtil.getDeviceId(context)
+                    val newUser = hashMapOf(
+                        "plan" to "Standard",
+                        "device_id" to currentDeviceId,
+                        "created_at" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                        "phone_number" to (user.phoneNumber ?: "")
+                    )
+                    db.collection(COLLECTION_USERS).document(user.uid)
+                        .set(newUser)
+                        .addOnSuccessListener {
+                            android.util.Log.i("SubscriptionManager", "Auto-registered new user: ${user.uid}")
+                            this.planName = "Standard"
+                            onSuccess()
+                        }
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("SubscriptionManager", "Failed to auto-register user: $e")
+                            onError("Failed to create account. Please try again.")
+                        }
                 }
             }
             .addOnFailureListener { exception ->

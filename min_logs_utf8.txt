@@ -1,0 +1,321 @@
+--------- beginning of crash
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: FATAL EXCEPTION: main
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: Process: com.android.vending, PID: 12395
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: java.lang.NullPointerException: Null appIcon
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at zvs.<init>(PG:39)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at zvm.i(PG:154)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at bbfq.i(PG:867)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at bq.ax(PG:132)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at bq.az(PG:83)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at bq.H(PG:82)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at v.c(PG:7)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at qs.kQ(PG:772)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at jyp.c(PG:29)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at jyp.f(PG:52)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at jyp.l(PG:15)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at nku.run(PG:887)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at android.os.Handler.handleCallback(Unknown Source:2)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Unknown Source:4)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at android.os.Looper.loopOnce(Unknown Source:185)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at android.os.Looper.loop(Unknown Source:83)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at android.app.ActivityThread.main(Unknown Source:107)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(Unknown Source:11)
+02-20 16:35:48.839 12395 12395 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(Unknown Source:334)
+--------- beginning of system
+02-20 17:43:11.871  2054  2418 E WindowManager: win=Window{efd8382 u0 SnapshotStartingWindow for taskId=4589 EXITING} destroySurfaces: appStopped=false cleanupOnResume=false win.mWindowRemovalAllowed=true win.mRemoveOnExit=true win.mViewVisibility=0 caller=com.android.server.wm.WindowState.onExitAnimationDone:214 com.android.server.wm.WindowStateAnimator.onAnimationFinished:80 com.android.server.wm.WindowState.onAnimationFinished:5 com.android.server.wm.WindowContainer$$ExternalSyntheticLambda4.onAnimationFinished:2 com.android.server.wm.SurfaceAnimator.lambda$getFinishedCallback$0:19 com.android.server.wm.SurfaceAnimator.$r8$lambda$eYT7rjaBOE8bCIRq043wVzQ_RTM:0 com.android.server.wm.SurfaceAnimator$$ExternalSyntheticLambda1.run:8 
+02-20 17:43:12.162  2054  2767 E WindowManager: win=Window{3aca6a8 u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity} destroySurfaces: appStopped=true cleanupOnResume=false win.mWindowRemovalAllowed=false win.mRemoveOnExit=false win.mViewVisibility=8 caller=com.android.server.wm.ActivityRecord.destroySurfaces:24 com.android.server.wm.ActivityRecord.destroySurfaces:1 com.android.server.wm.ActivityRecord.activityStopped:237 com.android.server.wm.ActivityClientController.activityStopped:86 android.app.IActivityClientController$Stub.onTransact:1391 com.android.server.wm.ActivityClientController.onTransact:0 android.os.Binder.execTransactInternal:109 
+02-20 17:43:14.484  2054  7020 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+02-20 17:43:20.603  2054  7191 E WindowManager: win=Window{a342081 u0 InputMethod} destroySurfaces: appStopped=true cleanupOnResume=false win.mWindowRemovalAllowed=false win.mRemoveOnExit=false win.mViewVisibility=8 caller=com.android.server.wm.WindowManagerService.tryStartExitingAnimation:136 com.android.server.wm.WindowManagerService.relayoutWindow:1040 com.android.server.wm.Session.relayout:41 android.view.IWindowSession$Stub.onTransact:1978 com.android.server.wm.Session.onTransact:0 android.os.Binder.execTransactInternal:94 android.os.Binder.execTransact:39 
+02-20 17:43:21.296  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:43:27.691  2054  2776 E WindowManager: win=Window{a342081 u0 InputMethod} destroySurfaces: appStopped=true cleanupOnResume=false win.mWindowRemovalAllowed=false win.mRemoveOnExit=false win.mViewVisibility=8 caller=com.android.server.wm.WindowManagerService.tryStartExitingAnimation:136 com.android.server.wm.WindowManagerService.relayoutWindow:1040 com.android.server.wm.Session.relayout:41 android.view.IWindowSession$Stub.onTransact:1978 com.android.server.wm.Session.onTransact:0 android.os.Binder.execTransactInternal:94 android.os.Binder.execTransact:39 
+02-20 17:43:27.748  2054  4782 E WindowManager: win=Window{d642cb9 u0 EdgeBackGestureHandler0} destroySurfaces: appStopped=true cleanupOnResume=false win.mWindowRemovalAllowed=false win.mRemoveOnExit=false win.mViewVisibility=8 caller=com.android.server.wm.WindowManagerService.tryStartExitingAnimation:136 com.android.server.wm.WindowManagerService.relayoutWindow:1040 com.android.server.wm.Session.relayout:41 android.view.IWindowSession$Stub.onTransact:1978 com.android.server.wm.Session.onTransact:0 android.os.Binder.execTransactInternal:109 android.os.Binder.execTransact:39 
+02-20 17:43:27.934  2054  2422 E Watchdog: !@Sync: 712 heap: 115 / 126 FD: 1179 [2026-02-20 17:43:27.933] softdog disabled
+02-20 17:43:31.319  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:43:41.356  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:43:51.388  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:43:57.947  2054  2422 E Watchdog: !@Sync: 713 heap: 115 / 126 FD: 1179 [2026-02-20 17:43:57.946] softdog disabled
+02-20 17:44:01.414  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:44:11.440  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:44:16.787  2054  4782 E ShortcutService: Invalid icon type in shortcut 75355352232005@lid. Bitmaps are not allowed in long-lived shortcuts. Use Resource icons, or Uri-based icons instead.
+02-20 17:44:21.060  6509  6516 E keystore2: system/security/keystore2/src/error.rs:182 - Rc(r#KEY_NOT_FOUND), "system/security/keystore2/src/service.rs:188: In get_key_entry, while trying to load key info. 10286, Some(\"BugsmirrorDefenderValidation\")"
+02-20 17:44:21.064  6509  6516 E keystore2: system/security/keystore2/src/error.rs:182 - Rc(r#KEY_NOT_FOUND), "system/security/keystore2/src/service.rs:188: In get_key_entry, while trying to load key info. 10286, Some(\"BugsmirrorDefenderValidation\")"
+02-20 17:44:21.465  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:44:27.957  2054  2422 E Watchdog: !@Sync: 714 heap: 124 / 126 FD: 1179 [2026-02-20 17:44:27.956] softdog disabled
+02-20 17:44:31.486  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:44:44.488  2054  2642 E ShortcutService: Invalid icon type in shortcut 75355352232005@lid. Bitmaps are not allowed in long-lived shortcuts. Use Resource icons, or Uri-based icons instead.
+02-20 17:44:46.513  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:44:56.540  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:44:57.964  2054  2422 E Watchdog: !@Sync: 715 heap: 125 / 126 FD: 1192 [2026-02-20 17:44:57.963] softdog disabled
+02-20 17:45:06.570  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:45:16.595  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:45:26.606  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:45:27.975  2054  2422 E Watchdog: !@Sync: 716 heap: 116 / 126 FD: 1179 [2026-02-20 17:45:27.974] softdog disabled
+02-20 17:45:36.632  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:45:46.668  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:45:56.703  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:45:57.997  2054  2422 E Watchdog: !@Sync: 717 heap: 125 / 126 FD: 1180 [2026-02-20 17:45:57.995] softdog disabled
+02-20 17:46:06.734  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:46:16.763  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:46:26.788  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:46:28.018  2054  2422 E Watchdog: !@Sync: 718 heap: 120 / 126 FD: 1179 [2026-02-20 17:46:28.016] softdog disabled
+02-20 17:46:36.809  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:46:46.825  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:46:56.847  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:46:58.041  2054  2422 E Watchdog: !@Sync: 719 heap: 122 / 126 FD: 1179 [2026-02-20 17:46:58.040] softdog disabled
+02-20 17:47:06.872  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:47:16.899  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:47:26.920  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:47:28.056  2054  2422 E Watchdog: !@Sync: 720 heap: 124 / 126 FD: 1184 WaitTime: 0.000 GCcnt: 0 FullGC: 0 [2026-02-20 17:47:28.055] softdog disabled
+02-20 17:47:36.940  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+--------- beginning of main
+02-20 17:47:39.555  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:39.791  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:40.404  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:40.699  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:41.062  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:42.564  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:42.798  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:43.415  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:43.707  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:44.073  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:45.575  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:45.807  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:46.425  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:46.715  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:46.969  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:47:47.084  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:48.321  1186  1186 E audit   : type=1400 audit(1771589868.316:26225): avc:  denied  { search } for  pid=24918 comm="ch_zygote" name="app" dev="dm-46" ino=124 scontext=u:r:zygote:s0 tcontext=u:object_r:apk_data_file:s0 tclass=dir permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:48.420  2054  2282 E VpnManagerService: Exception occured while trying to get the getProxyInfoForUid for knoxvpn uid 10072
+02-20 17:47:48.476  1186  1186 E audit   : type=1400 audit(1771589868.472:26226): avc:  denied  { ioctl } for  pid=24918 comm=4173796E635461736B202331 path="/data/data/com.samsung.android.game.gos/databases/gos-db.db" dev="dm-46" ino=9994 ioctlcmd=0xf522 scontext=u:r:platform_app:s0:c512,c768 tcontext=u:object_r:app_data_file:s0:c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:48.487  1186  1186 E audit   : type=1400 audit(1771589868.484:26227): avc:  denied  { ioctl } for  pid=24918 comm=4173796E635461736B202331 path="/data/data/com.samsung.android.game.gos/databases/gos-db.db" dev="dm-46" ino=9994 ioctlcmd=0xf522 scontext=u:r:platform_app:s0:c512,c768 tcontext=u:object_r:app_data_file:s0:c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:48.494  1186  1186 E audit   : type=1400 audit(1771589868.492:26228): avc:  denied  { ioctl } for  pid=24918 comm=4173796E635461736B202331 path="/data/data/com.samsung.android.game.gos/databases/gos-db.db" dev="dm-46" ino=9994 ioctlcmd=0xf522 scontext=u:r:platform_app:s0:c512,c768 tcontext=u:object_r:app_data_file:s0:c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:48.579  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:48.816  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:49.435  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:49.725  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:49.761  2054  4161 E SemWifiService: getCurrentNetworkScore - invalid score data
+02-20 17:47:49.761  2054  4161 E WifiProfileShare.Caster: failed to generate qos array, need to check network score data
+02-20 17:47:50.094  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:50.364  1806  1806 E ewlogd  : EWLogWriter: can not open /data/log/ewlogd/ewlog0_20260220_164208185829.log with errno 2
+02-20 17:47:50.541  1186  1186 E audit   : type=1400 audit(1771589870.536:26229): avc:  denied  { search } for  pid=3336 comm="IpClient.wlan0" name="net" dev="sysfs" ino=49197 scontext=u:r:network_stack:s0 tcontext=u:object_r:sysfs_net:s0 tclass=dir permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: failed to read /sys/class/net/wlan0/mtu
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: java.nio.file.AccessDeniedException: /sys/class/net/wlan0/mtu
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:220)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at java.nio.file.Files.newByteChannel(Files.java:371)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at java.nio.file.Files.newByteChannel(Files.java:422)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:420)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at java.nio.file.Files.newInputStream(Files.java:156)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at java.nio.file.Files.newBufferedReader(Files.java:2844)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.com.android.net.module.util.ProcfsParsingUtils.readFile(ProcfsParsingUtils.java:75)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.com.android.net.module.util.ProcfsParsingUtils.getInterfaceMtu(ProcfsParsingUtils.java:350)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.android.net.apf.ApfFilter$Dependencies.getInterfaceMtu(ApfFilter.java:823)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.android.net.apf.ApfFilter.installNewProgram(ApfFilter.java:4004)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.android.net.apf.ApfFilter.processRa(ApfFilter.java:4215)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.android.net.apf.ApfFilter$RaPacketReader.handlePacket(ApfFilter.java:374)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.android.net.apf.ApfFilter$RaPacketReader.handlePacket(ApfFilter.java:358)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.com.android.net.module.util.FdEventsReader.handleInput(FdEventsReader.java:277)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.com.android.net.module.util.FdEventsReader.lambda$createAndRegisterFd$0(FdEventsReader.java:233)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.com.android.net.module.util.FdEventsReader.$r8$lambda$jjSC4hVD2AlVH3T-DbWnF2T3fK8(FdEventsReader.java:0)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at com.android.networkstack.com.android.net.module.util.FdEventsReader$$ExternalSyntheticLambda0.onFileDescriptorEvents(R8$$SyntheticClass:0)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at android.os.MessageQueue.dispatchEvents(Unknown Source:28)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at android.os.MessageQueue.nativePollOnce(Native Method)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at android.os.MessageQueue.next(Unknown Source:17)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at android.os.Looper.loopOnce(Unknown Source:6)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at android.os.Looper.loop(Unknown Source:83)
+02-20 17:47:50.544  3336  3885 E ProcfsParsingUtils: 	at android.os.HandlerThread.run(Unknown Source:28)
+02-20 17:47:51.587  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:51.825  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:52.445  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:52.734  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:52.787  2054  4161 E SemWifiService: getCurrentNetworkScore - invalid score data
+02-20 17:47:52.787  2054  4161 E WifiProfileShare.Caster: failed to generate qos array, need to check network score data
+02-20 17:47:53.103  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:54.596  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:54.834  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:55.459  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:55.743  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:55.815  2054  4161 E SemWifiService: getCurrentNetworkScore - invalid score data
+02-20 17:47:55.815  2054  4161 E WifiProfileShare.Caster: failed to generate qos array, need to check network score data
+02-20 17:47:56.113  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:56.531  1186  1186 E audit   : type=1400 audit(1771589876.528:26230): avc:  denied  { ioctl } for  pid=2054 comm="binder:2054_7" path="/data/system_ce/0/accounts_ce.db-journal" dev="dm-46" ino=136503 ioctlcmd=0xf522 scontext=u:r:system_server:s0 tcontext=u:object_r:system_data_file:s0 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:56.554  1186  1186 E audit   : type=1400 audit(1771589876.548:26231): avc:  denied  { ioctl } for  pid=2054 comm="binder:2054_12" path="/data/system_ce/0/accounts_ce.db-journal" dev="dm-46" ino=137495 ioctlcmd=0xf522 scontext=u:r:system_server:s0 tcontext=u:object_r:system_data_file:s0 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:56.580  1186  1186 E audit   : type=1400 audit(1771589876.576:26232): avc:  denied  { ioctl } for  pid=2054 comm="binder:2054_12" path="/data/system_ce/0/accounts_ce.db-journal" dev="dm-46" ino=179741 ioctlcmd=0xf522 scontext=u:r:system_server:s0 tcontext=u:object_r:system_data_file:s0 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:56.594  1186  1186 E audit   : type=1400 audit(1771589876.588:26233): avc:  denied  { ioctl } for  pid=2054 comm="binder:2054_12" path="/data/system_ce/0/accounts_ce.db-journal" dev="dm-46" ino=121494 ioctlcmd=0xf522 scontext=u:r:system_server:s0 tcontext=u:object_r:system_data_file:s0 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:47:56.984  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:47:57.606  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:57.841  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:58.077  2054  2422 E Watchdog: !@Sync: 721 heap: 120 / 126 FD: 1179 [2026-02-20 17:47:58.076] softdog disabled
+02-20 17:47:58.468  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:58.752  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:47:59.123  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:00.616  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:00.850  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:01.478  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:01.759  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:02.130  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:03.627  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:03.858  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:04.488  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:04.767  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:05.139  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:06.641  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:06.866  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:06.998  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:48:07.497  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:07.776  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:07.878  2054  4161 E SemWifiService: getCurrentNetworkScore - invalid score data
+02-20 17:48:07.878  2054  4161 E WifiProfileShare.Caster: failed to generate qos array, need to check network score data
+02-20 17:48:08.146  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:09.651  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:09.873  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:10.507  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:10.785  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:11.155  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:12.656  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:12.880  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:13.516  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:13.795  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:14.164  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:14.587  2054  4161 E SemWifiService: getCurrentNetworkScore - invalid score data
+02-20 17:48:14.587  2054  4161 E WifiProfileShare.Caster: failed to generate qos array, need to check network score data
+02-20 17:48:15.664  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:15.889  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:16.522  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:16.804  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:17.019  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:48:17.177  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:18.674  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:18.899  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:19.530  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:19.813  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:20.186  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:21.684  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:21.908  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:22.537  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:22.823  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:23.196  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:24.610  1186  1186 E audit   : type=1400 audit(1771589904.604:26234): avc:  denied  { kill } for  pid=0 comm="swapper/3" capability=5  scontext=u:r:kernel:s0 tcontext=u:r:kernel:s0 tclass=capability permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:24.692  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:24.853  1806  1806 E ewlogd  : EWLogWriter: can not open /data/log/ewlogd/ewlog0_20260220_164208185829.log with errno 2
+02-20 17:48:24.914  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:25.545  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:25.832  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:26.205  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:27.043  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:48:27.702  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:27.923  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:28.089  2054  2422 E Watchdog: !@Sync: 722 heap: 118 / 126 FD: 1180 [2026-02-20 17:48:28.087] softdog disabled
+02-20 17:48:28.556  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:28.842  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:29.219  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:30.712  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:30.931  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:31.566  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:31.851  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:32.228  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:33.722  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:33.940  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:34.575  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:34.860  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:35.239  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:36.730  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:36.950  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:37.068  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:48:37.583  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:37.869  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:38.248  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:39.740  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:39.960  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:40.591  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:40.856  1186  1186 E audit   : type=1400 audit(1771589920.852:26235): avc:  denied  { search } for  pid=26153 comm="ch_zygote" name="app" dev="dm-46" ino=124 scontext=u:r:zygote:s0 tcontext=u:object_r:apk_data_file:s0 tclass=dir permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:40.858  1186  1186 E audit   : type=1400 audit(1771589920.856:26236): avc:  denied  { search } for  pid=26151 comm="ch_zygote" name="app" dev="dm-46" ino=124 scontext=u:r:zygote:s0 tcontext=u:object_r:apk_data_file:s0 tclass=dir permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:40.879  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:40.909  2054  5056 E VpnManagerService: Exception occured while trying to get the getProxyInfoForUid for knoxvpn uid 10212
+02-20 17:48:40.955  1186  1186 E audit   : type=1400 audit(1771589920.952:26237): avc:  denied  { ioctl } for  pid=4415 comm="binder:4415_D" path="/data/data/com.google.android.gms/databases/phenotype.db" dev="dm-46" ino=6785 ioctlcmd=0xf522 scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:privapp_data_file:s0:c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:41.250  1186  1186 E audit   : type=1400 audit(1771589921.248:26238): avc:  denied  { ioctl } for  pid=26151 comm=4173796E635461736B202331 path="/data/data/com.google.android.apps.turbo/databases/appusage.db" dev="dm-46" ino=12966 ioctlcmd=0xf522 scontext=u:r:priv_app:s0:c512,c768 tcontext=u:object_r:privapp_data_file:s0:c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:41.254  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:41.654  2054  7191 E VpnManagerService: Exception occured while trying to get the getProxyInfoForUid for knoxvpn uid 10349
+02-20 17:48:41.719  1186  1186 E audit   : type=1400 audit(1771589921.716:26239): avc:  denied  { ioctl } for  pid=26153 comm="pool-5-thread-1" path="/data/data/in.startv.hotstar/databases/com.google.android.datatransport.events" dev="dm-46" ino=107259 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:41.769  1186  1186 E audit   : type=1400 audit(1771589921.764:26240): avc:  denied  { ioctl } for  pid=26153 comm="WM.task-1" path="/data/data/in.startv.hotstar/no_backup/androidx.work.workdb" dev="dm-46" ino=80028 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:41.840  1186  1186 E audit   : type=1400 audit(1771589921.836:26241): avc:  denied  { ioctl } for  pid=26153 comm="WM.task-1" path="/data/data/in.startv.hotstar/no_backup/androidx.work.workdb" dev="dm-46" ino=80028 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:41.849  1186  1186 E audit   : type=1400 audit(1771589921.844:26242): avc:  denied  { ioctl } for  pid=26153 comm="WM.task-1" path="/data/data/in.startv.hotstar/no_backup/androidx.work.workdb" dev="dm-46" ino=80028 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:42.110 26153 26351 E .startv.hotstar: No package ID 6a found for resource ID 0x6a0b0013.
+02-20 17:48:42.122  1186  1186 E audit   : type=1400 audit(1771589922.120:26243): avc:  denied  { ioctl } for  pid=26153 comm="pool-24-thread-" path="/data/data/in.startv.hotstar/databases/clevertap" dev="dm-46" ino=81835 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:42.158  1186  1186 E audit   : type=1400 audit(1771589922.152:26244): avc:  denied  { ioctl } for  pid=26153 comm=4D6561737572656D656E7420576F72 path="/data/data/in.startv.hotstar/databases/google_app_measurement_local.db" dev="dm-46" ino=69793 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:42.171  1186  1186 E audit   : type=1400 audit(1771589922.168:26245): avc:  denied  { ioctl } for  pid=26153 comm="pool-24-thread-" path="/data/data/in.startv.hotstar/databases/clevertap" dev="dm-46" ino=81835 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:42.208  1186  1186 E audit   : type=1400 audit(1771589922.204:26246): avc:  denied  { ioctl } for  pid=26153 comm=4D6561737572656D656E7420576F72 path="/data/data/in.startv.hotstar/databases/google_app_measurement_local.db" dev="dm-46" ino=69793 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:42.215  1186  1186 E audit   : type=1400 audit(1771589922.212:26247): avc:  denied  { ioctl } for  pid=26153 comm=4D6561737572656D656E7420576F72 path="/data/data/in.startv.hotstar/databases/google_app_measurement_local.db" dev="dm-46" ino=69793 ioctlcmd=0xf522 scontext=u:r:untrusted_app:s0:c93,c257,c512,c768 tcontext=u:object_r:app_data_file:s0:c93,c257,c512,c768 tclass=file permissive=0 SEPF_SM-A528B_12_0001 audit_filtered
+02-20 17:48:42.298   624   630 E QC-time-services: Receive Passed == base = 13, unit = 1, operation = 2, result = 0
+02-20 17:48:42.298  1323  1338 E QC-time-services: Daemon: Time-services: Waiting to acceptconnection
+02-20 17:48:42.299  1323  1338 E QC-time-services: Daemon: Time-services: Waiting to acceptconnection
+02-20 17:48:42.426   624   630 E QC-time-services: Receive Passed == base = 13, unit = 1, operation = 2, result = 0
+02-20 17:48:42.426  1323  1338 E QC-time-services: Daemon: Time-services: Waiting to acceptconnection
+02-20 17:48:42.427  1323  1338 E QC-time-services: Daemon: Time-services: Waiting to acceptconnection
+02-20 17:48:42.534   624   630 E QC-time-services: Receive Passed == base = 13, unit = 1, operation = 2, result = 0
+02-20 17:48:42.534  1323  1338 E QC-time-services: Daemon: Time-services: Waiting to acceptconnection
+02-20 17:48:42.535  1323  1338 E QC-time-services: Daemon: Time-services: Waiting to acceptconnection
+02-20 17:48:42.751  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:42.968  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:43.599  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:43.887  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:44.262  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:45.761  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:45.977  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:46.608  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:46.895  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:47.092  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:48:47.269  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:48.771  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:48.986  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:49.617  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:49.906  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:50.278  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:51.781  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:51.996  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:52.627  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:52.914  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:53.287  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:54.791  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:55.004  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:55.636  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:55.923  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:56.297  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:57.114  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:48:57.802  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:57.941  1806  1806 E ewlogd  : EWLogWriter: can not open /data/log/ewlogd/ewlog0_20260220_164208185829.log with errno 2
+02-20 17:48:58.013  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:58.114  2054  2422 E Watchdog: !@Sync: 723 heap: 122 / 126 FD: 1178 [2026-02-20 17:48:58.112] softdog disabled
+02-20 17:48:58.645  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:58.930  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:48:59.305  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:00.811  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:01.021  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:01.654  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:01.940  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:02.313  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:03.823  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:04.031  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:04.663  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:04.949  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:05.322  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:06.836  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:07.041  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:07.136  2054  4005 E FreecessController: FZ error : com.sec.android.app.voicenote(0)
+02-20 17:49:07.670  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:07.958  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:08.286  2054  4161 E SemWifiService: getCurrentNetworkScore - invalid score data
+02-20 17:49:08.286  2054  4161 E WifiProfileShare.Caster: failed to generate qos array, need to check network score data
+02-20 17:49:08.330  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:09.842  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:10.049  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:10.677  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:10.965  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:11.314  2054  4161 E SemWifiService: getCurrentNetworkScore - invalid score data
+02-20 17:49:11.314  2054  4161 E WifiProfileShare.Caster: failed to generate qos array, need to check network score data
+02-20 17:49:11.335  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:12.850  1848 16400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:13.058  1848 17504 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:13.685  1848 12827 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:13.974  1848 12752 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
+02-20 17:49:14.344  1848 15400 E cameraserver: isBiometricsFaceService : face deamoen Pid(1957) is not same with callingPid(6571)
