@@ -56,8 +56,8 @@ object SecureHttpClient {
     fun refresh() {
         Log.i(TAG, "Refreshing OkHttpClient with updated cert pins.")
         // Close old client's resources before replacing (releases thread pools + connection pool)
-        _client?.connectionPool()?.evictAll()
-        _client?.dispatcher()?.executorService()?.shutdown()
+        _client?.connectionPool?.evictAll()
+        _client?.dispatcher?.executorService?.shutdown()
         _client = buildClient()
     }
 

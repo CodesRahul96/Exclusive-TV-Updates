@@ -1236,9 +1236,7 @@ object TVList {
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
                             EPGManager.fetchEPG(force = false)
-                            withContext(Dispatchers.Main) {
-                                listModel.forEach { it.updateEPG() }
-                            }
+                            listModel.forEach { it.updateEPG() }
                         } catch (e: Exception) {
                         }
                     }
@@ -1292,10 +1290,8 @@ object TVList {
                     list = validList
                     withContext(Dispatchers.Main) {
                         refreshModels(MyTVApplication.getInstance())
-                        if (SP.epgEnabled) {
-                            EPGManager.fetchEPG()
-                            listModel.forEach { it.updateEPG() }
-                        }
+                        EPGManager.fetchEPG()
+                        listModel.forEach { it.updateEPG() }
                         "$removedCount not working channels removed".showToast(Toast.LENGTH_LONG)
                     }
                 } else {

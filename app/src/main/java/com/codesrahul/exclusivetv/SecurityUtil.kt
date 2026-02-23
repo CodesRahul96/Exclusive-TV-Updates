@@ -23,6 +23,9 @@ object SecurityUtil {
     private var lastCheckResult: Boolean = false
     private const val CHECK_CACHE_DURATION = 30 * 1000L // 30 seconds
 
+    private var cachedDeviceId: String? = null
+    private val hmacPool = ThreadLocal<javax.crypto.Mac>()
+
     fun isDeviceRestricted(context: Context): Boolean {
         // 1. Maintenance Mode Check - Always check, very fast
         if (isMaintenanceMode) {
@@ -150,7 +153,9 @@ object SecurityUtil {
      * Retrieves the unique Android Device ID for account binding.
      */
     fun getDeviceId(context: Context): String {
-        return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown_device"
+        return cachedDeviceId ?: synchronized(this) {
+            cachedDeviceId ?: (Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown_device").also { cachedDeviceId = it }
+        }
     }
 
     /**
@@ -158,7 +163,11 @@ object SecurityUtil {
      */
     fun generateHmacSha256(data: String, key: String): String {
         try {
-            val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+            var mac = hmacPool.get()
+            if (mac == null) {
+                mac = javax.crypto.Mac.getInstance("HmacSHA256")
+                hmacPool.set(mac)
+            }
             val secretKeySpec = javax.crypto.spec.SecretKeySpec(key.toByteArray(Charsets.UTF_8), "HmacSHA256")
             mac.init(secretKeySpec)
             val hash = mac.doFinal(data.toByteArray(Charsets.UTF_8))
@@ -180,7 +189,7 @@ class SecurityInterceptor(private val context: Context) : Interceptor {
         
         // --- API Request Signing (HMAC-SHA256) ---
         val timestamp = (System.currentTimeMillis() / 1000).toString()
-        val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown_device"
+        val deviceId = SecurityUtil.getDeviceId(context)
         
         val url = original.url.toString()
         val method = original.method

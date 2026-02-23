@@ -25,6 +25,11 @@ object EPGManager {
     private const val CACHE_FILE = "epg_cache.xml.gz"
     private const val DEFAULT_EPG_URL = "https://tsepg.cf/epg.xml.gz"
 
+    private val REGEX_BRACKETS = Regex("\\(.*?\\)")
+    private val REGEX_PREFIX_D = Regex("^d ")
+    private val REGEX_PREFIX_DD = Regex("^dd ")
+    private val REGEX_NON_ALPHANUM = Regex("[^a-z0-9]")
+
     private var epgData = mutableMapOf<String, MutableList<EPGProgram>>()
     private var epgDataById = mutableMapOf<String, MutableList<EPGProgram>>()
     private val normalizedCache = mutableMapOf<String, String>()
@@ -275,17 +280,18 @@ object EPGManager {
     private fun normalizeName(name: String): String {
         return normalizedCache.getOrPut(name) {
             name.lowercase(Locale.US)
-                .replace(Regex("\\(.*?\\)"), "") // Remove bracketed content
+                .replace(REGEX_BRACKETS, "") // Remove bracketed content
                 .replace("dd ", "")
                 .replace("hd", "")
                 .replace("sd", "")
                 .replace("tv", "")
                 .replace("channel", "")
                 .replace("india", "")
-                .replace(Regex("^d "), "") // Remove "d " prefix (like "d tamil")
-                .replace(Regex("^dd "), "") // Remove "dd " prefix
-                .replace(Regex("[^a-z0-9]"), "")
+                .replace(REGEX_PREFIX_D, "") // Remove "d " prefix
+                .replace(REGEX_PREFIX_DD, "") // Remove "dd " prefix
+                .replace(REGEX_NON_ALPHANUM, "")
                 .trim()
+                .intern()
         }
     }
 

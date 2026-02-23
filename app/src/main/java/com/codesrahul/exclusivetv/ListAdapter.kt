@@ -39,7 +39,7 @@ class ListAdapter(
     private val recyclerView: RecyclerView,
     var tvListModel: TVListModel,
 ) :
-    RecyclerView.Adapter<ListAdapter.ViewHolder>() {
+    RecyclerView.Adapter<ListAdapter.ViewHolder>(), OnSharedPreferenceChangeListener {
     private var internalList: List<TVModel> = tvListModel.getTVModelList()
     private var listener: ItemListener? = null
     private var updateJob: kotlinx.coroutines.Job? = null
@@ -186,17 +186,19 @@ class ListAdapter(
         }
 
         val onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+            val pos = viewHolder.bindingAdapterPosition
+            if (pos == RecyclerView.NO_POSITION) return@OnFocusChangeListener
             listener?.onItemFocusChange(tvModel, hasFocus)
 
             if (hasFocus) {
                 view.post { viewHolder.focus(true) }
                 focused = view
                 // CENTER SELECTION ON NAVIGATION
-                scrollToCenter(position)
+                scrollToCenter(pos)
                 
                 if (visible) {
-                    if (position != tvListModel.position.value) {
-                        tvListModel.setPosition(position)
+                    if (pos != tvListModel.position.value) {
+                        tvListModel.setPosition(pos)
                     }
                 } else {
                     visible = true
@@ -209,7 +211,9 @@ class ListAdapter(
         view.onFocusChangeListener = onFocusChangeListener
 
         view.setOnClickListener { _ ->
-            if (movingPosition == position) {
+            val pos = viewHolder.bindingAdapterPosition
+            if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
+            if (movingPosition == pos) {
                 stopMove()
             } else {
                 listener?.onItemClicked(tvModel)
@@ -217,13 +221,19 @@ class ListAdapter(
         }
 
         view.setOnLongClickListener {
-            showChannelOptions(position, tvModel)
+            val pos = viewHolder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) {
+                showChannelOptions(pos, tvModel)
+            }
             true
         }
 
         view.setOnKeyListener { _, keyCode, event: KeyEvent? ->
+            val pos = viewHolder.bindingAdapterPosition
+            if (pos == RecyclerView.NO_POSITION) return@setOnKeyListener false
+            
             if (event?.action == KeyEvent.ACTION_DOWN) {
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP && position == 0) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP && pos == 0) {
                     val p = getItemCount() - 1
 
                     (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
@@ -239,7 +249,7 @@ class ListAdapter(
                     return@setOnKeyListener true
                 }
 
-                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && position == getItemCount() - 1) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && pos == getItemCount() - 1) {
                     val p = 0
 
                     (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
@@ -255,14 +265,14 @@ class ListAdapter(
                     return@setOnKeyListener true
                 }
 
-                if (movingPosition != -1 && movingPosition == position) {
+                if (movingPosition != -1 && movingPosition == pos) {
                     when (keyCode) {
                         KeyEvent.KEYCODE_DPAD_UP -> {
-                            moveChannelUp(position)
+                            moveChannelUp(pos)
                             return@setOnKeyListener true
                         }
                         KeyEvent.KEYCODE_DPAD_DOWN -> {
-                            moveChannelDown(position)
+                            moveChannelDown(pos)
                             return@setOnKeyListener true
                         }
                         KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
@@ -293,7 +303,10 @@ class ListAdapter(
         viewHolder.setArrows(movingPosition == position)
         
         viewHolder.binding.arrowDown.setOnClickListener {
-            moveChannelDown(position)
+            val pos = viewHolder.bindingAdapterPosition
+            if (pos != RecyclerView.NO_POSITION) {
+                moveChannelDown(pos)
+            }
         }
     }
 
@@ -307,10 +320,26 @@ class ListAdapter(
         holder.detachListeners()
     }
 
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        SP.setOnSharedPreferenceChangeListener(this)
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        SP.removeOnSharedPreferenceChangeListener(this)
+    }
+
+    override fun onSharedPreferenceChanged(key: String) {
+        if (key == SP.KEY_EPG) {
+            notifyDataSetChanged()
+        }
+    }
+
     override fun getItemCount() = internalList.size
 
     class ViewHolder(private val context: Context, val binding: ListItemBinding) :
-        RecyclerView.ViewHolder(binding.root), OnSharedPreferenceChangeListener {
+        RecyclerView.ViewHolder(binding.root) {
 
         private var currentTvModel: TVModel? = null
         private var isAttached = false
@@ -327,7 +356,7 @@ class ListAdapter(
             like(liked)
         }
 
-        fun bind(tvModel: TVModel, movingPosition: Int, position: Int) {
+        fun bind(tvModel: TVModel, movePos: Int, currentPos: Int) {
             // Unsubscribe from old model
             if (isAttached) {
                 currentTvModel?.currentProgram?.removeObserver(epgObserver)
@@ -356,20 +385,19 @@ class ListAdapter(
             // Bind channel number (position + 1 for 1-based indexing)
             binding.channelNumber.text = (tvModel.tv.id + 1).toString()
             
-            setArrows(movingPosition == position)
+            setArrows(movePos == currentPos)
             like(tvModel.like.value ?: false)
+            updateConstraints()
         }
 
         fun attachListeners() {
             isAttached = true
-            SP.setOnSharedPreferenceChangeListener(this)
             currentTvModel?.currentProgram?.observeForever(epgObserver)
             currentTvModel?.like?.observeForever(likeObserver)
         }
 
         fun detachListeners() {
             isAttached = false
-            SP.removeOnSharedPreferenceChangeListener(this)
             currentTvModel?.currentProgram?.removeObserver(epgObserver)
             currentTvModel?.like?.removeObserver(likeObserver)
         }
@@ -436,37 +464,24 @@ class ListAdapter(
                 )
             }
         }
-
+        
         fun setArrows(isMoving: Boolean) {
             binding.arrows.visibility = if (isMoving) View.VISIBLE else View.GONE
         }
 
-        override fun onSharedPreferenceChanged(key: String) {
-            when (key) {
-                SP.KEY_EPG -> {
-                    if (SP.epg.isNullOrEmpty()) {
-                        val constraintSet = ConstraintSet()
-                        constraintSet.clone(binding.root)
-
-                        constraintSet.connect(binding.title.id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
-                        constraintSet.connect(binding.heart.id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
-
-                        constraintSet.applyTo(binding.root)
-
-                        binding.description.visibility = View.GONE
-                    } else {
-                        val constraintSet = ConstraintSet()
-                        constraintSet.clone(binding.root)
-
-                        constraintSet.clear(binding.title.id, ConstraintSet.BOTTOM)
-                        constraintSet.clear(binding.heart.id, ConstraintSet.BOTTOM)
-
-                        constraintSet.applyTo(binding.root)
-
-                        binding.description.visibility = View.VISIBLE
-                    }
-                }
+        private fun updateConstraints() {
+            val constraintSet = ConstraintSet()
+            constraintSet.clone(binding.root)
+            if (!SP.epgEnabled || SP.epg.isNullOrEmpty()) {
+                constraintSet.connect(binding.title.id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+                constraintSet.connect(binding.heart.id, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM)
+                binding.description.visibility = View.GONE
+            } else {
+                constraintSet.clear(binding.title.id, ConstraintSet.BOTTOM)
+                constraintSet.clear(binding.heart.id, ConstraintSet.BOTTOM)
+                binding.description.visibility = View.VISIBLE
             }
+            constraintSet.applyTo(binding.root)
         }
     }
 
