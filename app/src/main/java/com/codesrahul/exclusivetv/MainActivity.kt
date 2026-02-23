@@ -1786,8 +1786,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // 2. DEEP HARDWARE SCAN (Defeats root/Xposed hider apps)
         // VPN bypass apps hook the API above to return false. 
         // We bypass them by physically checking the Linux subsystem for virtual network adapters.
+        // BUG FIX: On FireTV, system tunnels (like tun0) are often used for system services.
         try {
             val networkInterfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())
+            val isTv = isTvDevice()
+            
             for (networkInterface in networkInterfaces) {
                 // Must be 'up' running
                 if (networkInterface.isUp) {
@@ -1797,7 +1800,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         name.startsWith("ppp") || 
                         name.startsWith("pptp") || 
                         name.startsWith("tap")) {
-                        return true
+                        
+                        if (isTv) {
+                            // On TV devices, we trust ConnectivityManager (Step 1) for these common names
+                            // because FireTV and other sticks use them for internal system-level tunnels.
+                            Log.d(TAG, "VPN Interface $name detected but ignored on TV device (Possible system tunnel)")
+                        } else {
+                            return true
+                        }
                     }
                 }
             }
@@ -1815,6 +1825,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
 
         return false
+    }
+
+    private fun isTvDevice(): Boolean {
+        val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
+        return uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
     }
 
     private fun startRootMonitoring() {

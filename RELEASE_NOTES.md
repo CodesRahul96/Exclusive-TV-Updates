@@ -1,3 +1,10 @@
+# ExclusiveTV v1.1.2 (Upcoming) - VPN Stability Fix
+
+- **FireTV VPN Fix**: Resolved "VPN Detected" false positive on Amazon FireTV devices by refining hardware tunnel detection.
+- **TV Refined Logic**: Improved device-type awareness to distinguish between system-level bridges and real VPN applications.
+
+---
+
 # ExclusiveTV v1.1.1 - Stability & EPG Fixes
 
 ## ✨ Highlights
