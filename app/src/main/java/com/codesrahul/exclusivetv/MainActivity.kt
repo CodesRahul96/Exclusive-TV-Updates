@@ -727,6 +727,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     onAppMaintenance()
                     return@addOnCompleteListener
                 }
+
+                // AUTO-UPDATE CERT PINS: Fetch remote SSL pins and refresh OkHttpClient
+                // If Let's Encrypt rotates its intermediate CA, update "ssl_pins_indevs" in Firebase
+                // and all app instances will pick up the new pins on next startup without an APK update.
+                val remoteSslPins = remoteConfig.getString("ssl_pins_indevs")
+                if (remoteSslPins.isNotBlank()) {
+                    SP.sslPinsIndevs = remoteSslPins
+                    Log.i(TAG, "Remote cert pins fetched → rebuilding HTTP client.")
+                    SecureHttpClient.refresh()
+                }
                 
                 // CRITICAL: Call the callback to advance the bootstrap
                 onComplete()

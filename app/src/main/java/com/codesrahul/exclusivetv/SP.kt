@@ -66,6 +66,7 @@ object SP {
     private const val KEY_PLAN_NAME = "plan_name" // [NEW] Persist plan for startup safety
     private const val KEY_USER_ID = "user_id" // Persist phone number replacing Firebase Auth
     private const val KEY_FAVORITE_URLS = "favorite_urls" // [NEW] For Cloud Sync
+    private const val KEY_SSL_PINS_INDEVS = "ssl_pins_indevs" // [NEW] Remote cert pinning
 
     private lateinit var sp: SharedPreferences
     private lateinit var esp: SharedPreferences
@@ -127,6 +128,12 @@ object SP {
     var bufferMode: Int
         get() = sp.getInt(KEY_BUFFER_MODE, 0) // 0: Default, 1: Low, 2: High
         set(value) = sp.edit().putInt(KEY_BUFFER_MODE, value).apply()
+
+    // Remote SSL cert pins for **.indevs.in - fetched from Firebase Remote Config.
+    // Stored as a JSON array string, e.g. ["sha256/ABC...","sha256/XYZ..."]
+    var sslPinsIndevs: String
+        get() = sp.getString(KEY_SSL_PINS_INDEVS, "") ?: ""
+        set(value) = sp.edit().putString(KEY_SSL_PINS_INDEVS, value).apply()
 
     /**
      * The method must be invoked as early as possible(At least before using the keys)
