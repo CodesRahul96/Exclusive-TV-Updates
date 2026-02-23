@@ -734,8 +734,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 val remoteSslPins = remoteConfig.getString("ssl_pins_indevs")
                 if (remoteSslPins.isNotBlank()) {
                     SP.sslPinsIndevs = remoteSslPins
-                    Log.i(TAG, "Remote cert pins fetched → rebuilding HTTP client.")
-                    SecureHttpClient.refresh()
+                    // BUG FIX: OkHttpClient construction (thread pool + connection pool allocation)
+                    // must NOT run on the main thread. Dispatch to IO.
+                    CoroutineScope(Dispatchers.IO).launch {
+                        Log.i(TAG, "Remote cert pins fetched → rebuilding HTTP client on IO thread.")
+                        SecureHttpClient.refresh()
+                    }
                 }
                 
                 // CRITICAL: Call the callback to advance the bootstrap

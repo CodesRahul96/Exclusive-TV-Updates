@@ -30,25 +30,35 @@ object SecureHttpClient {
         "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto="  // ISRG Root X1 (alternate hash)
     )
 
+    // BUG FIX: @Volatile alone is not sufficient for double-checked locking.
+    // Two concurrent threads can both see _client == null and both call buildClient().
+    // Using @Synchronized on the accessor ensures only one build happens at a time.
     @Volatile
     private var _client: OkHttpClient? = null
 
     val client: OkHttpClient
-        get() = _client ?: buildAndSet()
+        get() = _client ?: getOrBuild()
 
-    /**
-     * Called after Remote Config is fetched to rebuild the client with up-to-date pins.
-     * Safe to call from any thread.
-     */
-    fun refresh() {
-        Log.i(TAG, "Refreshing OkHttpClient with updated cert pins.")
-        _client = buildClient()
+    @Synchronized
+    private fun getOrBuild(): OkHttpClient {
+        // Double-checked locking: re-check inside synchronized block
+        // because another thread may have already built the client between the
+        // outer null check and acquiring this lock.
+        return _client ?: buildClient().also { _client = it }
     }
 
-    private fun buildAndSet(): OkHttpClient {
-        val built = buildClient()
-        _client = built
-        return built
+    /**
+     * Called after Remote Config is fetched (on a background thread) to rebuild
+     * the client with up-to-date pins.
+     * MUST be called off the main thread since OkHttpClient construction is non-trivial.
+     */
+    @Synchronized
+    fun refresh() {
+        Log.i(TAG, "Refreshing OkHttpClient with updated cert pins.")
+        // Close old client's resources before replacing (releases thread pools + connection pool)
+        _client?.connectionPool()?.evictAll()
+        _client?.dispatcher()?.executorService()?.shutdown()
+        _client = buildClient()
     }
 
     private fun buildClient(): OkHttpClient {
