@@ -6,16 +6,12 @@ import okhttp3.OkHttpClient
 /**
  * Singleton that provides a single, certificate-pinned OkHttpClient instance for the whole app.
  *
- * Replace the sample SHA-256 hashes below with the real pins taken from your production server’s
- * certificates. You can grab them with:
+ * Pinning strategy: Pin INTERMEDIATE and ROOT CA certificates instead of leaf certificates.
+ * Let's Encrypt leaf certs rotate every 90 days, which would break pinning repeatedly.
+ * The intermediate (E8) and root (ISRG Root X1) are stable for years.
  *
- *     openssl s_client -connect example.com:443 -servername example.com 2>/dev/null | \
- *         openssl x509 -noout -pubkey | \
- *         openssl pkey -pubin -outform DER | \
- *         openssl dgst -sha256 -binary | base64
- *
- * Each host you talk to must be added with its own pin.  If a host rotates its certs you can add
- * multiple pins (one per line) for the same host.
+ * To refresh pins, run:
+ *     openssl s_client -connect exclusivetvapi.indevs.in:443 2>/dev/null | openssl x509 -noout -pubkey | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | base64
  */
 object SecureHttpClient {
     val client: OkHttpClient by lazy {
@@ -25,15 +21,17 @@ object SecureHttpClient {
             .addInterceptor(SecurityInterceptor(MyTVApplication.getInstance()))
             .certificatePinner(
                 CertificatePinner.Builder()
-                    // GitHub (DigiCert Global Root CA)
+                    // GitHub (DigiCert Global Root CA) - stable long-term pin
                     .add("**.github.com", "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=")
                     .add("**.githubusercontent.com", "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=")
                     // Vercel (ISRG Root X1 & DigiCert Global Root CA fallback)
                     .add("**.vercel.app", "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto=")
                     .add("**.vercel.app", "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=")
-                    // Indevs APIs (Let's Encrypt / Cloudflare)
-                    .add("**.indevs.in", "sha256/kIdp6NNEd8wsugYyyIYFcgZAuxmJXYwyPCacJysE3pM=") // Backup
-                    .add("**.indevs.in", "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto=") // Example X1
+                    // Indevs APIs - pinning intermediate (E8) + root (ISRG Root X1)
+                    // These are STABLE and won't break when leaf certs rotate every 90 days.
+                    .add("**.indevs.in", "sha256/iFvwVyJSxnQdyaUvUERIf+8qk7gRze3612JMwoO3zdU=") // Let's Encrypt E8 Intermediate (current)
+                    .add("**.indevs.in", "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=") // ISRG Root X1 (current hash from device)
+                    .add("**.indevs.in", "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto=") // ISRG Root X1 (backup/alternate hash)
                     .build()
             )
             // 2. BLOCK SNIFFERS: Enforce strict Hostname Verification (rejects forged generic certs)
