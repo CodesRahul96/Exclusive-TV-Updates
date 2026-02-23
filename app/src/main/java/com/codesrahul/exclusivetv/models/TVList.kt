@@ -272,11 +272,13 @@ object TVList {
                 val urls = mutableListOf<String>()
 
                 // [NEW] EXCLUSIVE SOURCE MODE
-                // Check if user has added custom sources (excluding the system URLs)
-                val customUrls = SP.playlistUrls.filter { 
-                    it.isNotEmpty() && 
-                    it != standardUrl && 
-                    it != premiumUrl
+                // Check if user has added custom sources (excluding the system URLs and dead legacy URLs)
+                val customUrls = SP.playlistUrls.filter { url ->
+                    url.isNotEmpty() && 
+                    url != standardUrl && 
+                    url != premiumUrl &&
+                    !url.contains("jioplus.indevs.in") &&
+                    !url.contains("raw.githubusercontent.com/CodesRahul96")
                 }
 
                 if (customUrls.isNotEmpty()) {
@@ -290,7 +292,7 @@ object TVList {
                         // 1. Premium API (Exclusive)
                         if (premiumUrl.isNotEmpty()) {
                             android.util.Log.d("TVList", "Adding Premium Source: $premiumUrl")
-                            addUrlToList(premiumUrl, urls)
+                            urls.add(premiumUrl)
                         }
                         
                         // 2. Standard API
@@ -492,6 +494,26 @@ object TVList {
                               if (showUi) {
                                   _importProgress.value = 100
                                   _importStatus.value = "Up to date"
+                              }
+                              
+                              // EPG SAFETY CHECK: Fetch EPG even if channels haven't changed!
+                              // This is crucial if user just toggled EPG on from settings.
+                              if (SP.epgEnabled) {
+                                  EPGManager.init(ctx)
+                                  CoroutineScope(Dispatchers.IO).launch {
+                                      try {
+                                          if (showUi) {
+                                              withContext(Dispatchers.Main) { _importStatus.value = "Updating Guide..." }
+                                          }
+                                          EPGManager.fetchEPG(force = false)
+                                          withContext(Dispatchers.Main) {
+                                              listModel.forEach { it.updateEPG() }
+                                              if (showUi) _importStatus.value = ""
+                                          }
+                                      } catch (e: Exception) {
+                                          if (showUi) withContext(Dispatchers.Main) { _importStatus.value = "" }
+                                      }
+                                  }
                               }
                           }
                           return@launch

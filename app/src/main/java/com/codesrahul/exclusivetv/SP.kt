@@ -416,6 +416,10 @@ object SP {
         get() = esp.getString(KEY_API_DOWNLOAD_HOST_FALLBACK, "") ?: ""
         set(value) = esp.edit().putString(KEY_API_DOWNLOAD_HOST_FALLBACK, value).apply()
 
+    var remoteEpgUrl: String
+        get() = sp.getString("remote_epg_url", "") ?: ""
+        set(value) = sp.edit().putString("remote_epg_url", value).apply()
+
  
     var epgShift: Int
         get() = sp.getInt(KEY_EPG_SHIFT, 0)

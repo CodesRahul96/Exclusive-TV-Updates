@@ -193,7 +193,7 @@ class EpgGridFragment : Fragment() {
             }
             
             // Populate programs
-            val programs = EPGManager.getProgramsForChannel(channel.tv.title, channel.tv.id.toString())
+            val programs = EPGManager.getProgramsForChannel(channel.tv.name, channel.tv.apiId)
             holder.programContainer.removeAllViews()
             // (guideStart and timeFormat are cached at adapter level)
 

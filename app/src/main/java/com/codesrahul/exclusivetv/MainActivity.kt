@@ -65,13 +65,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             if (key == SP.KEY_EPG) {
                 if (SP.epgEnabled) {
                     runOnUiThread {
-                        com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
+                        com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, silent = true)
                     }
                 }
             } else if (key == SP.KEY_EPG_ENABLED) {
                 runOnUiThread {
                     if (SP.epgEnabled) {
-                        com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, SP.config ?: "", silent = true)
+                        com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, silent = true)
                     } else {
                         // Silently refresh UI models to clear EPG data from view
                         com.codesrahul.exclusivetv.models.TVList.refreshModels(this@MainActivity)
@@ -214,7 +214,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
         SP.setOnSharedPreferenceChangeListener(spListener)
         
-        // Phase 1: Basic UI & Security
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        hideSystemUI()
         initBasicSetup(savedInstanceState)
         
         // Phase 2: Start Professional Bootstrap (Async but Synchronized)
@@ -332,7 +335,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun hideSystemUI() {
-        // Use WindowCompat for backward compatibility and safety
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).let { controller ->
             controller.hide(WindowInsetsCompat.Type.systemBars())
@@ -696,6 +698,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 
                 val downloadHostFallback = remoteConfig.getString("api_download_host_fallback")
                 if (downloadHostFallback.isNotBlank()) SP.apiDownloadHostFallback = downloadHostFallback
+
+                // Fetch EPG URL
+                val remoteEpgUrl = remoteConfig.getString("epg_url")
+                if (remoteEpgUrl.isNotBlank()) {
+                    SP.remoteEpgUrl = remoteEpgUrl
+                }
 
                 // Fetch Tiered Configs (Encrypted from Firebase)
                 val rawStandardUrl = remoteConfig.getString("standard_api_url")
@@ -1583,6 +1591,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         if (!trackSelectionFragment.isHidden) {
             hideTrackSelectionFragment()
+            return
+        }
+
+        if (infoFragment.isShowing()) {
+            infoFragment.dismiss()
+            return
+        }
+
+        if (channelFragment.isShowing()) {
+            channelFragment.dismiss()
             return
         }
 
