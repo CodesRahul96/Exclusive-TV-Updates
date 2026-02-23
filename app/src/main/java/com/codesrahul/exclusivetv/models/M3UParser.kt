@@ -292,13 +292,25 @@ object M3UParser {
                             }
                         }
                     } else if (!trimmedLine.startsWith("#")) {
-                        // Verify it's a URL
-                        if (trimmedLine.contains("://")) {
-                            var finalUrl = trimmedLine
+                        // Verify it's a URL or try decrypting it
+                        var isUrl = trimmedLine.contains("://")
+                        var finalUrl = trimmedLine
+                        
+                        // DECRYPTION INTERCEPT: If the URL doesn't look like a standard URL, try decrypting it
+                        if (!isUrl) {
+                            val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
+                            val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(finalUrl, key)
+                            if (decrypted.contains("://")) {
+                                finalUrl = decrypted
+                                isUrl = true
+                            }
+                        }
+
+                        if (isUrl) {
 
                             // Handle pipe headers
-                            if (trimmedLine.contains("|")) {
-                                val urlParts = trimmedLine.split("|", limit = 2)
+                            if (finalUrl.contains("|")) {
+                                val urlParts = finalUrl.split("|", limit = 2)
                                 finalUrl = urlParts[0].trim()
                                 val headersPart = urlParts[1]
 

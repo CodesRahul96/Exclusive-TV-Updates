@@ -6,17 +6,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
-import android.widget.RelativeLayout
-import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.codesrahul.exclusivetv.databinding.EpgGridBinding
 import com.codesrahul.exclusivetv.models.TVList
 import com.codesrahul.exclusivetv.models.TVModel
-import com.bumptech.glide.Glide
-import java.util.*
 import java.text.SimpleDateFormat
+import java.util.*
 
 class EpgGridFragment : Fragment() {
 
@@ -25,6 +23,9 @@ class EpgGridFragment : Fragment() {
     
     private var horizontalScrollOffset = 0
     private var lastSyncTime = 0L
+    
+    private var allChannels: List<TVModel> = emptyList()
+    private var filteredChannels: MutableList<TVModel> = mutableListOf()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -33,18 +34,46 @@ class EpgGridFragment : Fragment() {
     ): View {
         _binding = EpgGridBinding.inflate(inflater, container, false)
         setupGrid()
+        setupSearch()
         return binding.root
+    }
+
+    private fun setupSearch() {
+        binding.epgSearch.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                filterChannels(s.toString())
+            }
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
+    }
+
+    private fun filterChannels(query: String) {
+        val q = query.lowercase().trim()
+        // Take a snapshot to avoid ConcurrentModificationException during list refresh
+        val result = if (q.isEmpty()) {
+            allChannels.toMutableList()
+        } else {
+            allChannels.filter { channel ->
+                channel.tv.title.lowercase().contains(q)
+            }.toMutableList()
+        }
+        filteredChannels.clear()
+        filteredChannels.addAll(result)
+        binding.epgRecycler.adapter?.notifyDataSetChanged()
     }
 
     private fun setupGrid() {
         populateTimeHeader()
-        val channels = TVList.listModel
-        if (channels.isEmpty()) {
+        allChannels = TVList.listModel
+        filteredChannels.addAll(allChannels)
+        
+        if (allChannels.isEmpty()) {
             return
         }
 
         binding.epgRecycler.layoutManager = LinearLayoutManager(requireContext())
-        binding.epgRecycler.adapter = EpgRowAdapter(channels)
+        binding.epgRecycler.adapter = EpgRowAdapter(filteredChannels)
         
         // Sync header scroll with rows
         binding.timeScroll.setOnScrollChangeListener { _, scrollX, _, _, _ ->
@@ -106,7 +135,11 @@ class EpgGridFragment : Fragment() {
     }
 
 
-    inner class EpgRowAdapter(private val channels: List<TVModel>) : RecyclerView.Adapter<EpgRowAdapter.ViewHolder>() {
+    inner class EpgRowAdapter(private val displayList: List<TVModel>) : RecyclerView.Adapter<EpgRowAdapter.ViewHolder>() {
+
+        // Cache heavy objects once per adapter, not per bind
+        private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        private val guideStart = getGuideStartTime()
 
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val name = view.findViewById<android.widget.TextView>(R.id.channel_name)
@@ -123,7 +156,7 @@ class EpgGridFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val channel = channels[position]
+            val channel = displayList[position]
             holder.name.text = channel.tv.title
             
             LogoUtil.loadLogo(holder.logo.context, holder.logo, channel.tv.logo, channel.tv.title)
@@ -157,9 +190,7 @@ class EpgGridFragment : Fragment() {
             // Populate programs
             val programs = EPGManager.getProgramsForChannel(channel.tv.title, channel.tv.id.toString())
             holder.programContainer.removeAllViews()
-            
-            val guideStart = getGuideStartTime()
-            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+            // (guideStart and timeFormat are cached at adapter level)
 
              programs.forEach { prog ->
                  val shiftMs = SP.epgShift * 3600_000L
@@ -181,11 +212,6 @@ class EpgGridFragment : Fragment() {
                 // Ensure reasonable width
                 val finalWidth = if (durationMins < 5) 5 * PIXELS_PER_MINUTE else (durationMins * PIXELS_PER_MINUTE).toInt()
                 
-                // Use RelativeLayout.LayoutParams if container is RelativeLayout?
-                // Wait, item_epg_row.xml has:
-                // <RelativeLayout android:id="@+id/program_container" ... />
-                // So YES, use RelativeLayout.LayoutParams
-                
                 val lp = android.widget.RelativeLayout.LayoutParams(finalWidth, ViewGroup.LayoutParams.MATCH_PARENT)
                 lp.marginStart = (startOffsetMins * PIXELS_PER_MINUTE).toInt()
                 view.layoutParams = lp
@@ -206,7 +232,7 @@ class EpgGridFragment : Fragment() {
             }
         }
 
-        override fun getItemCount(): Int = channels.size
+        override fun getItemCount(): Int = displayList.size
     }
 
      private fun showFocusInfo(prog: com.codesrahul.exclusivetv.models.EPGProgram) {

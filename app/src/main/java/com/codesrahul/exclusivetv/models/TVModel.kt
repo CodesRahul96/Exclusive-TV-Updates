@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.codesrahul.exclusivetv.SP
 import com.codesrahul.exclusivetv.EPGManager
+import com.codesrahul.exclusivetv.SyncManager
 
 class TVModel(var tv: TV) : ViewModel() {
 
@@ -73,6 +74,19 @@ class TVModel(var tv: TV) : ViewModel() {
     fun setLike(liked: Boolean) {
         _like.postValue(liked)
         SP.setLike(tv.id, liked)
+        
+        // Phase 4: URL-based favorites for Cloud Sync
+        val url = tv.uris.firstOrNull() ?: ""
+        if (url.isNotEmpty()) {
+            if (liked) {
+                SP.addFavoriteUrl(url)
+            } else {
+                SP.removeFavoriteUrl(url)
+            }
+            // Trigger Cloud Sync
+            SyncManager.pushFavoriteChange()
+        }
+        
         TVList.notifyLikeChanged(this, liked)
     }
 

@@ -14,7 +14,6 @@ import com.codesrahul.exclusivetv.EPGManager
 import com.codesrahul.exclusivetv.showToast
 import com.codesrahul.exclusivetv.MyTVApplication
 import com.codesrahul.exclusivetv.SecureHttpClient
-import com.codesrahul.exclusivetv.UnsafeHttpClient
 import com.codesrahul.exclusivetv.OrderPreferenceManager
 import okhttp3.Request
 import com.codesrahul.exclusivetv.SecretManager
@@ -73,9 +72,6 @@ object TVList {
     }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
-    // Add fallback URL here
-    const val DEFAULT_CONFIG_URL = "https://rebroadcast.indevs.in/freeTV"
-    const val DEFAULT_PREMIUM_URL = "https://exclusivetvapi.indevs.in/api/channels"
     private lateinit var appDirectory: File
 
     private lateinit var serverUrl: String
@@ -191,14 +187,11 @@ object TVList {
                 initDeferred.complete(Unit)
             }
 
-            // Initial config setup
-            if (SP.config.isNullOrEmpty() || SP.config?.contains("rebroadcast.indevs.in") == true) {
-                SP.config = DEFAULT_CONFIG_URL
-            }
+            // Initial config setup (Removed DEFAULT_CONFIG_URL fallback)
             
             // Clean up tiered configs if they point to dead URLs
             if (SP.standardConfig?.contains("rebroadcast.indevs.in") == true) {
-                SP.standardConfig = "" // Let it fallback to DEFAULT_CONFIG_URL
+                SP.standardConfig = "" 
             }
 
             val currentVersion = com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE
@@ -273,21 +266,17 @@ object TVList {
                 
                 val sCfg = SP.standardConfig
                 val pCfg = SP.premiumConfig
-                val standardUrl = sCfg ?: ""
-                val premiumUrl = pCfg ?: ""
-                val fallbackUrl = SP.config ?: DEFAULT_CONFIG_URL
-                
+                val standardUrl = if (sCfg.isNullOrEmpty()) SecretManager.getStandardApiUrl() else sCfg
+                val premiumUrl = if (pCfg.isNullOrEmpty()) SecretManager.getPremiumApiUrl() else pCfg
                 
                 val urls = mutableListOf<String>()
 
                 // [NEW] EXCLUSIVE SOURCE MODE
-                // Check if user has added custom sources (excluding the default system URL)
+                // Check if user has added custom sources (excluding the system URLs)
                 val customUrls = SP.playlistUrls.filter { 
                     it.isNotEmpty() && 
-                    it != DEFAULT_CONFIG_URL && 
                     it != standardUrl && 
-                    it != premiumUrl &&
-                    it != fallbackUrl 
+                    it != premiumUrl
                 }
 
                 if (customUrls.isNotEmpty()) {
@@ -309,24 +298,12 @@ object TVList {
                             android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
                             urls.add(standardUrl)
                         }
-                        
-                        // 3. Fallback GitHub
-                        if (fallbackUrl.isNotEmpty() && fallbackUrl != premiumUrl && fallbackUrl != standardUrl) {
-                            android.util.Log.d("TVList", "Adding Fallback Source: $fallbackUrl")
-                            urls.add(fallbackUrl)
-                        }
                     } else {
                         // STANDARD PRIORITY STACK
                         // 1. Standard API
                         if (standardUrl.isNotEmpty()) {
                             android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
                             urls.add(standardUrl)
-                        }
-                        
-                        // 2. Fallback GitHub
-                        if (fallbackUrl.isNotEmpty() && fallbackUrl != standardUrl) {
-                            android.util.Log.d("TVList", "Adding Fallback Source: $fallbackUrl")
-                            urls.add(fallbackUrl)
                         }
                     }
                 }
@@ -344,7 +321,7 @@ object TVList {
                     }
                 }
                 
-                val client = UnsafeHttpClient.client
+                val client = SecureHttpClient.client
                 val allChannels = mutableListOf<TV>()
                 
                 // Fetch all playlists concurrently
@@ -549,7 +526,7 @@ object TVList {
                               _importStatus.value = "Complete"
                            }
                           
-                          if (!silent && SP.config != DEFAULT_CONFIG_URL) {
+                          if (!silent) {
                                "Channels Updated: ${list.size}".showToast()
                           }
                           
@@ -977,7 +954,7 @@ object TVList {
             return@withContext originalList
         }
 
-        val client = UnsafeHttpClient.client
+        val client = SecureHttpClient.client
         // Limit concurrency to avoid overwhelming servers (max 5 parallel fetches)
         val semaphore = kotlinx.coroutines.sync.Semaphore(5)
         
@@ -1312,7 +1289,7 @@ object TVList {
             headers?.forEach { (k, v) -> requestBuilder.addHeader(k, v) }
             
             // FIX: Increased timeout and added GET fallback for servers that don't support HEAD
-            val checkClient = UnsafeHttpClient.client.newBuilder()
+            val checkClient = SecureHttpClient.client.newBuilder()
                 .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                 .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                 .build()

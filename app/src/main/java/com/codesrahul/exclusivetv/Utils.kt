@@ -133,7 +133,7 @@ object Utils {
      */
     private suspend fun getTimestampFromServer(): Long {
         return withContext(Dispatchers.IO) {
-            val client = okhttp3.OkHttpClient.Builder()
+            val client = com.codesrahul.exclusivetv.SecureHttpClient.client.newBuilder()
                 .connectTimeout(500, java.util.concurrent.TimeUnit.MILLISECONDS)
                 .readTimeout(1, java.util.concurrent.TimeUnit.SECONDS).build()
             val request = okhttp3.Request.Builder()

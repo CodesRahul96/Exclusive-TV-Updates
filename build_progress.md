@@ -2,16 +2,44 @@
 
 ## Current Version
 
-**Version:** v1.0.65  
-**Version Code:** 16793856  
-**Latest Commit:** e49b0db  
+**Version:** v1.0.67  
+**Version Code:** 16794368  
+**Latest Tag:** v1.0.67  
 **Status:** ✅ Production Ready
 
 ---
 
 ## Version History
 
-### v9.11 - Navigation Displacement Fix (Latest)
+### v9.13 - Premium Aesthetics & Privacy (Current)
+
+**Date:** 2026-02-21  
+**Commits:** c2d2f0d, 4dad6b5
+
+#### Changes
+
+- **Splash Screen**: Implemented `SplashActivity.kt` with Lottie/Custom animations.
+- **Glass UI**: Layered translucent drawables (`bg_menu_glass.xml`) across all major navigation fragments.
+- **Exclusive Source Mode**: Modified `TVList.kt` to allow hiding system APIs when custom playlists are present.
+- **Micro-Animations**: Enhanced `channel.xml` and `setting.xml` with focus-driven scale animations.
+
+#### Bug Fixes
+
+- **Playback Freezing**: Optimized ExoPlayer buffer settings for low-latency HLS streams.
+- **Disappearing Channels**: Fixed race condition in `TVList.update()` where data would vanish if network failed mid-pooling.
+
+#### Files Modified
+
+- `app/src/main/java/com/codesrahul/exclusivetv/SplashActivity.kt`
+- `app/src/main/java/com/codesrahul/exclusivetv/models/TVList.kt`
+- `app/src/main/res/drawable/bg_menu_glass.xml`
+- `app/src/main/res/layout/channel.xml`
+
+---
+
+### v9.12 - Mobile Support & Responsiveness
+
+...
 
 **Date:** 2026-02-15  
 **Commits:** 4b2fa33, e49b0db

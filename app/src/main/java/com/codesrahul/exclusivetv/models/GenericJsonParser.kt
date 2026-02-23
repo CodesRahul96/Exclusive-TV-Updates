@@ -125,14 +125,32 @@ object GenericJsonParser {
             // STRICT MATCHING (Fastest) -> Fallback to loose matching
             when (key) {
                 "url", "stream_url", "play_url", "m3u8_url", "uri", "link", "file" -> {
-                    val singleUrl = reader.nextString()
+                    var singleUrl = reader.nextString()
+                    
+                    if (singleUrl.isNotEmpty() && !singleUrl.contains("://")) {
+                        val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
+                        val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(singleUrl, key)
+                        if (decrypted.contains("://")) {
+                            singleUrl = decrypted
+                        }
+                    }
+                    
                     if (singleUrl.isNotEmpty()) uris.add(singleUrl)
                 }
                 "uris", "urls", "streams" -> {
                     if (token == JsonToken.BEGIN_ARRAY) {
                         reader.beginArray()
                         while (reader.hasNext()) {
-                            val nextUrl = reader.nextString()
+                            var nextUrl = reader.nextString()
+                            
+                            if (nextUrl.isNotEmpty() && !nextUrl.contains("://")) {
+                                val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
+                                val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(nextUrl, key)
+                                if (decrypted.contains("://")) {
+                                    nextUrl = decrypted
+                                }
+                            }
+                            
                             if (nextUrl.isNotEmpty()) uris.add(nextUrl)
                         }
                         reader.endArray()
@@ -195,7 +213,18 @@ object GenericJsonParser {
                     // HEURISTIC FALLBACK: If we haven't found strict high-confidence keys yet,
                     // check if this unknown field looks like a URL or Name.
                     if (token == JsonToken.STRING) {
-                        val value = reader.nextString()
+                        var value = reader.nextString()
+                        
+                        // Try decrypting unknown text just in case it's a raw encrypted stream url 
+                        // missing a proper JSON key
+                        if (url == null && !value.contains("://") && value.length > 20 && !value.startsWith("{")) {
+                             val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
+                             val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(value, key)
+                             if (decrypted.contains("://")) {
+                                 value = decrypted
+                             }
+                        }
+
                         if (url == null && (value.startsWith("http") || value.startsWith("rtmp"))) {
                             url = value // Found a potential stream link
                         } else if (name == null && value.length < 60 && !value.startsWith("http") && !value.startsWith("{")) {

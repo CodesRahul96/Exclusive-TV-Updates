@@ -20,14 +20,33 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <TextView
-            android:layout_width="220dp"
+            android:id="@+id/tv_guide_title"
+            android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:gravity="center"
+            android:paddingStart="24dp"
+            android:paddingEnd="16dp"
             android:text="TV Guide"
             android:textColor="@color/accent_gold"
             android:textStyle="bold"
             android:textSize="20sp"
             android:fontFamily="sans-serif-black" />
+
+        <EditText
+            android:id="@+id/epg_search"
+            android:layout_width="250dp"
+            android:layout_height="45dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="16dp"
+            android:background="@drawable/bg_search_input"
+            android:hint="Search channels..."
+            android:textColor="@color/white"
+            android:textColorHint="#88FFFFFF"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:textSize="14sp"
+            android:singleLine="true"
+            android:imeOptions="actionSearch" />
 
         <HorizontalScrollView
             android:id="@+id/time_scroll"

@@ -1,4 +1,6 @@
 #include <jni.h>
+#include <stdio.h>
+#include <string.h>
 #include <string>
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -39,6 +41,35 @@ Java_com_codesrahul_exclusivetv_SecretManager_getNativeHmacKey(
   std::string k6 = "_!";
 
   return env->NewStringUTF((k1 + k2 + k3 + k4 + k5 + k6).c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_codesrahul_exclusivetv_SecretManager_getNativeStandardUrl(
+    JNIEnv *env, jobject /* this */) {
+
+  // Obfuscated Standard URL: "https://rebroadcast.indevs.in/freeTV"
+  std::string u1 = "https://";
+  std::string u2 = "rebroad";
+  std::string u3 = "cast.in";
+  std::string u4 = "devs.in";
+  std::string u5 = "/freeTV";
+
+  return env->NewStringUTF((u1 + u2 + u3 + u4 + u5).c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_codesrahul_exclusivetv_SecretManager_getNativePremiumUrl(
+    JNIEnv *env, jobject /* this */) {
+
+  // Obfuscated Premium URL: "https://exclusivetvapi.indevs.in/api/channels"
+  std::string p1 = "https://";
+  std::string p2 = "exclusive";
+  std::string p3 = "tvapi.in";
+  std::string p4 = "devs.in/";
+  std::string p5 = "api/chan";
+  std::string p6 = "nels";
+
+  return env->NewStringUTF((p1 + p2 + p3 + p4 + p5 + p6).c_str());
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -84,4 +115,29 @@ Java_com_codesrahul_exclusivetv_SecretManager_verifyNativeIntegrity(
   // before we know their signature.
 
   return JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_codesrahul_exclusivetv_SecretManager_checkVpnNative(
+    JNIEnv *env, jobject /* this */) {
+
+  jboolean isVpnActive = JNI_FALSE;
+
+  // Direct kernel file read: Bypasses ALL Java-level ConnectivityManager hooks
+  // and is immune to NDK API level restrictions (unlike getifaddrs).
+  FILE *fp = fopen("/proc/net/dev", "r");
+  if (fp != nullptr) {
+    char line[256];
+    while (fgets(line, sizeof(line), fp) != nullptr) {
+      // Look for virtual routing interfaces typically created by VPNs
+      if (strstr(line, "tun") != nullptr || strstr(line, "ppp") != nullptr ||
+          strstr(line, "pptp") != nullptr || strstr(line, "tap") != nullptr) {
+        isVpnActive = JNI_TRUE;
+        break;
+      }
+    }
+    fclose(fp);
+  }
+
+  return isVpnActive;
 }

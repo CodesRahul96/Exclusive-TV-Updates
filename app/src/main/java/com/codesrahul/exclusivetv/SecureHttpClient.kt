@@ -20,6 +20,8 @@ import okhttp3.OkHttpClient
 object SecureHttpClient {
     val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            // 1. BLOCK SNIFFERS & VPN INTERCEPTS: Force No Proxy
+            .proxy(java.net.Proxy.NO_PROXY)
             .addInterceptor(SecurityInterceptor(MyTVApplication.getInstance()))
             .certificatePinner(
                 CertificatePinner.Builder()
@@ -29,8 +31,16 @@ object SecureHttpClient {
                     // Vercel (ISRG Root X1 & DigiCert Global Root CA fallback)
                     .add("**.vercel.app", "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto=")
                     .add("**.vercel.app", "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=")
+                    // Indevs APIs (Let's Encrypt / Cloudflare)
+                    .add("**.indevs.in", "sha256/kIdp6NNEd8wsugYyyIYFcgZAuxmJXYwyPCacJysE3pM=") // Backup
+                    .add("**.indevs.in", "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto=") // Example X1
                     .build()
             )
+            // 2. BLOCK SNIFFERS: Enforce strict Hostname Verification (rejects forged generic certs)
+            .hostnameVerifier { hostname, session ->
+                val hv = javax.net.ssl.HttpsURLConnection.getDefaultHostnameVerifier()
+                hv.verify(hostname, session)
+            }
             .connectTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
             .connectionPool(okhttp3.ConnectionPool(5, 5, java.util.concurrent.TimeUnit.MINUTES))

@@ -1,13 +1,10 @@
 package com.codesrahul.exclusivetv.requests
 
 import com.codesrahul.exclusivetv.SecureHttpClient
-import com.codesrahul.exclusivetv.UnsafeHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-class ApiClient {
-    private var okHttpClient = UnsafeHttpClient.client
-
+class ApiClient {    private var okHttpClient = SecureHttpClient.client
     val releaseService: ReleaseService by lazy {
         Retrofit.Builder()
             .baseUrl(ensureTrailingSlash(HOST))

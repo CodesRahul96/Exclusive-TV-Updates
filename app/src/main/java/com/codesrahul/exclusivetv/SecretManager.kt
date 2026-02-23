@@ -35,13 +35,36 @@ object SecretManager {
         return cachedHmacKey ?: ""
     }
 
+    private var cachedStandardUrl: String? = null
+    fun getStandardApiUrl(): String {
+        if (cachedStandardUrl == null) {
+            cachedStandardUrl = getNativeStandardUrl()
+        }
+        return cachedStandardUrl ?: ""
+    }
+
+    private var cachedPremiumUrl: String? = null
+    fun getPremiumApiUrl(): String {
+        if (cachedPremiumUrl == null) {
+            cachedPremiumUrl = getNativePremiumUrl()
+        }
+        return cachedPremiumUrl ?: ""
+    }
+
     fun verifyIntegrity(context: android.content.Context): Boolean {
         // Returns true if tampered (signature mismatch)
         return verifyNativeIntegrity(context)
     }
 
+    fun isVpnActiveNative(): Boolean {
+        return checkVpnNative()
+    }
+
     private external fun getNativeKey(): String
     private external fun getMaintenanceKey(): String
     private external fun getNativeHmacKey(): String
+    private external fun getNativeStandardUrl(): String
+    private external fun getNativePremiumUrl(): String
     private external fun verifyNativeIntegrity(context: android.content.Context): Boolean
+    private external fun checkVpnNative(): Boolean
 }

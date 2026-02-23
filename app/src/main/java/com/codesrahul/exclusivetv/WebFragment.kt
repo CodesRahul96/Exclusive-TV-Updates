@@ -881,10 +881,12 @@ class WebFragment : Fragment() {
             )
             .setHandleAudioBecomingNoisy(true)
         
+        // SECURITY UPGRADE - 100% OkHttp Binding
+        // We exclusively bind ExoPlayer to our hardened SecureHttpClient.
+        // This instantly enforces NO_PROXY and active Certificate Pinning across ALL video streaming.
         val httpDataSourceFactory = OkHttpDataSource.Factory(SecureHttpClient.client)
             .setUserAgent(userAgent)
             .setDefaultRequestProperties(requestHeaders)
-        
 
         // HOTSTAR FIX: Ensure Origin/Referer are set correctly
         if (url.contains("hotstar.com") || url.contains("livetv.hotstar")) {

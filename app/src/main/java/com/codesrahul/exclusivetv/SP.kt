@@ -3,6 +3,8 @@ package com.codesrahul.exclusivetv
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 object SP {
     // If Change channel with up and down in reversed order or not
@@ -63,8 +65,11 @@ object SP {
     private const val KEY_API_DOWNLOAD_HOST_FALLBACK = "api_download_host_fallback"
     private const val KEY_PLAN_NAME = "plan_name" // [NEW] Persist plan for startup safety
     private const val KEY_USER_ID = "user_id" // Persist phone number replacing Firebase Auth
+    private const val KEY_FAVORITE_URLS = "favorite_urls" // [NEW] For Cloud Sync
 
     private lateinit var sp: SharedPreferences
+    private lateinit var esp: SharedPreferences
+    private var initialized = false
 
     private val listeners = java.util.concurrent.CopyOnWriteArrayList<OnSharedPreferenceChangeListener>()
 
@@ -131,6 +136,55 @@ object SP {
             context.resources.getString(R.string.app_name),
             Context.MODE_PRIVATE
         )
+        
+        try {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            esp = EncryptedSharedPreferences.create(
+                context,
+                context.resources.getString(R.string.app_name) + "_secure",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+            
+            migrate()
+        } catch (e: Exception) {
+            // Fallback if hardware keystore fails (rare but possible on some TVs)
+            esp = sp 
+        }
+        initialized = true
+    }
+
+    private fun migrate() {
+        // Move sensitive keys from sp to esp if they exist
+        val sensitiveKeys = listOf(
+            KEY_USER_ID, KEY_API_HOST, KEY_API_DOWNLOAD_HOST, 
+            KEY_API_HOST_FALLBACK, KEY_API_DOWNLOAD_HOST_FALLBACK,
+            KEY_STANDARD_CONFIG, KEY_PREMIUM_CONFIG
+        )
+        
+        val editor = sp.edit()
+        val eEditor = esp.edit()
+        var changed = false
+        
+        for (key in sensitiveKeys) {
+            if (sp.contains(key)) {
+                val value = sp.getString(key, null)
+                if (value != null) {
+                    eEditor.putString(key, value)
+                    editor.remove(key)
+                    changed = true
+                }
+            }
+        }
+        
+        if (changed) {
+            eEditor.commit() // commit to ensure saved
+            editor.commit()
+        }
     }
 
     fun setOnSharedPreferenceChangeListener(listener: OnSharedPreferenceChangeListener) {
@@ -155,20 +209,20 @@ object SP {
         set(value) = sp.edit().putString(KEY_CONFIG, value).apply()
 
     var standardConfig: String?
-        get() = sp.getString(KEY_STANDARD_CONFIG, "")
-        set(value) = sp.edit().putString(KEY_STANDARD_CONFIG, value).apply()
+        get() = esp.getString(KEY_STANDARD_CONFIG, "")
+        set(value) = esp.edit().putString(KEY_STANDARD_CONFIG, value).apply()
 
     var premiumConfig: String?
-        get() = sp.getString(KEY_PREMIUM_CONFIG, "")
-        set(value) = sp.edit().putString(KEY_PREMIUM_CONFIG, value).apply()
+        get() = esp.getString(KEY_PREMIUM_CONFIG, "")
+        set(value) = esp.edit().putString(KEY_PREMIUM_CONFIG, value).apply()
 
     var planName: String?
         get() = sp.getString(KEY_PLAN_NAME, "Standard")
         set(value) = sp.edit().putString(KEY_PLAN_NAME, value).apply()
 
     var userId: String?
-        get() = sp.getString(KEY_USER_ID, null)
-        set(value) = sp.edit().putString(KEY_USER_ID, value).apply()
+        get() = esp.getString(KEY_USER_ID, null)
+        set(value) = esp.edit().putString(KEY_USER_ID, value).apply()
 
     var playlistUrls: Set<String>
         get() = sp.getStringSet(KEY_PLAYLIST_URLS, emptySet()) ?: emptySet()
@@ -178,6 +232,7 @@ object SP {
         val current = playlistUrls.toMutableSet()
         if (current.add(url)) {
              playlistUrls = current
+             if (initialized) SyncManager.syncUp()
         }
     }
 
@@ -185,6 +240,7 @@ object SP {
         val current = playlistUrls.toMutableSet()
         if (current.remove(url)) {
              playlistUrls = current
+             if (initialized) SyncManager.syncUp()
         }
     }
 
@@ -247,6 +303,24 @@ object SP {
     var lastChannelName: String
         get() = sp.getString(KEY_LAST_CHANNEL_NAME, "") ?: ""
         set(value) = sp.edit().putString(KEY_LAST_CHANNEL_NAME, value).apply()
+
+    var favoriteUrls: Set<String>
+        get() = sp.getStringSet(KEY_FAVORITE_URLS, emptySet()) ?: emptySet()
+        set(value) = sp.edit().putStringSet(KEY_FAVORITE_URLS, value).apply()
+
+    fun addFavoriteUrl(url: String) {
+        val current = favoriteUrls.toMutableSet()
+        if (current.add(url)) {
+            favoriteUrls = current
+        }
+    }
+
+    fun removeFavoriteUrl(url: String) {
+        val current = favoriteUrls.toMutableSet()
+        if (current.remove(url)) {
+            favoriteUrls = current
+        }
+    }
 
     fun getEtag(url: String): String? {
         return sp.getString(KEY_ETAG_MAP + "_" + url.hashCode(), null)
@@ -327,20 +401,20 @@ object SP {
 
     // Dynamic URL Properties
     var apiHost: String
-        get() = sp.getString(KEY_API_HOST, "") ?: ""
-        set(value) = sp.edit().putString(KEY_API_HOST, value).apply()
+        get() = esp.getString(KEY_API_HOST, "") ?: ""
+        set(value) = esp.edit().putString(KEY_API_HOST, value).apply()
 
     var apiDownloadHost: String
-        get() = sp.getString(KEY_API_DOWNLOAD_HOST, "") ?: ""
-        set(value) = sp.edit().putString(KEY_API_DOWNLOAD_HOST, value).apply()
+        get() = esp.getString(KEY_API_DOWNLOAD_HOST, "") ?: ""
+        set(value) = esp.edit().putString(KEY_API_DOWNLOAD_HOST, value).apply()
 
     var apiHostFallback: String
-        get() = sp.getString(KEY_API_HOST_FALLBACK, "") ?: ""
-        set(value) = sp.edit().putString(KEY_API_HOST_FALLBACK, value).apply()
+        get() = esp.getString(KEY_API_HOST_FALLBACK, "") ?: ""
+        set(value) = esp.edit().putString(KEY_API_HOST_FALLBACK, value).apply()
 
     var apiDownloadHostFallback: String
-        get() = sp.getString(KEY_API_DOWNLOAD_HOST_FALLBACK, "") ?: ""
-        set(value) = sp.edit().putString(KEY_API_DOWNLOAD_HOST_FALLBACK, value).apply()
+        get() = esp.getString(KEY_API_DOWNLOAD_HOST_FALLBACK, "") ?: ""
+        set(value) = esp.edit().putString(KEY_API_DOWNLOAD_HOST_FALLBACK, value).apply()
 
  
     var epgShift: Int

@@ -395,7 +395,7 @@ class SettingFragment : Fragment() {
             "epgEnabled" -> {
                 SP.epgEnabled = !SP.epgEnabled
                 if (SP.epgEnabled) {
-                    TVList.update(requireContext(), SP.config ?: TVList.DEFAULT_CONFIG_URL, silent = true)
+                    TVList.update(requireContext(), silent = true)
                 } else {
                     TVList.listModel.forEach { it.updateEPG() }
                 }
@@ -725,8 +725,7 @@ class SettingFragment : Fragment() {
     }
 
     private fun showManagePlaylistsDialog() {
-        // Filter out main API URL to keep it hidden/private
-        val urls = SP.playlistUrls.filter { it != TVList.DEFAULT_CONFIG_URL }.toTypedArray()
+        val urls = SP.playlistUrls.toTypedArray()
         if (urls.isEmpty()) {
             Toast.makeText(requireContext(), "No sources added", Toast.LENGTH_SHORT).show()
             return

@@ -38,6 +38,8 @@ import com.codesrahul.exclusivetv.models.TVModel
 import com.codesrahul.exclusivetv.RootCheckUtil
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
+import com.google.android.play.core.integrity.IntegrityManagerFactory
+import com.google.android.play.core.integrity.IntegrityTokenRequest
 
 
 class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
@@ -324,6 +326,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         Log.i(TAG, "Starting Professional Bootstrap Flow (skipSubCheck=$skipSubCheck)...")
         showFragment(loadingFragment)
         
+        // Step 0: Play Integrity Check (Phase 4 Security)
+        checkIntegrity { 
+            // Continue with normal bootstrap after integrity check
+            startBootstrapSequence(skipSubCheck)
+        }
+    }
+
+    private fun startBootstrapSequence(skipSubCheck: Boolean) {
         // Start 45s safety watchdog
         bootstrapWatchdogHandler.removeCallbacks(bootstrapWatchdogRunnable)
         bootstrapWatchdogHandler.postDelayed(bootstrapWatchdogRunnable, 45000)
@@ -363,6 +373,47 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
     }
 
+    private fun checkIntegrity(onComplete: () -> Unit) {
+        // Only run integrity check in production or if enabled via remote config
+        val remoteConfig = FirebaseRemoteConfig.getInstance()
+        val integrityEnabled = remoteConfig.getBoolean("integrity_enabled")
+        
+        if (!integrityEnabled && !BuildConfig.DEBUG) {
+            Log.i(TAG, "Play Integrity check disabled via Remote Config.")
+            onComplete()
+            return
+        }
+
+        Log.i(TAG, "Requesting Play Integrity token...")
+        val integrityManager = IntegrityManagerFactory.create(applicationContext)
+        
+        // Use a random nonce for security
+        val nonce = java.util.UUID.randomUUID().toString()
+        
+        val integrityTokenRequest = IntegrityTokenRequest.builder()
+            .setNonce(nonce)
+            .build()
+            
+        integrityManager.requestIntegrityToken(integrityTokenRequest)
+            .addOnSuccessListener { response ->
+                val integrityToken = response.token()
+                Log.i(TAG, "Play Integrity token received successfully.")
+                // Store or send this token to your backend for verification
+                // SP.integrityToken = integrityToken 
+                onComplete()
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Play Integrity check failed: ${e.message}")
+                if (!BuildConfig.DEBUG) {
+                    // In production, you might want to block access if integrity fails
+                    // showFragment(errorFragment.apply { setMessage("Security check failed. Please ensure you are using the official version.") })
+                    onComplete() // For now, proceed anyway to avoid blocking users during rollout
+                } else {
+                    onComplete()
+                }
+            }
+    }
+
     private fun checkAuthAndSubscription(onFinished: () -> Unit) {
         Log.d(TAG, "Bootstrap Step 2: Checking Auth and Subscriptions")
         val currentUser = SP.userId
@@ -382,7 +433,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
             SubscriptionManager.checkSubscription(
                 onSuccess = { 
-                    runOnUiThread { onFinished() } 
+                    // [NEW] Cloud Sync: Fetch favorites and custom sources
+                    SyncManager.syncDown {
+                        runOnUiThread { onFinished() } 
+                    }
                 },
                 onError = { error ->
                     runOnUiThread {
@@ -604,9 +658,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         // Set defaults
         val defaults = mapOf(
-            "main_api_url" to TVList.DEFAULT_CONFIG_URL,
-            "standard_api_url" to TVList.DEFAULT_CONFIG_URL,
-            "premium_api_url" to TVList.DEFAULT_PREMIUM_URL,
+            "standard_api_url" to "", // Will be gracefully handled by TVList
+            "premium_api_url" to SecretManager.getPremiumApiUrl(),
             SecretManager.getMaintenanceModeKey() to false
         )
         remoteConfig.setDefaultsAsync(defaults)
@@ -626,17 +679,20 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 val downloadHostFallback = remoteConfig.getString("api_download_host_fallback")
                 if (downloadHostFallback.isNotBlank()) SP.apiDownloadHostFallback = downloadHostFallback
 
-                val apiUrl = remoteConfig.getString("main_api_url")
+                // Fetch Tiered Configs (Encrypted from Firebase)
+                val rawStandardUrl = remoteConfig.getString("standard_api_url")
+                val rawPremiumUrl = remoteConfig.getString("premium_api_url")
                 
-                // Fetch Tiered Configs
-                val standardUrl = remoteConfig.getString("standard_api_url")
-                val premiumUrl = remoteConfig.getString("premium_api_url")
+                val key = SecretManager.getAppKey()
                 
-                if (standardUrl.isNotBlank()) {
-                    SP.standardConfig = standardUrl
+                if (rawStandardUrl.isNotBlank()) {
+                    val decryptedStandard = SecurityUtil.decryptChannelData(rawStandardUrl, key)
+                    SP.standardConfig = decryptedStandard
                 }
-                if (premiumUrl.isNotBlank()) {
-                    SP.premiumConfig = premiumUrl
+                
+                if (rawPremiumUrl.isNotBlank()) {
+                    val decryptedPremium = SecurityUtil.decryptChannelData(rawPremiumUrl, key)
+                    SP.premiumConfig = decryptedPremium
                 }
                 
                 isMaintenanceMode = remoteConfig.getBoolean(SecretManager.getMaintenanceModeKey())
@@ -644,15 +700,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 if (isMaintenanceMode) {
                     onAppMaintenance()
                     return@addOnCompleteListener
-                }
-
-                if (apiUrl.isNotBlank()) {
-                    val currentConfig = SP.config
-                    if (apiUrl != currentConfig) {
-                        Log.d(TAG, "Config URL changed: $apiUrl")
-                        SP.config = apiUrl
-                        SP.addPlaylistUrl(apiUrl)
-                    }
                 }
                 
                 // CRITICAL: Call the callback to advance the bootstrap
@@ -667,8 +714,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             // Check for refresh on resume
             val now = Utils.getDateTimestamp() * 1000L
             if (now - lastRefreshTime > resumeRefreshThreshold) {
-                val config = SP.config
-                if (!config.isNullOrEmpty() && config.startsWith("http")) {
+                // If standard or premium is configured, update list
+                if (!SP.standardConfig.isNullOrEmpty() || !SP.premiumConfig.isNullOrEmpty()) {
                     handler.post {
                         TVList.update(this, silent = true, force = true)
                     }
@@ -1685,11 +1732,53 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         super.onDestroy()
     }
 
-    // Security check helper
+    // ADVANCED SECURITY: Deep Kernel-Level VPN Detection
     private fun isVpnActive(): Boolean {
-        val activeNetwork = connectivityManager.activeNetwork ?: return false
-        val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
-        return networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+        // 1. High-Level API Check (Catches Basic VPNs)
+        try {
+            val activeNetwork = connectivityManager.activeNetwork
+            if (activeNetwork != null) {
+                val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+                if (networkCapabilities != null && networkCapabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) {
+                    return true
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore if API fails
+        }
+
+        // 2. DEEP HARDWARE SCAN (Defeats root/Xposed hider apps)
+        // VPN bypass apps hook the API above to return false. 
+        // We bypass them by physically checking the Linux subsystem for virtual network adapters.
+        try {
+            val networkInterfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())
+            for (networkInterface in networkInterfaces) {
+                // Must be 'up' running
+                if (networkInterface.isUp) {
+                    val name = networkInterface.name ?: ""
+                    // Common Kernel VPN Interfaces
+                    if (name.startsWith("tun") || 
+                        name.startsWith("ppp") || 
+                        name.startsWith("pptp") || 
+                        name.startsWith("tap")) {
+                        return true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+             // Ignore interface read errors
+        }
+
+        // 3. ULTIMATE NATIVE C++ SCAN (Defeats LSPosed/Magisk that hook java.net.NetworkInterface)
+        try {
+            if (SecretManager.isVpnActiveNative()) {
+                return true
+            }
+        } catch (e: Exception) {
+            // Ignore native crash / load failure
+        }
+
+        return false
     }
 
     private fun startRootMonitoring() {

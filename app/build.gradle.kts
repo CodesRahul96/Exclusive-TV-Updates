@@ -189,6 +189,10 @@ dependencies {
     implementation("androidx.room:room-ktx:$room_version")
     ksp("androidx.room:room-compiler:$room_version")
 
+    // Security & Integrity
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("com.google.android.play:integrity:1.3.0")
+
     testImplementation("junit:junit:4.13.2")
 }
 
