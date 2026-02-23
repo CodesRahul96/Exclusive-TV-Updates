@@ -62,7 +62,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         }
 
         listAdapter = ListAdapter(
-            requireContext(),
+            context,
             binding.list,
             tvListModel,
         )
@@ -85,7 +85,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     }
 
     fun update() {
-        if (!::groupAdapter.isInitialized) return
+        if (_binding == null || !::groupAdapter.isInitialized) return
         groupAdapter.update(TVList.groupModel)
 
         val currentPos = TVList.groupModel.position.value ?: 0
@@ -95,7 +95,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
             tvListModel = TVList.groupModel.getTVListModel(0)
         }
 
-        if (tvListModel != null) {
+        if (tvListModel != null && _binding != null) {
             val listAdapter = (binding.list.adapter as ListAdapter)
             listAdapter.update(tvListModel)
             
@@ -114,7 +114,8 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
     }
 
     private fun hideSelf() {
-        requireActivity().supportFragmentManager.beginTransaction()
+        val fm = activity?.supportFragmentManager ?: return
+        fm.beginTransaction()
             .hide(this)
             .commitAllowingStateLoss()
     }
@@ -151,7 +152,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
     override fun onItemClicked(tvModel: TVModel) {
         TVList.setPositionByModel(tvModel)
-        (activity as MainActivity).hideMenuFragment()
+        (activity as? MainActivity)?.hideMenuFragment()
     }
 
     override fun onKey(keyCode: Int): Boolean {

@@ -47,7 +47,7 @@ class SettingFragment : Fragment() {
         setupFocusAnimations()
 
         updateManager = UpdateManager(requireContext(), com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
-        (activity as MainActivity).ready(TAG)
+        (activity as? MainActivity)?.ready(TAG)
         
         return binding.root
     }
@@ -477,10 +477,11 @@ class SettingFragment : Fragment() {
     }
 
     fun setServer(server: String) {
+        if (!isAdded || context == null) return
         // Only update if server is not empty/offline (avoid redundancy with static IP display)
         if (server.isNotEmpty() && !server.contains("offline", ignoreCase = true)) {
             val ip = Utils.getIPAddress(true)
-            val mac = Utils.getMacAddress(requireContext())
+            val mac = Utils.getMacAddress(context ?: return)
             val displayMac = if (mac.isEmpty() || mac == "02:00:00:00:00:00") "Unavailable" else mac
             
             // Show full server link as it contains the port
@@ -489,7 +490,9 @@ class SettingFragment : Fragment() {
     }
 
     fun setVersionName(versionName: String) {
-        binding.versionName.text = versionName
+        if (_binding != null) {
+            binding.versionName.text = versionName
+        }
     }
 
     private fun hideSelf() {

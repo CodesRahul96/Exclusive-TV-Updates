@@ -79,8 +79,12 @@ class WebFragment : Fragment() {
     private val binding get() = _binding!!
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
-        mainActivity = activity as MainActivity
         super.onActivityCreated(savedInstanceState)
+        // mainActivity is used in some methods, but it's safer to access activity directly when needed.
+        // If we must store it, ensure it's updated.
+        (activity as? MainActivity)?.let {
+            mainActivity = it
+        }
     }
 
     override fun onCreateView(
@@ -92,7 +96,7 @@ class WebFragment : Fragment() {
         webView = binding.webView
         playerView = binding.playerView
 
-        val application = requireActivity().applicationContext as MyTVApplication
+        val application = (activity?.applicationContext as? MyTVApplication) ?: return binding.root
         webView.setBackgroundColor(android.graphics.Color.BLACK)
 
         webView.layoutParams.width = application.shouldWidthPx()
@@ -118,14 +122,14 @@ class WebFragment : Fragment() {
 
         WebView.setWebContentsDebuggingEnabled(true)
 
-        webView.setOnTouchListener { v, event ->
+        webView.setOnTouchListener { _, event ->
             if (event != null) {
-                (activity as MainActivity).gestureDetector.onTouchEvent(event)
+                (activity as? MainActivity)?.gestureDetector?.onTouchEvent(event)
             }
             true
         }
 
-        (activity as MainActivity).ready(TAG)
+        (activity as? MainActivity)?.ready(TAG)
         
         // Force ExoPlayer Fill Mode
         playerView.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
@@ -140,7 +144,7 @@ class WebFragment : Fragment() {
     private val maxRetries = 10
     
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val context = requireContext()
+        val context = context ?: return
         super.onViewCreated(view, savedInstanceState)
         
         // Initialize WakeLock
@@ -776,6 +780,16 @@ class WebFragment : Fragment() {
     }
 
     private fun initializePlayer(url: String) {
+        if (context == null) return
+        
+        // FIX: Ensure a global CookieHandler exists so HttpURLConnection handles Set-Cookie
+        // from CDNs (e.g. JioTV/Akamai) perfectly into subsequent .m3u8 or .ts chunk requests.
+        if (java.net.CookieHandler.getDefault() == null) {
+            val cookieManager = java.net.CookieManager()
+            cookieManager.setCookiePolicy(java.net.CookiePolicy.ACCEPT_ORIGINAL_SERVER)
+            java.net.CookieHandler.setDefault(cookieManager)
+        }
+
         try {
             doInitializePlayer(url)
         } catch (e: Exception) {
@@ -816,7 +830,22 @@ class WebFragment : Fragment() {
 
             // DRM
             if (!currentTv.drmScheme.isNullOrEmpty()) {
-                drmConfig = DrmConfig(currentTv.drmScheme!!, currentTv.drmLicenseUrl ?: "")
+                // Pre-parse license URL headers if they exist using the | delimiter
+                var rawLicenseUrl = currentTv.drmLicenseUrl ?: ""
+                if (rawLicenseUrl.contains("|")) {
+                    val parts = rawLicenseUrl.split("|")
+                    rawLicenseUrl = parts[0]
+                    if (parts.size > 1) {
+                        val headerParts = parts[1].split("&")
+                        for (h in headerParts) {
+                            val kv = h.split("=", limit = 2)
+                            if (kv.size == 2) {
+                                requestHeaders[kv[0].trim()] = kv[1].trim()
+                            }
+                        }
+                    }
+                }
+                drmConfig = DrmConfig(currentTv.drmScheme!!, rawLicenseUrl)
             }
         }
 
@@ -882,12 +911,12 @@ class WebFragment : Fragment() {
             )
             .setHandleAudioBecomingNoisy(true)
         
-        // SECURITY UPGRADE - 100% OkHttp Binding
-        // We exclusively bind ExoPlayer to our hardened SecureHttpClient.
-        // This instantly enforces NO_PROXY and active Certificate Pinning across ALL video streaming.
-        val httpDataSourceFactory = OkHttpDataSource.Factory(SecureHttpClient.client)
+        // FIX: Revert to DefaultHttpDataSource for video playback to prevent SecureHttpClient 
+        // from aggressively overwriting User-Agent headers or blocking VPNs via NO_PROXY.
+        val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
             .setUserAgent(userAgent)
             .setDefaultRequestProperties(requestHeaders)
+            .setAllowCrossProtocolRedirects(true)
 
         // HOTSTAR FIX: Ensure Origin/Referer are set correctly
         if (url.contains("hotstar.com") || url.contains("livetv.hotstar")) {
@@ -925,8 +954,7 @@ class WebFragment : Fragment() {
         mediaSourceFactory.setDataSourceFactory(httpDataSourceFactory)
 
         // FIX: Configure DRM Provider to use our Cookie-enabled DataSource
-        mediaSourceFactory.setDrmSessionManagerProvider { mediaItem: androidx.media3.common.MediaItem ->
-            // Use local variable capture for configuration
+        val drmProvider = androidx.media3.exoplayer.drm.DrmSessionManagerProvider { mediaItem: androidx.media3.common.MediaItem ->
             val schemeUuid = if (drmConfig != null) {
                 when (drmConfig?.scheme?.lowercase()) {
                     "widevine" -> C.WIDEVINE_UUID
@@ -939,41 +967,21 @@ class WebFragment : Fragment() {
                  if (drmConf != null) drmConf.scheme else C.WIDEVINE_UUID
             }
 
-            // Prepare DataSource for DRM (reuse main factory with headers)
-            val drmDataSourceFactory = OkHttpDataSource.Factory(SecureHttpClient.client)
+            var licenseUrl = drmConfig?.license ?: mediaItem.localConfiguration?.drmConfiguration?.licenseUri?.toString() ?: ""
+            // Headers were already parsed globally in DrmConfig initialization.
+            
+            val drmDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
                 .setUserAgent(userAgent)
                 .setDefaultRequestProperties(requestHeaders)
-
-            // Logic for License URL
-            var licenseUrl = drmConfig?.license ?: mediaItem.localConfiguration?.drmConfiguration?.licenseUri?.toString() ?: ""
-            
-            // EXTRACT HEADERS FROM LICENSE URL (Failsafe)
-            if (licenseUrl.contains("|")) {
-                val parts = licenseUrl.split("|")
-                licenseUrl = parts[0]
-                if (parts.size > 1) {
-                    val headerParts = parts[1].split("&")
-                    for (h in headerParts) {
-                        val kv = h.split("=", limit = 2)
-                        if (kv.size == 2) {
-                            requestHeaders[kv[0]] = kv[1]
-                        }
-                    }
-                }
-            }
+                .setAllowCrossProtocolRedirects(true)
 
             if (schemeUuid == C.CLEARKEY_UUID && !licenseUrl.startsWith("http")) {
-                 // Local ClearKey
                  val drmCallback = LocalMediaDrmCallback(createClearKeyJson(licenseUrl).toByteArray())
                  DefaultDrmSessionManager.Builder()
                     .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
                     .build(drmCallback)
             } else {
-                 // Remote License (Widevine/PlayReady or Remote ClearKey)
                  val drmCallback = HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory)
-                 
-                 // Pass specific headers if manually set (already in requestHeaders, but ensure)
-                 // NOTE: Setting a generic User-Agent here again to be safe
                  drmCallback.setKeyRequestProperty("User-Agent", userAgent)
                  for ((k, v) in requestHeaders) {
                      drmCallback.setKeyRequestProperty(k, v)
@@ -985,6 +993,8 @@ class WebFragment : Fragment() {
             }
         }
         
+        mediaSourceFactory.setDrmSessionManagerProvider(drmProvider)
+
         builder.setMediaSourceFactory(mediaSourceFactory)
         
         exoPlayer = builder.build()
@@ -1203,20 +1213,34 @@ class WebFragment : Fragment() {
         val isHls = videoUrl.contains(".m3u8", ignoreCase = true) || 
                    (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))
 
+        val isDash = videoUrl.contains(".mpd", ignoreCase = true) || 
+                    (videoUrl.contains("/mpd/", ignoreCase = true)) || 
+                    videoUrl.contains("dash", ignoreCase = true)
+                    
+        val finalMimeType = when {
+            isHls -> androidx.media3.common.MimeTypes.APPLICATION_M3U8
+            isDash -> androidx.media3.common.MimeTypes.APPLICATION_MPD
+            else -> null
+        }
+
         val mediaItem = MediaItem.Builder()
             .setUri(uri)
-            .setMimeType(if (isHls) androidx.media3.common.MimeTypes.APPLICATION_M3U8 else null)
+            .setMimeType(finalMimeType)
+            // .setDrmConfiguration(drmConfigBuilder.build()) // We use DrmSessionManagerProvider instead
             .build()
 
         if (isHls) {
-            // UNIVERSAL FIX: Apply robust settings to ALL HLS streams
+            // UNIVERSAL FIX: Apply robust settings to ALL HLS streams including TS audio flags
             val hlsExtractorFactory = DefaultHlsExtractorFactory(
-                1, // FLAG_ALLOW_NON_IDR_KEYFRAMES (1)
+                DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
+                DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS or
+                DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM,
                 true
             )
             val hlsMediaSource = androidx.media3.exoplayer.hls.HlsMediaSource.Factory(httpDataSourceFactory)
                 .setExtractorFactory(hlsExtractorFactory)
-                .setAllowChunklessPreparation(false) // Strict Sync for stability on all streams
+                .setAllowChunklessPreparation(false) // Strict Sync to extract undeclared tracks
+                .setDrmSessionManagerProvider(drmProvider) // Missing DRM setup added
                 .createMediaSource(mediaItem)
             exoPlayer?.setMediaSource(hlsMediaSource)
         } else {
@@ -1491,7 +1515,8 @@ class WebFragment : Fragment() {
         }
         
         // DYNAMIC BUFFER SIZING (Professional Solution)
-        val activityManager = requireContext().getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val context = context ?: return DefaultLoadControl.Builder().build()
+        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
         val memoryInfo = android.app.ActivityManager.MemoryInfo()
         activityManager.getMemoryInfo(memoryInfo)
         

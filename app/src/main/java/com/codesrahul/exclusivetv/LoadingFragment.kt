@@ -22,7 +22,7 @@ class LoadingFragment : Fragment() {
         binding.bar.layoutParams.width = application.px2Px(binding.bar.layoutParams.width)
         binding.bar.layoutParams.height = application.px2Px(binding.bar.layoutParams.height)
 
-        (activity as MainActivity).ready(TAG)
+        (activity as? MainActivity)?.ready(TAG)
         
         // V9.3 UI Polish: Observe Status Updates
         com.codesrahul.exclusivetv.models.TVList.importStatus.observe(viewLifecycleOwner) { status ->

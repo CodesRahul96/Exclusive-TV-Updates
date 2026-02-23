@@ -29,7 +29,7 @@ class ErrorFragment : Fragment() {
 
         binding.msg.textSize = application.px2PxFont(binding.msg.textSize)
 
-        (activity as MainActivity).ready(TAG)
+        (activity as? MainActivity)?.ready(TAG)
         return binding.root
     }
 

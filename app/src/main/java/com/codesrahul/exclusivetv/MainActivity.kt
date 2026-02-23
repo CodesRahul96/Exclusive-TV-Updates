@@ -44,20 +44,20 @@ import com.google.android.play.core.integrity.IntegrityTokenRequest
 
 class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
-    var webFragment = WebFragment()
-    private var errorFragment = ErrorFragment()
-    private var loadingFragment = LoadingFragment()
-    private var infoFragment = InfoFragment()
-    private var channelFragment = ChannelFragment()
-    private var timeFragment = TimeFragment()
-    private var menuFragment = MenuFragment()
-    private var settingFragment = SettingFragment()
-    private var importProgressFragment = ImportProgressFragment()
-    private var trackSelectionFragment = TrackSelectionFragment()
-    private var epgGridFragment = EpgGridFragment()
-    private var offlineFragment = OfflineFragment()
-    private var maintenanceFragment = MaintenanceFragment()
-    private val loginFragment = LoginFragment() // [NEW]
+    internal var webFragment = WebFragment()
+    internal var errorFragment = ErrorFragment()
+    internal var loadingFragment = LoadingFragment()
+    internal var infoFragment = InfoFragment()
+    internal var channelFragment = ChannelFragment()
+    internal var timeFragment = TimeFragment()
+    internal var menuFragment = MenuFragment()
+    internal var settingFragment = SettingFragment()
+    internal var importProgressFragment = ImportProgressFragment()
+    internal var trackSelectionFragment = TrackSelectionFragment()
+    internal var epgGridFragment = EpgGridFragment()
+    internal var offlineFragment = OfflineFragment()
+    internal var maintenanceFragment = MaintenanceFragment()
+    internal var loginFragment = LoginFragment() // [NEW]
 
     private val spListener = object : OnSharedPreferenceChangeListener {
         override fun onSharedPreferenceChanged(key: String) {
@@ -263,22 +263,40 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         })
 
+        if (savedInstanceState != null) {
+            // Restore fragment references from FragmentManager after recreation
+            supportFragmentManager.findFragmentByTag("web")?.let { webFragment = it as WebFragment }
+            supportFragmentManager.findFragmentByTag("error")?.let { errorFragment = it as ErrorFragment }
+            supportFragmentManager.findFragmentByTag("loading")?.let { loadingFragment = it as LoadingFragment }
+            supportFragmentManager.findFragmentByTag("time")?.let { timeFragment = it as TimeFragment }
+            supportFragmentManager.findFragmentByTag("info")?.let { infoFragment = it as InfoFragment }
+            supportFragmentManager.findFragmentByTag("epg")?.let { epgGridFragment = it as EpgGridFragment }
+            supportFragmentManager.findFragmentByTag("channel")?.let { channelFragment = it as ChannelFragment }
+            supportFragmentManager.findFragmentByTag("menu")?.let { menuFragment = it as MenuFragment }
+            supportFragmentManager.findFragmentByTag("setting")?.let { settingFragment = it as SettingFragment }
+            supportFragmentManager.findFragmentByTag("import")?.let { importProgressFragment = it as ImportProgressFragment }
+            supportFragmentManager.findFragmentByTag("track")?.let { trackSelectionFragment = it as TrackSelectionFragment }
+            supportFragmentManager.findFragmentByTag("offline")?.let { offlineFragment = it as OfflineFragment }
+            supportFragmentManager.findFragmentByTag("maintenance")?.let { maintenanceFragment = it as MaintenanceFragment }
+            supportFragmentManager.findFragmentByTag("login")?.let { loginFragment = it as LoginFragment }
+        }
+
         if (savedInstanceState == null) {
             val transaction = supportFragmentManager.beginTransaction()
-                .add(R.id.main_browse_fragment, webFragment)
-                .add(R.id.main_browse_fragment, errorFragment)
-                .add(R.id.main_browse_fragment, loadingFragment)
-                .add(R.id.main_browse_fragment, timeFragment)
-                .add(R.id.main_browse_fragment, infoFragment)
-                .add(R.id.main_browse_fragment, epgGridFragment)
-                .add(R.id.main_browse_fragment, channelFragment)
-                .add(R.id.main_browse_fragment, menuFragment)
-                .add(R.id.main_browse_fragment, settingFragment)
-                .add(R.id.main_browse_fragment, importProgressFragment)
-                .add(R.id.main_browse_fragment, trackSelectionFragment)
-                .add(R.id.main_browse_fragment, offlineFragment)
-                .add(R.id.main_browse_fragment, maintenanceFragment)
-                .add(R.id.main_browse_fragment, loginFragment)
+                .add(R.id.main_browse_fragment, webFragment, "web")
+                .add(R.id.main_browse_fragment, errorFragment, "error")
+                .add(R.id.main_browse_fragment, loadingFragment, "loading")
+                .add(R.id.main_browse_fragment, timeFragment, "time")
+                .add(R.id.main_browse_fragment, infoFragment, "info")
+                .add(R.id.main_browse_fragment, epgGridFragment, "epg")
+                .add(R.id.main_browse_fragment, channelFragment, "channel")
+                .add(R.id.main_browse_fragment, menuFragment, "menu")
+                .add(R.id.main_browse_fragment, settingFragment, "setting")
+                .add(R.id.main_browse_fragment, importProgressFragment, "import")
+                .add(R.id.main_browse_fragment, trackSelectionFragment, "track")
+                .add(R.id.main_browse_fragment, offlineFragment, "offline")
+                .add(R.id.main_browse_fragment, maintenanceFragment, "maintenance")
+                .add(R.id.main_browse_fragment, loginFragment, "login")
                 .hide(menuFragment).hide(settingFragment).hide(importProgressFragment)
                 .hide(trackSelectionFragment).hide(offlineFragment).hide(maintenanceFragment)
                 .hide(epgGridFragment).hide(errorFragment).hide(timeFragment)

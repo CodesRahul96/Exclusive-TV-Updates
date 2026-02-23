@@ -39,7 +39,7 @@ class EpgGridFragment : Fragment() {
     }
 
     private fun setupSearch() {
-        binding.epgSearch.addTextChangedListener(object : android.text.TextWatcher {
+        _binding?.epgSearch?.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 filterChannels(s.toString())
@@ -49,6 +49,7 @@ class EpgGridFragment : Fragment() {
     }
 
     private fun filterChannels(query: String) {
+        val binding = _binding ?: return
         val q = query.lowercase().trim()
         // Take a snapshot to avoid ConcurrentModificationException during list refresh
         val result = if (q.isEmpty()) {
@@ -72,7 +73,7 @@ class EpgGridFragment : Fragment() {
             return
         }
 
-        binding.epgRecycler.layoutManager = LinearLayoutManager(requireContext())
+        binding.epgRecycler.layoutManager = LinearLayoutManager(context ?: return)
         binding.epgRecycler.adapter = EpgRowAdapter(filteredChannels)
         
         // Sync header scroll with rows
@@ -83,13 +84,16 @@ class EpgGridFragment : Fragment() {
             }
         }
 
-        binding.root.postDelayed({
-            scrollToNow()
+        _binding?.root?.postDelayed({
+            if (_binding != null) {
+                scrollToNow()
+            }
         }, 500)
     }
-    
-     private fun scrollToNow() {
-         val now = Utils.getDateTimestamp() * 1000L
+
+    private fun scrollToNow() {
+        val binding = _binding ?: return
+        val now = Utils.getDateTimestamp() * 1000L
          val guideStart = getGuideStartTime()
         val offsetMins = (now - guideStart) / 60000
         val scrollX = (offsetMins * PIXELS_PER_MINUTE).toInt() - 200 // Offset slightly to show a bit of past
@@ -98,6 +102,7 @@ class EpgGridFragment : Fragment() {
     }
 
     private fun syncVisibleRows(scrollX: Int) {
+        val binding = _binding ?: return
         val now = System.currentTimeMillis()
         if (now - lastSyncTime < 16) return // Limit to ~60fps sync to reduce layout overhead
         lastSyncTime = now
@@ -122,7 +127,7 @@ class EpgGridFragment : Fragment() {
         
         // Populate 24 hours in 30-minute blocks
         for (i in 0 until 48) {
-            val view = LayoutInflater.from(requireContext()).inflate(R.layout.item_epg_time, container, false)
+            val view = LayoutInflater.from(context ?: return).inflate(R.layout.item_epg_time, container, false)
             val timeText = view.findViewById<android.widget.TextView>(R.id.time_label)
             
             val blockTime = guideStart + (i * 30 * 60000L)
@@ -199,7 +204,8 @@ class EpgGridFragment : Fragment() {
                  
                  if (shiftedStop < guideStart) return@forEach // Past program
                  
-                 val view = LayoutInflater.from(context).inflate(R.layout.item_epg_program, holder.programContainer, false)
+                 val ctx = context ?: return@forEach
+                 val view = LayoutInflater.from(ctx).inflate(R.layout.item_epg_program, holder.programContainer, false)
                  val title = view.findViewById<android.widget.TextView>(R.id.program_title)
                  val time = view.findViewById<android.widget.TextView>(R.id.program_time)
                  
@@ -236,6 +242,7 @@ class EpgGridFragment : Fragment() {
     }
 
      private fun showFocusInfo(prog: com.codesrahul.exclusivetv.models.EPGProgram) {
+         val binding = _binding ?: return
          binding.focusedProgramInfo.visibility = View.VISIBLE
          binding.focusedTitle.text = prog.title
          val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
