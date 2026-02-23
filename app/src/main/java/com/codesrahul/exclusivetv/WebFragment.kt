@@ -869,6 +869,7 @@ class WebFragment : Fragment() {
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(requireContext())
             .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true) // IMPORTANT: Swaps to software decoder if hardware hangs
+            .setEnableAudioTrackPlaybackParams(true) 
 
         val builder = ExoPlayer.Builder(requireContext(), renderersFactory)
             .setLoadControl(loadControl)
@@ -1012,16 +1013,24 @@ class WebFragment : Fragment() {
              }
         }
 
-        // Apply Default Audio Language Preference
+        // Apply Default Audio Language Preference & FireTV Audio Stability Fixes
         val defaultLang = SP.defaultAudioLanguage
-        if (defaultLang.isNotEmpty() && exoPlayer != null) {
+        if (exoPlayer != null) {
              try {
                  val currentParams = exoPlayer!!.trackSelectionParameters
-                 val newParams = currentParams
-                    .buildUpon()
-                    .setPreferredAudioLanguages(defaultLang)
-                    .build()
-                 exoPlayer!!.trackSelectionParameters = newParams
+                 val builder = currentParams.buildUpon()
+                 
+                 if (defaultLang.isNotEmpty()) {
+                     builder.setPreferredAudioLanguages(defaultLang)
+                 }
+
+                 // FIRETV AUDIO FIX: Force Stereo Downmix for TV devices to prevent passthrough failures
+                 val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
+                 if (uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) {
+                     builder.setMaxAudioChannelCount(2) // Force stereo downmix
+                 }
+                 
+                 exoPlayer!!.trackSelectionParameters = builder.build()
              } catch (e: Exception) {
              }
         }
