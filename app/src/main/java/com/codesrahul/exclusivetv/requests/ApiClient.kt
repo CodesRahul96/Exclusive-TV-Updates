@@ -22,8 +22,8 @@ class ApiClient {    private var okHttpClient = SecureHttpClient.client
     }
 
     companion object {
-        private const val DEFAULT_HOST = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-APP/"
-        private const val DEFAULT_DOWNLOAD_HOST = "https://github.com/CodesRahul96/Exclusive-TV-APP/releases/download/"
+        private const val DEFAULT_HOST = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-Updates/"
+        private const val DEFAULT_DOWNLOAD_HOST = "https://github.com/CodesRahul96/Exclusive-TV-Updates/releases/download/"
         
         private const val DEFAULT_HOST_FALLBACK = "https://raw.githubusercontent.com/CodesRahul96/Exclusive-TV-Updates/"
         private const val DEFAULT_DOWNLOAD_HOST_FALLBACK = "https://github.com/CodesRahul96/Exclusive-TV-Updates/releases/download/"
