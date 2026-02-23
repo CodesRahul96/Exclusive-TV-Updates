@@ -1770,7 +1770,17 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     // ADVANCED SECURITY: Deep Kernel-Level VPN Detection
     private fun isVpnActive(): Boolean {
-        // 1. High-Level API Check (Catches Basic VPNs)
+        // FIRETV FIX: TV devices (Leanback/FireTV) use system-level network tunnels
+        // that are indistinguishable from VPN connections. The OS-level check, hardware
+        // interface scan, and native C++ scan all report false positives on these devices.
+        // VPN enforcement on a TV stick is not a meaningful security boundary (users cannot
+        // install unauthorized VPN apps on FireTV without sideloading), so we skip all checks.
+        if (isTvDevice()) {
+            Log.d(TAG, "TV device detected. Skipping VPN check to prevent false positives.")
+            return false
+        }
+
+        // 1. High-Level API Check (Catches Basic VPNs on Mobile)
         try {
             val activeNetwork = connectivityManager.activeNetwork
             if (activeNetwork != null) {
@@ -1783,14 +1793,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             // Ignore if API fails
         }
 
-        // 2. DEEP HARDWARE SCAN (Defeats root/Xposed hider apps)
-        // VPN bypass apps hook the API above to return false. 
+        // 2. DEEP HARDWARE SCAN (Defeats root/Xposed hider apps on Mobile)
+        // VPN bypass apps hook the API above to return false.
         // We bypass them by physically checking the Linux subsystem for virtual network adapters.
-        // BUG FIX: On FireTV, system tunnels (like tun0) are often used for system services.
         try {
             val networkInterfaces = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())
-            val isTv = isTvDevice()
-            
             for (networkInterface in networkInterfaces) {
                 // Must be 'up' running
                 if (networkInterface.isUp) {
@@ -1800,14 +1807,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         name.startsWith("ppp") || 
                         name.startsWith("pptp") || 
                         name.startsWith("tap")) {
-                        
-                        if (isTv) {
-                            // On TV devices, we trust ConnectivityManager (Step 1) for these common names
-                            // because FireTV and other sticks use them for internal system-level tunnels.
-                            Log.d(TAG, "VPN Interface $name detected but ignored on TV device (Possible system tunnel)")
-                        } else {
-                            return true
-                        }
+                        return true
                     }
                 }
             }
