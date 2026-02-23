@@ -1,3 +1,25 @@
+# ExclusiveTV v1.1.1 - Stability & EPG Fixes
+
+## ✨ Highlights
+
+### 📺 EPG Accuracy
+
+- **Fixed EPG Matching**: Corrected matching logic to ensure EPG data appears even if the user renames a channel. It now uses immutable M3U identifiers for lookups.
+- **Improved EPG Fetching**: Switched to a more general EPG source for better coverage.
+
+### 🧭 Navigation & UX Improvements
+
+- **Fragment Management**: Updated back-navigation to correctly dismiss the Channel Info Card and Channel Entry overlays before exiting the app.
+- **Enhanced Loaders**: Optimized the loader timeout and synchronization for faster visual feedback.
+
+### 🚀 Under-the-Hood Optimizations
+
+- **Playlist Handling**: Audited `TVList` for OOM safety; large M3U/JSON playlists are now handled via high-performance async streaming.
+- **ExoPlayer Tuning**: Refined buffer settings for low-latency playback while maintaining anti-freeze stability on FireTV devices.
+- **Lifecycle Auditing**: Verified all observers and handlers are properly cleared to prevent long-term memory leaks.
+
+---
+
 # ExclusiveTV v1.0.67 - Premium Aesthetics & Privacy
 
 ## ✨ Highlights

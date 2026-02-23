@@ -115,7 +115,7 @@ if (Test-Path "RELEASE_NOTES.md") {
     $notes = Get-Content "RELEASE_NOTES.md" -Raw
 }
 
-& $ghExe release create "$Version" "$targetRelease" "$targetDebug" --repo $PRIMARY_REPO --title "$Version" --notes "$notes"
+& $ghExe release create "$Version" "$targetRelease" "$targetDebug" --repo $PRIMARY_REPO --title "$Version" --notes-file "RELEASE_NOTES.md"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "PRIMARY release published successfully!" -ForegroundColor Green
 }
@@ -127,7 +127,7 @@ else {
 # 7. Release to Fallback Repository
 Write-Host "`n--> Creating Release on FALLBACK Repository ($FALLBACK_REPO)..." -ForegroundColor Yellow
 
-& $ghExe release create "$Version" "$targetRelease" "$targetDebug" --repo $FALLBACK_REPO --title "$Version" --notes "$notes"
+& $ghExe release create "$Version" "$targetRelease" "$targetDebug" --repo $FALLBACK_REPO --title "$Version" --notes-file "RELEASE_NOTES.md"
 if ($LASTEXITCODE -eq 0) {
     Write-Host "FALLBACK release published successfully!" -ForegroundColor Green
 }
