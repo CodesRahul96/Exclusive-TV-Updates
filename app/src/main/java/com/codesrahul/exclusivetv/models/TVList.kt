@@ -72,6 +72,7 @@ object TVList {
     }
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
+    private const val UPDATE_COOLDOWN_MS = 15 * 60 * 1000L // 15 minutes TTL
     private lateinit var appDirectory: File
 
     private lateinit var serverUrl: String
@@ -251,6 +252,22 @@ object TVList {
                         _importStatus.value = ""
                     }
                     return@launch
+                }
+                
+                // --- LOAD BALANCING SAFEGUARDS ---
+                val now = System.currentTimeMillis()
+                
+                // 1. Update Cooldown (Prevent redundant hits if not forced)
+                if (!force && (now - SP.lastUpdateTime < UPDATE_COOLDOWN_MS) && list.isNotEmpty()) {
+                    android.util.Log.i(TAG, "Update skipped: Cooldown active (${(now - SP.lastUpdateTime)/1000}s since last success)")
+                    return@launch
+                }
+
+                // 2. Thundering Herd Protection (Silent/Startup Jitter)
+                if (silent && !force) {
+                    val jitter = (0..5000).random().toLong()
+                    android.util.Log.d(TAG, "Thundering Herd Protection: Delaying update by ${jitter}ms")
+                    kotlinx.coroutines.delay(jitter)
                 }
                 
                 val showUi = !silent || size() == 0
@@ -519,6 +536,7 @@ object TVList {
                           return@launch
                       }
                       lastListHash = newListHash
+                      SP.lastUpdateTime = System.currentTimeMillis() // Update success timestamp
 
                       // MEMORY OPTIMIZATION: Use streaming writer instead of loading huge JSON string
                       // This prevents OutOfMemoryError on large playlists (5000+ channels)

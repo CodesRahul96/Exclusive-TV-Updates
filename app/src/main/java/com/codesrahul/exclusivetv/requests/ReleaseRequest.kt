@@ -1,64 +1,55 @@
 ﻿package com.codesrahul.exclusivetv.requests
 
+import android.util.Log
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 class ReleaseRequest {
-    private var apiClient = ApiClient()
-    private var releaseService = apiClient.releaseService
-    private var releaseServiceFallback = apiClient.releaseServiceFallback
+    // Brand new vanilla OkHttpClient completely detached from SecureHttpClient.
+    // No CertificatePinner, no SecurityInterceptor, no VPN checks.
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .build()
+        
+    private val gson = Gson()
     
-    // Track which source was successful for download URL consistency
-    var usedFallback = false
-        private set
-
     suspend fun getRelease(): ReleaseResponse? {
         return withContext(Dispatchers.IO) {
-            // Try primary source first
-            var release = fetchRelease(releaseService, "Primary")
-            
-            if (release != null) {
-                usedFallback = false
-                return@withContext release
-            }
-            
-            // If primary fails, try fallback
-            release = fetchRelease(releaseServiceFallback, "Fallback")
-            
-            if (release != null) {
-                usedFallback = true
-                return@withContext release
-            }
-            
-            // Both sources failed
-            null
+            fetchRelease(ApiClient.HOST, "Primary")
         }
     }
 
-    private suspend fun fetchRelease(service: ReleaseService, sourceName: String): ReleaseResponse? {
-        return suspendCoroutine { continuation ->
-            service.getRelease()
-                .enqueue(object : Callback<ReleaseResponse> {
-                    override fun onResponse(
-                        call: Call<ReleaseResponse>,
-                        response: Response<ReleaseResponse>
-                    ) {
-                        if (response.isSuccessful) {
-                            continuation.resume(response.body())
-                        } else {
-                            continuation.resume(null)
-                        }
-                    }
-
-                    override fun onFailure(call: Call<ReleaseResponse>, t: Throwable) {
-                        continuation.resume(null)
-                    }
-                })
+    private fun fetchRelease(baseUrl: String, sourceName: String): ReleaseResponse? {
+        val url = if (baseUrl.endsWith("/")) {
+            "${baseUrl}version.json"
+        } else {
+            "$baseUrl/version.json"
+        }
+        
+        Log.d(TAG, "Fetching update from $sourceName: $url")
+        
+        val request = Request.Builder()
+            .url(url)
+            .build()
+            
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful && response.body != null) {
+                    val bodyString = response.body!!.string()
+                    gson.fromJson(bodyString, ReleaseResponse::class.java)
+                } else {
+                    Log.e(TAG, "$sourceName update fetch failed with code: ${response.code}")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception fetching from $sourceName: ${e.message}")
+            null
         }
     }
 

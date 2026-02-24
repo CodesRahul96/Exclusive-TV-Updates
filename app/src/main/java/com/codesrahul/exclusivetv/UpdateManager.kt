@@ -180,12 +180,8 @@ class UpdateManager(
         val downloadManager =
             context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         
-        // Use the appropriate download host based on which source provided the version info
-        val downloadHost = if (releaseRequest.usedFallback) {
-            ApiClient.DOWNLOAD_HOST_FALLBACK
-        } else {
-            ApiClient.DOWNLOAD_HOST
-        }
+        // Use the primary download host
+        val downloadHost = ApiClient.DOWNLOAD_HOST
         
         val downloadUrl = "$downloadHost${release.version_name}/$apkName-${release.version_name}.apk"
         val request = Request(Uri.parse(downloadUrl))

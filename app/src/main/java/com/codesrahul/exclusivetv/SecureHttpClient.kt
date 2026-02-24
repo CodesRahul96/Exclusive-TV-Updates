@@ -30,6 +30,20 @@ object SecureHttpClient {
         "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto="  // ISRG Root X1 (alternate hash)
     )
 
+    // Stable fallback pins for GitHub (DigiCert Global Root CA + Sectigo variants)
+    private val FALLBACK_PINS_GITHUB = listOf(
+        "sha256/1FtgkXeU53bUTaObUogizKNIqs/ZGaEo1k2AwG30xts=", // *.github.io Leaf
+        "sha256/4a6cPehI7OG6cuDZka5NDZ7FR8a60d3auda+sKfg4Ng=", // Sectigo RSA Domain Validation Secure Server CA
+        "sha256/x4QzPSC810K5/cMjb05Qm4k3Bw5zBn4lTdO/nEW/Td4=", // USERTrust RSA Certification Authority
+        "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="
+    )
+
+    // Stable fallback pins for Vercel (ISRG Root X1 & DigiCert Global Root CA fallback)
+    private val FALLBACK_PINS_VERCEL = listOf(
+        "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto=",
+        "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E="
+    )
+
     // BUG FIX: @Volatile alone is not sufficient for double-checked locking.
     // Two concurrent threads can both see _client == null and both call buildClient().
     // Using @Synchronized on the accessor ensures only one build happens at a time.
@@ -62,25 +76,46 @@ object SecureHttpClient {
     }
 
     private fun buildClient(): OkHttpClient {
-        val remotePins = parsePins(SP.sslPinsIndevs)
-        val effectivePins = if (remotePins.isNotEmpty()) {
-            Log.i(TAG, "Using ${remotePins.size} remote cert pin(s) for **.indevs.in")
-            remotePins
+        val remotePinsIndevs = parsePins(SP.sslPinsIndevs)
+        val effectivePinsIndevs = if (remotePinsIndevs.isNotEmpty()) {
+            Log.i(TAG, "Using ${remotePinsIndevs.size} remote cert pin(s) for **.indevs.in")
+            remotePinsIndevs
         } else {
-            Log.i(TAG, "No remote pins found — using ${FALLBACK_PINS_INDEVS.size} hardcoded fallback pin(s)")
+            Log.i(TAG, "No remote pins found for indevs — using ${FALLBACK_PINS_INDEVS.size} hardcoded fallback pin(s)")
             FALLBACK_PINS_INDEVS
         }
 
+        val remotePinsGithub = parsePins(SP.sslPinsGithub)
+        val effectivePinsGithub = if (remotePinsGithub.isNotEmpty()) {
+            Log.i(TAG, "Using ${remotePinsGithub.size} remote cert pin(s) for Github domains")
+            remotePinsGithub
+        } else {
+            FALLBACK_PINS_GITHUB
+        }
+
+        val remotePinsVercel = parsePins(SP.sslPinsVercel)
+        val effectivePinsVercel = if (remotePinsVercel.isNotEmpty()) {
+            Log.i(TAG, "Using ${remotePinsVercel.size} remote cert pin(s) for Vercel")
+            remotePinsVercel
+        } else {
+            FALLBACK_PINS_VERCEL
+        }
+
         val pinnerBuilder = CertificatePinner.Builder()
-            // GitHub (DigiCert Global Root CA) - stable long-term pin
-            .add("**.github.com", "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=")
-            .add("**.githubusercontent.com", "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=")
-            // Vercel (ISRG Root X1 & DigiCert Global Root CA fallback)
-            .add("**.vercel.app", "sha256/C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQZEu06w+Ehmto=")
-            .add("**.vercel.app", "sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=")
+
+        // Apply GitHub pins (remote or fallback)
+        for (pin in effectivePinsGithub) {
+            pinnerBuilder.add("**.github.com", pin)
+            pinnerBuilder.add("**.githubusercontent.com", pin)
+        }
+
+        // Apply Vercel pins (remote or fallback)
+        for (pin in effectivePinsVercel) {
+            pinnerBuilder.add("**.vercel.app", pin)
+        }
 
         // Apply indevs.in pins (remote or fallback)
-        for (pin in effectivePins) {
+        for (pin in effectivePinsIndevs) {
             pinnerBuilder.add("**.indevs.in", pin)
         }
 
@@ -92,9 +127,9 @@ object SecureHttpClient {
                 val hv = javax.net.ssl.HttpsURLConnection.getDefaultHostnameVerifier()
                 hv.verify(hostname, session)
             }
-            .connectTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
-            .connectionPool(okhttp3.ConnectionPool(5, 5, java.util.concurrent.TimeUnit.MINUTES))
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .connectionPool(okhttp3.ConnectionPool(15, 5, java.util.concurrent.TimeUnit.MINUTES))
             .addInterceptor { chain ->
                 val original = chain.request()
                 val request = original.newBuilder()

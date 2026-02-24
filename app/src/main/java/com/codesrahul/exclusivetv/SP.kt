@@ -67,6 +67,8 @@ object SP {
     private const val KEY_USER_ID = "user_id" // Persist phone number replacing Firebase Auth
     private const val KEY_FAVORITE_URLS = "favorite_urls" // [NEW] For Cloud Sync
     private const val KEY_SSL_PINS_INDEVS = "ssl_pins_indevs" // [NEW] Remote cert pinning
+    private const val KEY_SSL_PINS_GITHUB = "ssl_pins_github" // [NEW]
+    private const val KEY_SSL_PINS_VERCEL = "ssl_pins_vercel" // [NEW]
 
     private lateinit var sp: SharedPreferences
     private lateinit var esp: SharedPreferences
@@ -134,6 +136,14 @@ object SP {
     var sslPinsIndevs: String
         get() = sp.getString(KEY_SSL_PINS_INDEVS, "") ?: ""
         set(value) = sp.edit().putString(KEY_SSL_PINS_INDEVS, value).apply()
+
+    var sslPinsGithub: String
+        get() = sp.getString(KEY_SSL_PINS_GITHUB, "") ?: ""
+        set(value) = sp.edit().putString(KEY_SSL_PINS_GITHUB, value).apply()
+
+    var sslPinsVercel: String
+        get() = sp.getString(KEY_SSL_PINS_VERCEL, "") ?: ""
+        set(value) = sp.edit().putString(KEY_SSL_PINS_VERCEL, value).apply()
 
     /**
      * The method must be invoked as early as possible(At least before using the keys)

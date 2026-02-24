@@ -221,6 +221,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         initBasicSetup(savedInstanceState)
         
         // Phase 2: Start Professional Bootstrap (Async but Synchronized)
+        updateManager = UpdateManager(this, com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
         bootstrap()
     }
 
@@ -383,6 +384,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         Log.i(TAG, "Bootstrap Complete. Triggering final TVList update.")
         hideFragment(loginFragment)
         com.codesrahul.exclusivetv.models.TVList.update(this, silent = true)
+        
+        // Background Auto-Update Check
+        if (::updateManager.isInitialized) {
+            updateManager.checkAndUpdate()
+            startPeriodicUpdateCheck()
+        }
         
         // Auto-play last channel if available
         val pos = TVList.position.value ?: -1
@@ -732,8 +739,25 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 // If Let's Encrypt rotates its intermediate CA, update "ssl_pins_indevs" in Firebase
                 // and all app instances will pick up the new pins on next startup without an APK update.
                 val remoteSslPins = remoteConfig.getString("ssl_pins_indevs")
+                val remoteSslPinsGithub = remoteConfig.getString("ssl_pins_github")
+                val remoteSslPinsVercel = remoteConfig.getString("ssl_pins_vercel")
+                
+                var pinsUpdated = false
+                
                 if (remoteSslPins.isNotBlank()) {
                     SP.sslPinsIndevs = remoteSslPins
+                    pinsUpdated = true
+                }
+                if (remoteSslPinsGithub.isNotBlank()) {
+                    SP.sslPinsGithub = remoteSslPinsGithub
+                    pinsUpdated = true
+                }
+                if (remoteSslPinsVercel.isNotBlank()) {
+                    SP.sslPinsVercel = remoteSslPinsVercel
+                    pinsUpdated = true
+                }
+                
+                if (pinsUpdated) {
                     // BUG FIX: OkHttpClient construction (thread pool + connection pool allocation)
                     // must NOT run on the main thread. Dispatch to IO.
                     CoroutineScope(Dispatchers.IO).launch {
