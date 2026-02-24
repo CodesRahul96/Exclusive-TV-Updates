@@ -4,10 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.util.Xml
 import com.codesrahul.exclusivetv.models.EPGProgram
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.Request
@@ -22,28 +19,57 @@ import java.util.zip.GZIPInputStream
 
 object EPGManager {
     private const val TAG = "EPGManager"
-    private const val CACHE_FILE = "epg_cache.xml.gz"
-    private const val DEFAULT_EPG_URL = "https://tsepg.cf/epg.xml.gz"
+    private val DEFAULT_EPG_SOURCES = listOf(
+        "https://avkb.short.gy/jioepg.xml.gz",
+        "https://avkb.short.gy/epg.xml.gz",
+        "https://avkb.short.gy/tsepg.xml.gz",
+        "https://tsepg.cf/epg.xml.gz",
+        "https://whythishome.github.io/epg/guides/dishtv.in_en.xml.gz",
+        "https://avkb.short.gy/skyepg.xml.gz"
+    )
 
     private val REGEX_BRACKETS = Regex("\\(.*?\\)")
     private val REGEX_PREFIX_D = Regex("^d ")
     private val REGEX_PREFIX_DD = Regex("^dd ")
     private val REGEX_NON_ALPHANUM = Regex("[^a-z0-9]")
+    private val REGEX_REGION = Regex("(?i)\\s*\\((india|asia|international|uk|usa|uae|dubai|uae|telugu|tamil|hindi|kannada|malayalam|marathi|bengali|gujarati|punjabi|urdu)\\)")
 
     private var epgData = mutableMapOf<String, MutableList<EPGProgram>>()
     private var epgDataById = mutableMapOf<String, MutableList<EPGProgram>>()
-    private val normalizedCache = mutableMapOf<String, String>()
+    
+    // LRU Cache for normalization to prevent memory bloat
+    private val normalizedCache = object : java.util.LinkedHashMap<String, String>(100, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean = size > 2500
+    }
+    
+    // Simple lookup cache for successful fuzzy matches
+    private val fuzzyMatchCache = mutableMapOf<String, String>()
+    
     private val mutex = Mutex()
 
     var epgStatus = "Not Loaded"
         private set
 
-    private fun getCacheFile(context: Context): File {
-        return File(context.cacheDir, CACHE_FILE)
+    private fun getCacheFile(context: Context, url: String): File {
+        val hash = url.hashCode().toString()
+        return File(context.cacheDir, "epg_$hash.xml.gz")
     }
 
-    private val epgUrl: String
-        get() = SP.epg.takeIf { !it.isNullOrEmpty() } ?: SP.remoteEpgUrl.takeIf { !it.isNullOrEmpty() } ?: DEFAULT_EPG_URL
+    private fun getEpgUrls(): List<String> {
+        val userEpg = SP.epg ?: ""
+        val remoteEpg = SP.remoteEpgUrl ?: ""
+        val delimiters = "[,;\\|]".toRegex()
+        
+        val urls = mutableListOf<String>()
+        if (userEpg.isNotBlank()) urls.addAll(userEpg.split(delimiters).map { it.trim() }.filter { it.isNotEmpty() })
+        if (remoteEpg.isNotBlank()) urls.addAll(remoteEpg.split(delimiters).map { it.trim() }.filter { it.isNotEmpty() })
+        
+        // ALWAYS append default sources for guaranteed coverage, avoiding duplicates
+        val allUrls = urls.toMutableList()
+        DEFAULT_EPG_SOURCES.forEach { if (it !in allUrls) allUrls.add(it) }
+        
+        return allUrls.distinct()
+    }
 
     fun init(context: Context) {
         if (epgData.isNotEmpty()) return
@@ -52,7 +78,6 @@ object EPGManager {
 
     fun fetchEPG(context: Context, force: Boolean = false) {
         if (!SP.epgEnabled) return
-        
         CoroutineScope(Dispatchers.IO).launch {
             fetchEPGInternal(context, force)
         }
@@ -69,69 +94,125 @@ object EPGManager {
 
     private suspend fun fetchEPGInternal(context: Context, force: Boolean) {
         mutex.withLock {
-            try {
-                val file = getCacheFile(context)
-                val now = Utils.getDateTimestamp() * 1000L
-                val client = SecureHttpClient.client
-                
-                if (force || !file.exists() || (now - file.lastModified() > 12 * 3600_000L)) {
-                    epgStatus = "Downloading..."
-                    Log.d(TAG, "Fetching EPG from: $epgUrl")
-                    val request = Request.Builder().url(epgUrl).build()
-                    client.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            response.body?.byteStream()?.use { input ->
-                                FileOutputStream(file).use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                        }
-                    }
-                }
+            val urls = getEpgUrls()
+            epgStatus = "Fetching ${urls.size} hubs..."
+            
+            val newEpgData = mutableMapOf<String, MutableList<EPGProgram>>()
+            val newEpgDataById = mutableMapOf<String, MutableList<EPGProgram>>()
 
-                if (file.exists()) {
-                    epgStatus = "Parsing..."
-                    Log.d(TAG, "Parsing EPG file: ${file.absolutePath}")
-                    val count = FileInputStream(file).use { fis ->
-                        GZIPInputStream(fis).use { gis ->
-                            parseXML(gis)
+            val results = coroutineScope {
+                urls.map { url ->
+                    async(Dispatchers.IO) {
+                        try {
+                            fetchAndParseSingleSource(context, url, force, newEpgData, newEpgDataById)
+                            true
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Source $url failed: ${e.message}")
+                            false
                         }
                     }
-                    epgStatus = "Loaded progs for $count channels"
-                    Log.d(TAG, "Parsing Complete! $epgStatus")
-                }
-                Unit
-            } catch (e: Exception) {
-                epgStatus = "Error: ${e.message}"
-                Log.e(TAG, "EPG Error: ${e.message}", e)
+                }.awaitAll()
             }
-            Unit
+
+            val successCount = results.count { it }
+            
+            // Deduplicate and Sort
+            newEpgData.values.forEach { progs ->
+                val unique = progs.distinctBy { it.start to it.stop }
+                progs.clear()
+                progs.addAll(unique)
+                progs.sortBy { it.start }
+            }
+            newEpgDataById.values.forEach { progs ->
+                val unique = progs.distinctBy { it.start to it.stop }
+                progs.clear()
+                progs.addAll(unique)
+                progs.sortBy { it.start }
+            }
+
+            synchronized(this) {
+                epgData = newEpgData
+                epgDataById = newEpgDataById
+                fuzzyMatchCache.clear() // Reset fuzzy cache when data refresh is complete
+            }
+
+            val totalChannels = synchronized(this) { epgDataById.size }
+            epgStatus = "Loaded $successCount/${urls.size} hubs ($totalChannels channels)"
+            Log.i(TAG, "EPG Refresh Complete: $epgStatus")
+            
+            cleanupOldCaches(context, urls)
         }
     }
 
-    private fun parseXML(inputStream: InputStream): Int {
+    private fun cleanupOldCaches(context: Context, currentUrls: List<String>) {
+        try {
+            val currentHashes = currentUrls.map { it.hashCode().toString() }.toSet()
+            context.cacheDir.listFiles { file -> 
+                file.name.startsWith("epg_") && file.name.endsWith(".xml.gz") 
+            }?.forEach { file ->
+                val hash = file.name.removePrefix("epg_").removeSuffix(".xml.gz")
+                if (hash !in currentHashes) file.delete()
+            }
+        } catch (e: Exception) {}
+    }
+
+    private suspend fun fetchAndParseSingleSource(
+        context: Context, 
+        url: String, 
+        force: Boolean,
+        tempData: MutableMap<String, MutableList<EPGProgram>>,
+        tempDataById: MutableMap<String, MutableList<EPGProgram>>
+    ): Int {
+        val file = getCacheFile(context, url)
+        val now = Utils.getDateTimestamp() * 1000L
+        val client = SecureHttpClient.client
+        
+        if (force || !file.exists() || (now - file.lastModified() > 12 * 3600_000L)) {
+            Log.d(TAG, "Downloading: $url")
+            val request = Request.Builder().url(url).build()
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    response.body?.byteStream()?.use { input ->
+                        FileOutputStream(file).use { input.copyTo(it) }
+                    }
+                } else throw Exception("HTTP ${response.code}")
+            }
+        }
+
+        if (file.exists()) {
+            FileInputStream(file).use { fis ->
+                val pbis = java.io.PushbackInputStream(fis, 2)
+                val b1 = pbis.read(); val b2 = pbis.read()
+                if (b1 != -1 && b2 != -1) { pbis.unread(b2); pbis.unread(b1) }
+                val stream = if (b1 == 0x1f && b2 == 0x8b) java.util.zip.GZIPInputStream(pbis) else pbis
+                return parseXML(stream, tempData, tempDataById)
+            }
+        }
+        return 0
+    }
+
+    private fun parseXML(
+        inputStream: InputStream,
+        targetData: MutableMap<String, MutableList<EPGProgram>>,
+        targetDataById: MutableMap<String, MutableList<EPGProgram>>
+    ): Int {
         val formats = listOf(
             SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US),
             SimpleDateFormat("yyyyMMddHHmmssZ", Locale.US),
-            SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+            SimpleDateFormat("yyyyMMddHHmmss", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd", Locale.US)
         )
-
         val parser = Xml.newPullParser()
         parser.setInput(inputStream, "UTF-8")
         
         val channelIdToNames = mutableMapOf<String, MutableSet<String>>()
-        val newData = mutableMapOf<String, MutableList<EPGProgram>>()
-        val newDataById = mutableMapOf<String, MutableList<EPGProgram>>()
-        
-        val now = Utils.getDateTimestamp() * 1000L
-        
         var eventType = parser.eventType
         var currentChannelId: String? = null
         var currentProgram: EPGProgram? = null
         
         while (eventType != XmlPullParser.END_DOCUMENT) {
             val name = parser.name
-            
             when (eventType) {
                 XmlPullParser.START_TAG -> {
                     when (name) {
@@ -142,90 +223,58 @@ object EPGManager {
                                 channelIdToNames.getOrPut(id) { mutableSetOf() }.add(id)
                             }
                         }
-                        "display-name" -> {
-                            if (currentChannelId != null) {
-                                try {
-                                    val dn = parser.nextText()
-                                    if (dn != null) channelIdToNames[currentChannelId!!]?.add(dn)
-                                } catch (e: Exception) {}
-                            }
+                        "display-name" -> if (currentChannelId != null) {
+                            try { readText(parser)?.let { channelIdToNames[currentChannelId!!]?.add(it) } } catch (e: Exception) {}
                         }
                         "programme" -> {
                             val cid = parser.getAttributeValue(null, "channel")?.intern()
                             val startStr = parser.getAttributeValue(null, "start")
                             val stopStr = parser.getAttributeValue(null, "stop")
-                            
                             val start = parseDate(startStr, formats)
                             val stop = parseDate(stopStr, formats)
-                            
                             if (cid != null && start != null && stop != null) {
                                 val now = Utils.getDateTimestamp() * 1000L
-                                if (stop < (now - 24 * 3600_000L)) {
-                                    currentProgram = null
-                                } else {
+                                if (stop > (now - 24 * 3600_000L)) { // Keep last 24h
                                     currentProgram = EPGProgram("", start, stop, "")
                                     currentChannelId = cid
-                                }
+                                } else currentProgram = null
                             }
                         }
-                        "title" -> {
-                            if (currentProgram != null) {
-                                try { currentProgram!!.title = parser.nextText() ?: "" } catch (e: Exception) {}
-                            }
-                        }
-                        "desc" -> {
-                            if (currentProgram != null) {
-                                try {
-                                    var d = parser.nextText() ?: ""
-                                    if (d.length > 200) d = d.substring(0, 200) + "..."
-                                    currentProgram!!.description = d
-                                } catch (e: Exception) {}
-                            }
-                        }
+                        "title" -> if (currentProgram != null) try { currentProgram!!.title = readText(parser)?.intern() ?: "" } catch (e: Exception) {}
+                        "desc" -> if (currentProgram != null) try {
+                            var d = readText(parser) ?: ""
+                            if (d.length > 250) d = d.substring(0, 250) + "..."
+                            currentProgram!!.description = d
+                        } catch (e: Exception) {}
                     }
                 }
-                XmlPullParser.END_TAG -> {
-                    when (name) {
-                        "programme" -> {
-                            if (currentProgram != null && currentChannelId != null) {
-                                if (currentProgram!!.title.isNotEmpty()) {
-                                    newDataById.getOrPut(currentChannelId!!) { mutableListOf() }.add(currentProgram!!)
-                                    
-                                    val names = channelIdToNames[currentChannelId!!] ?: setOf(currentChannelId!!)
-                                    for (n in names) {
-                                        val norm = normalizeName(n)
-                                        newData.getOrPut(norm) { mutableListOf() }.add(currentProgram!!)
-                                    }
-                                }
-                            }
-                            currentProgram = null
-                            currentChannelId = null
-                        }
-                        "channel" -> {
-                            currentChannelId = null
+                XmlPullParser.END_TAG -> if (name == "programme" && currentProgram != null && currentChannelId != null) {
+                    if (currentProgram!!.title.isNotEmpty()) {
+                        targetDataById.getOrPut(currentChannelId!!) { mutableListOf() }.add(currentProgram!!)
+                        val names = channelIdToNames[currentChannelId!!] ?: setOf(currentChannelId!!)
+                        for (n in names) {
+                            val norm = normalizeName(n)
+                            targetData.getOrPut(norm) { mutableListOf() }.add(currentProgram!!)
                         }
                     }
+                    currentProgram = null; currentChannelId = null
                 }
             }
-            eventType = try { parser.next() } catch (e: Exception) { 
-                Log.e(TAG, "Parser error: ${e.message}")
-                XmlPullParser.END_DOCUMENT 
-            }
+            eventType = try { parser.next() } catch (e: Exception) { XmlPullParser.END_DOCUMENT }
         }
-
-        newData.forEach { (_, progs) -> progs.sortBy { it.start } }
-        newDataById.forEach { (_, progs) -> progs.sortBy { it.start } }
-        
-        val totalProgs = newDataById.values.sumOf { it.size }
-        Log.d(TAG, "Parsed ${channelIdToNames.size} channels and $totalProgs programmes")
-        
-        epgData = newData
-        epgDataById = newDataById
-        
         return channelIdToNames.size
     }
 
-    fun getCurrentProgram(channelName: String, channelApiId: String = ""): EPGProgram? {
+    private fun readText(parser: XmlPullParser): String? {
+        var result: String? = null
+        if (parser.next() == XmlPullParser.TEXT) {
+            result = parser.text
+            parser.nextTag()
+        }
+        return result
+    }
+
+    fun getCurrentProgram(channelName: String, channelApiId: String = ""): EPGProgram? = synchronized(this) {
         if (!SP.epgEnabled) return null
         val now = (Utils.getDateTimestamp() * 1000L) - (SP.epgShift * 3600_000L)
         
@@ -234,38 +283,43 @@ object EPGManager {
         }
         
         val normalized = normalizeName(channelName)
+        
+        // 1. Direct match
         epgData[normalized]?.find { now in it.start until it.stop }?.let { return it }
         
-        // FUZZY FALLBACK: Try finding a key that contains our normalized name, or vice versa
-        val fuzzyMatch = epgData.keys.find { key ->
+        // 2. Cached fuzzy match
+        fuzzyMatchCache[normalized]?.let { cachedKey ->
+            epgData[cachedKey]?.find { now in it.start until it.stop }?.let { return it }
+        }
+        
+        // 3. New fuzzy match
+        val fuzzyMatchKey = epgData.keys.find { key ->
             normalized.length >= 4 && (key.contains(normalized) || normalized.contains(key))
         }
         
-        if (fuzzyMatch != null) {
-            epgData[fuzzyMatch]?.find { now in it.start until it.stop }?.let { return it }
+        if (fuzzyMatchKey != null) {
+            fuzzyMatchCache[normalized] = fuzzyMatchKey
+            epgData[fuzzyMatchKey]?.find { now in it.start until it.stop }?.let { return it }
         }
 
         return null
     }
 
-    fun getUpcomingProgram(channelName: String, channelApiId: String = ""): EPGProgram? {
+    fun getUpcomingProgram(channelName: String, channelApiId: String = ""): EPGProgram? = synchronized(this) {
         if (!SP.epgEnabled) return null
         val now = (Utils.getDateTimestamp() * 1000L) - (SP.epgShift * 3600_000L)
+        if (channelApiId.isNotEmpty()) epgDataById[channelApiId]?.find { it.start > now }?.let { return it }
         
-        if (channelApiId.isNotEmpty()) {
-            epgDataById[channelApiId]?.find { it.start > now }?.let { return it }
-        }
-
         val normalized = normalizeName(channelName)
-        return epgData[normalized]?.find { it.start > now }
+        val matchKey = fuzzyMatchCache[normalized] ?: normalized
+        return epgData[matchKey]?.find { it.start > now }
     }
 
-    fun getProgramsForChannel(channelName: String, channelApiId: String = ""): List<EPGProgram> {
-        if (channelApiId.isNotEmpty()) {
-            epgDataById[channelApiId]?.let { return it }
-        }
+    fun getProgramsForChannel(channelName: String, channelApiId: String = ""): List<EPGProgram> = synchronized(this) {
+        if (channelApiId.isNotEmpty()) epgDataById[channelApiId]?.let { return it.toList() }
         val normalized = normalizeName(channelName)
-        return epgData[normalized] ?: emptyList()
+        val matchKey = fuzzyMatchCache[normalized] ?: normalized
+        return epgData[matchKey]?.toList() ?: emptyList()
     }
 
     private fun parseDate(dateStr: String?, formats: List<SimpleDateFormat>): Long? {
@@ -278,27 +332,33 @@ object EPGManager {
     }
 
     private fun normalizeName(name: String): String {
-        return normalizedCache.getOrPut(name) {
-            name.lowercase(Locale.US)
-                .replace(REGEX_BRACKETS, "") // Remove bracketed content
-                .replace("dd ", "")
-                .replace("hd", "")
-                .replace("sd", "")
-                .replace("tv", "")
-                .replace("channel", "")
-                .replace("india", "")
-                .replace(REGEX_PREFIX_D, "") // Remove "d " prefix
-                .replace(REGEX_PREFIX_DD, "") // Remove "dd " prefix
-                .replace(REGEX_NON_ALPHANUM, "")
-                .trim()
-                .intern()
+        return synchronized(normalizedCache) {
+            normalizedCache.getOrPut(name) {
+                name.lowercase(Locale.US)
+                    .replace(REGEX_BRACKETS, "")
+                    .replace(REGEX_REGION, "")
+                    .replace("hd", "")
+                    .replace("sd", "")
+                    .replace("tv", "")
+                    .replace("channel", "")
+                    .replace("india", "")
+                    .replace("plus", "")
+                    .replace(REGEX_PREFIX_D, "")
+                    .replace(REGEX_PREFIX_DD, "")
+                    .replace(REGEX_NON_ALPHANUM, "")
+                    .trim()
+                    .intern()
+            }
         }
     }
 
     fun clear() {
-        epgData.clear()
-        epgDataById.clear()
-        normalizedCache.clear()
+        synchronized(this) {
+            epgData.clear()
+            epgDataById.clear()
+            synchronized(normalizedCache) { normalizedCache.clear() }
+            fuzzyMatchCache.clear()
+        }
         epgStatus = "Cleared"
     }
 }
