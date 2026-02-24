@@ -18,6 +18,33 @@ import java.util.Collections
 object Utils {
     private var between: Long = 0
 
+    fun getDeviceName(): String {
+        return "${Build.MANUFACTURER} ${Build.MODEL}"
+    }
+
+    fun getAppVersionName(context: android.content.Context): String {
+        return try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pInfo.versionName ?: "Unknown"
+        } catch (e: Exception) {
+            "Unknown"
+        }
+    }
+
+    fun getAppVersionCode(context: android.content.Context): Long {
+        return try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode.toLong()
+            }
+        } catch (e: Exception) {
+            0L
+        }
+    }
+
     fun getIPAddress(useIPv4: Boolean): String {
         try {
             val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())

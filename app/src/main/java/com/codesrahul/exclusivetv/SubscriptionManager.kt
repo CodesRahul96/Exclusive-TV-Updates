@@ -27,43 +27,68 @@ object SubscriptionManager {
             .addOnSuccessListener { document ->
                 if (document != null && document.exists()) {
                     
-                    // --- SECURITY PHASE 2: DEVICE BINDING CHECK ---
                     val context = com.codesrahul.exclusivetv.MyTVApplication.getInstance()
-                    val currentDeviceId = SecurityUtil.getDeviceId(context)
-                    val storedDeviceId = document.getString("device_id")
-                    
-                    android.util.Log.d("SubscriptionManager", "Device Check -> Current: $currentDeviceId | Stored: $storedDeviceId")
-
-                    if (storedDeviceId.isNullOrEmpty()) {
-                        // Scenario A: First Login - Bind the device permanently
-                        android.util.Log.i("SubscriptionManager", "Binding account $phoneNumber to Device ID: $currentDeviceId")
-                        db.collection(COLLECTION_USERS).document(phoneNumber)
-                            .update("device_id", currentDeviceId)
-                            .addOnSuccessListener {
-                                android.util.Log.i("SubscriptionManager", "Device binding successful for account")
-                            }
-                            .addOnFailureListener { e ->
-                                android.util.Log.e("SubscriptionManager", "CRITICAL: Failed to bind device to Firestore: $e")
-                            }
-                    } else if (storedDeviceId != currentDeviceId) {
-                        // Scenario B: Device Mismatch - Reject Access
-                        android.util.Log.w("SubscriptionManager", "ACCESS DENIED: Account bound to $storedDeviceId. Attempted from $currentDeviceId.")
-                        SP.userId = null // Sign out locally
-                        onError("Security: This account is permanently tied to another device. Shared accounts are not allowed.")
-                        return@addOnSuccessListener
-                    }
-                    // --- END DEVICE BINDING CHECK ---
-
-                    // Resilient field retrieval: check for "plan", "plan " (common typo), and "Plan"
-                    // RESILIENT FIELD EXTRACTION: Check multiple common keys
+                    // --- MULTI-DEVICE SUPPORT ---
                     val planRaw = (document.getString("plan") 
                                 ?: document.getString("Plan") 
                                 ?: document.getString("plan ") 
                                 ?: document.getString("Plan "))?.trim()
-                    
                     val plan = planRaw ?: "Standard"
-                    android.util.Log.d("SubscriptionManager", "Firestore Plan: '$planRaw' -> Normalized: '$plan'")
                     
+                    val maxDevices = if ("Premium".equals(plan, ignoreCase = true)) 2 else 1
+                    
+                    val currentDeviceId = SecurityUtil.getDeviceId(context)
+                    val deviceId1 = document.getString("device_id")
+                    val deviceId2 = document.getString("device_id_2")
+                    
+                    val isMatched = if (maxDevices > 1) {
+                        (currentDeviceId == deviceId1 || currentDeviceId == deviceId2)
+                    } else {
+                        (currentDeviceId == deviceId1)
+                    }
+
+                    // Metadata to update
+                    val deviceMetadata = hashMapOf(
+                        "device_name" to Utils.getDeviceName(),
+                        "app_version_name" to Utils.getAppVersionName(context),
+                        "app_version_code" to Utils.getAppVersionCode(context),
+                        "ip_address" to Utils.getIPAddress(true),
+                        "mac_id" to Utils.getMacAddress(context),
+                        "last_login" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                        "last_update_metadata" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                    )
+
+                    if (isMatched) {
+                        // Scenario A: Device Matched - Update metadata
+                        android.util.Log.d("SubscriptionManager", "Device match confirmed. Updating metadata.")
+                        db.collection(COLLECTION_USERS).document(phoneNumber)
+                            .update(deviceMetadata as Map<String, Any>)
+                    } else {
+                        // Scenario B: No Match - Attempt Binding if slots available
+                        var bindField: String? = null
+                        if (deviceId1.isNullOrEmpty()) {
+                            bindField = "device_id"
+                        } else if (maxDevices > 1 && deviceId2.isNullOrEmpty()) {
+                            bindField = "device_id_2"
+                        }
+
+                        if (bindField != null) {
+                            android.util.Log.i("SubscriptionManager", "Binding new device slot ($bindField) for account $phoneNumber")
+                            val updateData = deviceMetadata.toMutableMap()
+                            updateData[bindField] = currentDeviceId
+                            db.collection(COLLECTION_USERS).document(phoneNumber)
+                                .update(updateData as Map<String, Any>)
+                        } else {
+                            // Scenario C: Device limit reached
+                            val limitMsg = if (maxDevices > 1) "2 devices" else "1 device"
+                            android.util.Log.w("SubscriptionManager", "ACCESS DENIED: Device limit ($maxDevices) reached for $phoneNumber.")
+                            SP.userId = null // Sign out locally
+                            onError("Security: This account is restricted to $limitMsg only.")
+                            return@addOnSuccessListener
+                        }
+                    }
+                    // --- END MULTI-DEVICE SUPPORT ---
+
                     // RESILIENT EXPIRY EXTRACTION: Check multiple common keys and types
                     val expiryTimestamp = document.getTimestamp("expiry_date")
                         ?: document.getTimestamp("Expiry Date")
