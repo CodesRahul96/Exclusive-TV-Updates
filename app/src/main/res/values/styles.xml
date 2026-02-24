@@ -3,7 +3,7 @@
     <style name="SettingsSectionHeader" parent="ExclusiveText.Header">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">13sp</item>
+        <item name="android:textSize">@dimen/text_size_settings_header</item>
         <item name="android:textColor">@color/accent_gold</item>
         <item name="android:textAllCaps">true</item>
         <item name="android:letterSpacing">0.05</item>
@@ -26,7 +26,7 @@
         <item name="android:orientation">horizontal</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:background">@drawable/ripple_effect</item>
-        <item name="android:padding">16dp</item>
+        <item name="android:padding">@dimen/settings_item_padding</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
     </style>
@@ -36,25 +36,23 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:background">@drawable/ripple_effect</item>
-        <item name="android:padding">14dp</item>
+        <item name="android:padding">@dimen/settings_item_padding</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">@dimen/text_size_settings_title</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:drawablePadding">16dp</item>
         <item name="android:drawableTint">@color/accent_gold</item>
     </style>
 
     <style name="PortfolioActionItem" parent="SettingsActionItem">
-        <item name="android:padding">14dp</item>
-        <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/white</item>
         <item name="android:alpha">0.9</item>
     </style>
 
     <style name="SettingsIcon">
-        <item name="android:layout_width">24dp</item>
-        <item name="android:layout_height">24dp</item>
+        <item name="android:layout_width">@dimen/settings_icon_size</item>
+        <item name="android:layout_height">@dimen/settings_icon_size</item>
         <item name="android:tint">@color/accent_gold</item>
     </style>
 
@@ -70,14 +68,14 @@
     <style name="SettingsTitle" parent="ExclusiveText.Body">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">@dimen/text_size_settings_title</item>
         <item name="android:textColor">@color/text_primary</item>
     </style>
 
     <style name="SettingsSubtitle" parent="ExclusiveText.Body">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">12sp</item>
+        <item name="android:textSize">@dimen/text_size_settings_subtitle</item>
         <item name="android:textColor">@color/text_secondary</item>
         <item name="android:layout_marginTop">2dp</item>
     </style>
@@ -85,7 +83,7 @@
     <style name="SettingsStatusText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">12sp</item>
+        <item name="android:textSize">@dimen/text_size_settings_subtitle</item>
         <item name="android:textColor">@color/text_secondary</item>
         <item name="android:textStyle">bold</item>
     </style>
@@ -93,14 +91,14 @@
     <style name="SettingsValueText">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">13sp</item>
+        <item name="android:textSize">@dimen/text_size_settings_subtitle</item>
         <item name="android:textColor">@color/text_secondary</item>
         <item name="android:layout_marginEnd">4dp</item>
     </style>
     
     <style name="SettingsChevron">
-        <item name="android:layout_width">20dp</item>
-        <item name="android:layout_height">20dp</item>
+        <item name="android:layout_width">@dimen/settings_chevron_size</item>
+        <item name="android:layout_height">@dimen/settings_chevron_size</item>
         <item name="android:src">@drawable/ic_arrow_right</item>
         <item name="android:tint">@color/text_secondary</item>
         <item name="android:alpha">0.5</item>
@@ -117,7 +115,7 @@
     <style name="ExclusiveText.Header">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">24sp</item>
+        <item name="android:textSize">@dimen/text_size_header</item>
         <item name="android:textStyle">bold</item>
         <item name="android:fontFamily">sans-serif-black</item>
         <item name="android:letterSpacing">0.02</item>
@@ -126,7 +124,7 @@
     <style name="ExclusiveText.Body">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">16sp</item>
+        <item name="android:textSize">@dimen/text_size_body</item>
         <item name="android:textColor">@color/text_secondary</item>
     </style>
 
@@ -145,14 +143,14 @@
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:background">@drawable/bg_transparent_glass</item>
-        <item name="android:elevation">12dp</item>
+        <item name="android:elevation">@dimen/elevation_default</item>
     </style>
 
     <style name="SettingsDivider">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">1dp</item>
         <item name="android:background">#1AFFFFFF</item>
-        <item name="android:layout_marginStart">56dp</item> 
+        <item name="android:layout_marginStart">@dimen/settings_divider_margin</item> 
     </style>
 
     <style name="SettingsPanelStyle" parent="ExclusiveCard.Glass">

@@ -26,8 +26,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="24dp"
-            android:paddingTop="20dp"
+            android:paddingHorizontal="@dimen/settings_header_padding_horizontal"
+            android:paddingTop="@dimen/settings_header_padding_top"
             android:paddingBottom="12dp"
             android:background="@drawable/bg_header_gradient"
             android:elevation="4dp">
@@ -100,7 +100,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingHorizontal="16dp"
+                android:paddingHorizontal="@dimen/settings_content_padding_horizontal"
                 android:paddingTop="8dp">
 
                 <!-- Section: Account -->

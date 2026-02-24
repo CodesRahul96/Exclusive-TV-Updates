@@ -4,7 +4,7 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom|end"
-    android:layout_margin="24dp"
+    android:layout_margin="@dimen/overlay_margin"
     android:visibility="gone">
     
     <TextView
@@ -12,7 +12,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Exclusive TV"
-        android:textSize="11sp"
+        android:textSize="10sp"
         android:textColor="#80FFFFFF"
         android:fontFamily="sans-serif-black"
         android:paddingStart="12dp"

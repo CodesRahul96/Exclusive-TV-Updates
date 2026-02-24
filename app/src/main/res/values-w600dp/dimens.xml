@@ -1,3 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Removed dimensions overridden by styles -->
+    <!-- Overrides for TV and Large Screens (w600dp+) -->
+    
+    <!-- Text Sizes -->
+    <dimen name="text_size_header">24sp</dimen>
+    <dimen name="text_size_body">16sp</dimen>
+    <dimen name="text_size_settings_header">13sp</dimen>
+    <dimen name="text_size_settings_title">14sp</dimen>
+    <dimen name="text_size_settings_subtitle">12sp</dimen>
+    <dimen name="text_size_info_title">24sp</dimen> <!-- Matches ExclusiveText.Header -->
+    <dimen name="text_size_info_program">19sp</dimen>
+    <dimen name="text_size_info_small">14sp</dimen>
+    <dimen name="text_size_channel_num">20sp</dimen>
+    
+    <!-- Layout Margins & Padding -->
+    <dimen name="margin_default">24dp</dimen>
+    <dimen name="margin_info_horizontal">64dp</dimen>
+    <dimen name="padding_default">20dp</dimen>
+    <dimen name="padding_info_card">20dp</dimen>
+    <dimen name="settings_item_padding">16dp</dimen>
+    <dimen name="settings_divider_margin">56dp</dimen>
+    
+    <!-- List Item Dimensions -->
+    <dimen name="list_item_padding_vertical">12dp</dimen>
+    <dimen name="list_item_padding_horizontal">16dp</dimen>
+    <dimen name="list_item_icon_size">48dp</dimen>
+    <dimen name="list_item_text_size">17sp</dimen>
+    <dimen name="list_item_num_text_size">13sp</dimen>
+
+    <!-- Group Item Dimensions -->
+    <dimen name="group_item_padding_vertical">16dp</dimen>
+    <dimen name="group_item_padding_horizontal">24dp</dimen>
+    <dimen name="group_item_text_size">17sp</dimen>
+
+    <!-- Settings Panel Dimensions -->
+    <dimen name="settings_header_padding_horizontal">24dp</dimen>
+    <dimen name="settings_header_padding_top">20dp</dimen>
+    <dimen name="settings_content_padding_horizontal">16dp</dimen>
+
+    <!-- Overlay & HUD Dimensions -->
+    <dimen name="overlay_text_size_large">56sp</dimen>
+    <dimen name="overlay_text_size_medium">26sp</dimen>
+    <dimen name="overlay_padding_vertical">14dp</dimen>
+    <dimen name="overlay_padding_horizontal">28dp</dimen>
+    <dimen name="overlay_margin">32dp</dimen>
+
+    <!-- HUD Dimensions -->
+    <dimen name="hud_vertical_height">220dp</dimen>
+    <dimen name="hud_margin_side">40dp</dimen>
+    <dimen name="hud_text_size_large">22sp</dimen>
+    <dimen name="hud_text_size_medium">14sp</dimen>
+    <dimen name="hud_progress_width">180dp</dimen>
+
+    <!-- Dialog Dimensions -->
+    <dimen name="dialog_width">550dp</dimen>
+    <dimen name="dialog_padding">32dp</dimen>
+    <dimen name="dialog_title_size">22sp</dimen>
+    <dimen name="dialog_btn_width">160dp</dimen>
+    <dimen name="dialog_btn_height">44dp</dimen>
+
+    <!-- Loading Screen Dimensions -->
+    <dimen name="loading_padding">24dp</dimen>
+    <dimen name="loading_icon_size">48dp</dimen>
+
+    <!-- Component Sizes -->
+    <dimen name="info_logo_size">90dp</dimen>
+    <dimen name="settings_icon_size">24dp</dimen>
+    <dimen name="settings_chevron_size">20dp</dimen>
+    <dimen name="elevation_default">12dp</dimen>
 </resources>

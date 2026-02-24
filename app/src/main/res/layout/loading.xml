@@ -12,13 +12,13 @@
         android:background="@drawable/bg_premium_glass"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:padding="@dimen/loading_padding"
         android:elevation="12dp">
 
         <ProgressBar
             android:id="@+id/bar"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="@dimen/loading_icon_size"
+            android:layout_height="@dimen/loading_icon_size"
             android:indeterminateTint="@color/accent_gold"
             android:indeterminate="true" />
             
