@@ -142,7 +142,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var server: SimpleServer? = null
 
     private val rootHandler = Handler(Looper.getMainLooper())
-    private val checkInterval: Long = 5000 // Check every 5 seconds
+    private val checkInterval: Long = 60000 // Check every 60 seconds (optimized for TV performance)
     private var wasRooted = false
 
     private var lastRefreshTime = 0L
@@ -1871,17 +1871,28 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun startRootMonitoring() {
-        rootHandler.post(object : Runnable {
-            override fun run() {
-                val isRooted = RootCheckUtil.isDeviceRooted()
-                if (isRooted && !wasRooted) {
-                    Toast.makeText(this@MainActivity, "Rooted device detected. App cannot run.", Toast.LENGTH_LONG).show()
-                    finishAffinity()
+        // PROFESSIONAL FIX: Move root check to background thread to prevent UI thread blockage
+        // and potential playback stutter on low-resource devices like FireTV.
+        CoroutineScope(Dispatchers.IO).launch {
+            while (!isFinishing) {
+                try {
+                    val isRooted = RootCheckUtil.isDeviceRooted()
+                    if (isRooted && !wasRooted) {
+                        runOnUiThread {
+                            if (!isFinishing) {
+                                Toast.makeText(this@MainActivity, "Rooted device detected. App cannot run.", Toast.LENGTH_LONG).show()
+                                finishAffinity()
+                            }
+                        }
+                        break // Exit loop
+                    }
+                    wasRooted = isRooted
+                } catch (e: Exception) {
+                    // Ignore background security check errors to prevent crashes
                 }
-                wasRooted = isRooted
-                rootHandler.postDelayed(this, checkInterval)
+                kotlinx.coroutines.delay(checkInterval)
             }
-        })
+        }
     }
 
     override fun onForceUpdate() {

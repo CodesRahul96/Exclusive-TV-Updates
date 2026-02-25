@@ -395,7 +395,7 @@ class SettingFragment : Fragment() {
             "epgEnabled" -> {
                 SP.epgEnabled = !SP.epgEnabled
                 if (SP.epgEnabled) {
-                    TVList.update(requireContext(), silent = true)
+                    TVList.refreshModels(requireContext())
                 } else {
                     TVList.listModel.forEach { it.updateEPG() }
                 }
@@ -778,12 +778,12 @@ class SettingFragment : Fragment() {
             }
             .setPositiveButton("Done") { _, _ ->
                 OrderPreferenceManager.saveHiddenCategories(currentHidden)
-                TVList.update(requireContext(), silent = true)
+                TVList.refreshModels(requireContext())
                 Toast.makeText(requireContext(), "Categories updated", Toast.LENGTH_SHORT).show()
             }
             .setNeutralButton("Reset All") { _, _ ->
                 OrderPreferenceManager.saveHiddenCategories(emptySet())
-                TVList.update(requireContext(), silent = true)
+                TVList.refreshModels(requireContext())
                 Toast.makeText(requireContext(), "All categories restored", Toast.LENGTH_SHORT).show()
             }
             .show()

@@ -593,7 +593,7 @@ object TVList {
                                           }
                                       }
                                   }
-                              }, 10000) // 10 second delay
+                              }, 30000) // 30 second delay (optimized for FireTV startup buffer)
                           }
                       }
                 } else {
