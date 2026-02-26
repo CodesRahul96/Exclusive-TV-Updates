@@ -104,17 +104,31 @@ object EPGManager {
                 urls.map { url ->
                     async(Dispatchers.IO) {
                         try {
-                            fetchAndParseSingleSource(context, url, force, newEpgData, newEpgDataById)
-                            true
+                            val localData = mutableMapOf<String, MutableList<EPGProgram>>()
+                            val localDataById = mutableMapOf<String, MutableList<EPGProgram>>()
+                            fetchAndParseSingleSource(context, url, force, localData, localDataById)
+                            Pair(localData, localDataById)
                         } catch (e: Exception) {
                             Log.e(TAG, "Source $url failed: ${e.message}")
-                            false
+                            null
                         }
                     }
                 }.awaitAll()
             }
 
-            val successCount = results.count { it }
+            val successCount = results.count { it != null }
+
+            results.forEach { result ->
+                if (result != null) {
+                    val (localData, localDataById) = result
+                    localData.forEach { (k, v) ->
+                        newEpgData.getOrPut(k) { mutableListOf() }.addAll(v)
+                    }
+                    localDataById.forEach { (k, v) ->
+                        newEpgDataById.getOrPut(k) { mutableListOf() }.addAll(v)
+                    }
+                }
+            }
             
             // Deduplicate and Sort
             newEpgData.values.forEach { progs ->

@@ -273,7 +273,7 @@ class SettingFragment : Fragment() {
                 SP.addPlaylistUrl(url)
                 
                 // Trigger update
-                TVList.update(requireContext(), silent = false) // Fetch all
+                TVList.update(requireContext(), silent = false, force = true) // Fetch all
                 
                 binding.config.text = null // Clear input
                 Toast.makeText(requireContext(), "Source added", Toast.LENGTH_SHORT).show()
@@ -797,7 +797,7 @@ class SettingFragment : Fragment() {
                 SP.removePlaylistUrl(url)
                 Toast.makeText(requireContext(), "Source removed", Toast.LENGTH_SHORT).show()
                 // Refresh list
-                TVList.update(requireContext(), silent = false)
+                TVList.update(requireContext(), silent = false, force = true)
             }
             .setNegativeButton("Cancel") { _, _ -> showManagePlaylistsDialog() } // Re-show list
             .show()

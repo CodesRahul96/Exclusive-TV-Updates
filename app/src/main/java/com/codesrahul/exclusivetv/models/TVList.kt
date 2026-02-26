@@ -288,43 +288,41 @@ object TVList {
                 
                 val urls = mutableListOf<String>()
 
+                val allPlaylistUrls = SP.playlistUrls
+                android.util.Log.e("TVList", "SP.playlistUrls contains: $allPlaylistUrls")
+
                 // [NEW] EXCLUSIVE SOURCE MODE
                 // Check if user has added custom sources (excluding the system URLs and dead legacy URLs)
-                val customUrls = SP.playlistUrls.filter { url ->
+                val customUrls = allPlaylistUrls.filter { url ->
                     url.isNotEmpty() && 
                     url != standardUrl && 
                     url != premiumUrl &&
-                    !url.contains("jioplus.indevs.in") &&
-                    !url.contains("raw.githubusercontent.com/CodesRahul96")
+                    !url.contains("jioplus.indevs.in")
                 }
 
-                if (customUrls.isNotEmpty()) {
-                    // EXCLUSIVE MODE: Load ONLY custom sources
-                    android.util.Log.i("TVList", "Exclusive Mode Active: Loading ${customUrls.size} custom sources only.")
-                    urls.addAll(customUrls)
-                } else {
-                    // DEFAULT MODE: Load System APIs
-                    if (isPremium) {
-                        // PREMIUM PRIORITY STACK
-                        // 1. Premium API (Exclusive)
-                        if (premiumUrl.isNotEmpty()) {
-                            android.util.Log.d("TVList", "Adding Premium Source: $premiumUrl")
-                            urls.add(premiumUrl)
-                        }
-                        
-                        // 2. Standard API
-                        if (standardUrl.isNotEmpty() && standardUrl != premiumUrl) {
-                            android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
-                            urls.add(standardUrl)
-                        }
-                    } else {
-                        // STANDARD PRIORITY STACK
-                        // 1. Standard API
-                        if (standardUrl.isNotEmpty()) {
-                            android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
-                            urls.add(standardUrl)
-                        }
+                // DEFAULT MODE: Load System APIs
+                if (isPremium) {
+                    // PREMIUM PRIORITY STACK
+                    if (premiumUrl.isNotEmpty()) {
+                        android.util.Log.d("TVList", "Adding Premium Source: $premiumUrl")
+                        urls.add(premiumUrl)
                     }
+                    if (standardUrl.isNotEmpty() && standardUrl != premiumUrl) {
+                        android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
+                        urls.add(standardUrl)
+                    }
+                } else {
+                    // STANDARD PRIORITY STACK
+                    if (standardUrl.isNotEmpty()) {
+                        android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
+                        urls.add(standardUrl)
+                    }
+                }
+                
+                // Add custom user sources
+                if (customUrls.isNotEmpty()) {
+                    android.util.Log.i("TVList", "Adding ${customUrls.size} custom sources.")
+                    urls.addAll(customUrls)
                 }
                 
                 android.util.Log.i("TVList", "Final Pooling List: $urls")
@@ -422,6 +420,7 @@ object TVList {
                                            if (channels.isEmpty() && tempFile.length() < 5000) {
                                                val sample = tempFile.readText(Charsets.UTF_8).take(200).lowercase()
                                                if (sample.contains("<!doctype html") || sample.contains("<html")) {
+                                                   android.util.Log.e("TVList", "Source ${index + 1} ($url) returned HTML instead of a playlist.")
                                                    withContext(Dispatchers.Main) {
                                                        if (showUi) Toast.makeText(ctx, "Source ${index + 1} contains HTML. Check API.", Toast.LENGTH_SHORT).show()
                                                    }
@@ -431,7 +430,7 @@ object TVList {
 
                                            // UPDATE CACHE
                                            sourceCache[url] = channels
-                                           android.util.Log.d("TVList", "Successfully parsed ${channels.size} channels from $url")
+                                           android.util.Log.e("TVList", "Successfully parsed ${channels.size} channels from $url. File size: ${tempFile.length()} bytes")
                                            
                                            withContext(Dispatchers.Main) {
                                                if (showUi) _importStatus.value = "Parsed: ${channels.size} channels from source ${index + 1}"
