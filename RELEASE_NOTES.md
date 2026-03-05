@@ -1,13 +1,9 @@
-# ExclusiveTV v1.1.3 - The Auto-Fix & Stability Update
+# ExclusiveTV v1.1.2 (Upcoming) - VPN Stability Fix
 
-- **Dynamic Certificate Pinning**: Implemented a self-healing network client that automatically recovers from SSL pinning rotations via Firebase Remote Config.
-- **EPG Optimization**: Cleaned up default EPG sources and removed dead links, ensuring 100% hub connectivity success.
-- **Startup Hardening**: Eliminated all known initialization race conditions and improved app bootstrap reliability.
-- **TV UI Refinement**: Finalized the responsive dimension system for perfect scaling on all screen sizes.
+- **FireTV VPN Fix**: Resolved "VPN Detected" false positive on Amazon FireTV devices by refining hardware tunnel detection.
+- **TV Refined Logic**: Improved device-type awareness to distinguish between system-level bridges and real VPN applications.
 
 ---
-
-# ExclusiveTV v1.1.2 - VPN Stability & Performance
 
 # ExclusiveTV v1.1.1 - Stability & EPG Fixes
 
