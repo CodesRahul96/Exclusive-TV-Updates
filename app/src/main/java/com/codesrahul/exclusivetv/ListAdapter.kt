@@ -39,7 +39,7 @@ class ListAdapter(
     private val recyclerView: RecyclerView,
     var tvListModel: TVListModel,
 ) :
-    RecyclerView.Adapter<ListAdapter.ViewHolder>(), OnSharedPreferenceChangeListener {
+    RecyclerView.Adapter<ListAdapter.ViewHolder>() {
     private var internalList: List<TVModel> = tvListModel.getTVModelList()
     private var listener: ItemListener? = null
     private var updateJob: kotlinx.coroutines.Job? = null
@@ -322,18 +322,10 @@ class ListAdapter(
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
         super.onAttachedToRecyclerView(recyclerView)
-        SP.setOnSharedPreferenceChangeListener(this)
     }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
         super.onDetachedFromRecyclerView(recyclerView)
-        SP.removeOnSharedPreferenceChangeListener(this)
-    }
-
-    override fun onSharedPreferenceChanged(key: String) {
-        if (key == SP.KEY_EPG) {
-            notifyDataSetChanged()
-        }
     }
 
     override fun getItemCount() = internalList.size

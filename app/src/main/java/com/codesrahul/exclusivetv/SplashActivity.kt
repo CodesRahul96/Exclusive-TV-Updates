@@ -34,32 +34,58 @@ class SplashActivity : FragmentActivity() {
         val progressBar = findViewById<View>(R.id.progressBar)
         val loadingText = findViewById<View>(R.id.loading_text)
 
-        // Animation Sequence
-        val fadeInLogo = ObjectAnimator.ofFloat(logo, "alpha", 0f, 1f).apply { duration = 800 }
-        val scaleXLogo = ObjectAnimator.ofFloat(logo, "scaleX", 0.8f, 1.0f).apply { duration = 800 }
-        val scaleYLogo = ObjectAnimator.ofFloat(logo, "scaleY", 0.8f, 1.0f).apply { duration = 800 }
+        // Cinematic Animation Sequence
+        
+        // --- 1. Logo Entry (Drop Top-Down) ---
+        // Start slightly higher
+        logo.translationY = -80f
+        
+        val fadeInLogo = ObjectAnimator.ofFloat(logo, "alpha", 0f, 1f).apply { duration = 1000 }
+        val dropInLogo = ObjectAnimator.ofFloat(logo, "translationY", -80f, 0f).apply { duration = 1000 }
+        val scaleXLogo = ObjectAnimator.ofFloat(logo, "scaleX", 0.8f, 1.0f).apply { duration = 1000 }
+        val scaleYLogo = ObjectAnimator.ofFloat(logo, "scaleY", 0.8f, 1.0f).apply { duration = 1000 }
 
+        // --- 2. Title Entry (Glide Bottom-Up) ---
+        appName.translationY = 40f
         val fadeInText = ObjectAnimator.ofFloat(appName, "alpha", 0f, 1f).apply { 
-            duration = 600 
-            startDelay = 400
+            duration = 800 
+            startDelay = 500
+        }
+        val glideUpText = ObjectAnimator.ofFloat(appName, "translationY", 40f, 0f).apply {
+            duration = 800
+            startDelay = 500
         }
         
+        // --- 3. Loading Elements Entry ---
         val fadeInLoader = ObjectAnimator.ofFloat(progressBar, "alpha", 0f, 1f).apply { 
-            duration = 500
-            startDelay = 1000 
+            duration = 600
+            startDelay = 1100 
         }
 
         val fadeInLoadingText = ObjectAnimator.ofFloat(loadingText, "alpha", 0f, 1f).apply { 
-            duration = 500
-            startDelay = 1200 
+            duration = 600
+            startDelay = 1300 
         }
 
+        // --- Execute Entry Sequencer ---
         AnimatorSet().apply {
-            play(fadeInLogo).with(scaleXLogo).with(scaleYLogo).with(fadeInText)
+            play(fadeInLogo).with(dropInLogo).with(scaleXLogo).with(scaleYLogo)
+            play(fadeInText).with(glideUpText)
             play(fadeInLoader).with(fadeInLoadingText)
-            interpolator = DecelerateInterpolator()
+            interpolator = DecelerateInterpolator(1.5f)
             start()
         }
+
+        // --- Infinite Pulsing Effect ---
+        // Give the logo a subtle heartbeat once it lands
+        handler.postDelayed({
+            val pulseX = ObjectAnimator.ofFloat(logo, "scaleX", 1f, 1.03f).apply { repeatCount = ObjectAnimator.INFINITE; repeatMode = ObjectAnimator.REVERSE; duration = 1500 }
+            val pulseY = ObjectAnimator.ofFloat(logo, "scaleY", 1f, 1.03f).apply { repeatCount = ObjectAnimator.INFINITE; repeatMode = ObjectAnimator.REVERSE; duration = 1500 }
+            AnimatorSet().apply {
+                play(pulseX).with(pulseY)
+                start()
+            }
+        }, 1200)
 
 
 
@@ -79,5 +105,11 @@ class SplashActivity : FragmentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(runnable)
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Ensure UI measurements adjust smoothly if rotated during the splash screen
+        findViewById<View>(android.R.id.content)?.requestLayout()
     }
 }

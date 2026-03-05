@@ -69,6 +69,7 @@ object Utils {
         return ""
     }
 
+    @android.annotation.SuppressLint("HardwareIds")
     fun getMacAddress(context: android.content.Context): String {
         try {
             // 1. Try NetworkInterface (Standard)

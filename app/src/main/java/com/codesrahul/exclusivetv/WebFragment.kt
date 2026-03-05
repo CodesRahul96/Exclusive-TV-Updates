@@ -59,6 +59,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 
 @OptIn(UnstableApi::class)
+@android.annotation.SuppressLint("SetJavaScriptEnabled")
 class WebFragment : Fragment() {
     private lateinit var mainActivity: MainActivity
 

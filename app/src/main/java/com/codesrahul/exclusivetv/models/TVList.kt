@@ -331,10 +331,10 @@ object TVList {
                 withContext(Dispatchers.Main) {
                     if (showUi) {
                          _importProgress.value = 5
-                         _importStatus.value = "Initializing..."
+                         _importStatus.value = "Initializing Experience..."
                     } else {
                          _importProgress.value = 0
-                         _importStatus.value = "Checking for updates..."
+                         _importStatus.value = "Checking for improvements..."
                     }
                 }
                 
@@ -350,7 +350,7 @@ object TVList {
                         try {
                            if (showUi) {
                                withContext(Dispatchers.Main) {
-                                   _importStatus.value = "Connecting: Source ${index + 1}/$totalSources"
+                                   _importStatus.value = "Connecting to Live Channels..."
                                }
                            }
                            
@@ -367,7 +367,7 @@ object TVList {
                                if (response.code == 304) {
                                    android.util.Log.d("TVList", "304 Not Modified for $url")
                                    withContext(Dispatchers.Main) {
-                                        if (showUi) _importStatus.value = "Source ${index + 1} up to date"
+                                        if (showUi) _importStatus.value = "Optimizing Stream Quality..."
                                    }
                                    // RETURN CACHE: Retrieve previous channels for this specific URL
                                    return@async sourceCache[url] ?: emptyList<TV>()
@@ -376,7 +376,7 @@ object TVList {
                                if (response.isSuccessful) {
                                    withContext(Dispatchers.Main) {
                                        if (!silent || size() == 0) {
-                                           _importStatus.value = "Downloading: Source ${index + 1}/$totalSources"
+                                           _importStatus.value = "Updating Channels..."
                                        }
                                    }
                                    
@@ -433,7 +433,7 @@ object TVList {
                                            android.util.Log.e("TVList", "Successfully parsed ${channels.size} channels from $url. File size: ${tempFile.length()} bytes")
                                            
                                            withContext(Dispatchers.Main) {
-                                               if (showUi) _importStatus.value = "Parsed: ${channels.size} channels from source ${index + 1}"
+                                               if (showUi) _importStatus.value = "Curating Channels..."
                                            }
                                            return@async channels
                                            
@@ -597,9 +597,9 @@ object TVList {
                       }
                 } else {
                     withContext(Dispatchers.Main) {
-                        if (!silent) "Failed to update channels, using cached data".showToast()
+                        if (!silent) "Failed to update channels, loading offline cache...".showToast()
                         _importProgress.value = 0
-                        _importStatus.value = "Failed"
+                        _importStatus.value = "Offline Mode"
                         
                         // FIX: Try to load from cache if no channels in memory
                         if (list.isEmpty()) {

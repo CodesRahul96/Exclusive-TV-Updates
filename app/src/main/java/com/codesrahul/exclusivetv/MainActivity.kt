@@ -42,6 +42,7 @@ import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.IntegrityTokenRequest
 
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     internal var webFragment = WebFragment()

@@ -460,6 +460,6 @@ object SP {
         set(value) = sp.edit().putBoolean(KEY_PIP_MODE, value).apply()
 
     fun reset() {
-        sp.edit().clear().commit()
+        sp.edit().clear().apply()
     }
 }

@@ -26,6 +26,7 @@ import android.net.NetworkCapabilities
 import java.util.concurrent.TimeUnit
 import android.os.Handler
 import android.os.Looper
+import android.content.pm.ActivityInfo
 
 class LoginFragment : Fragment() {
 
@@ -278,6 +279,36 @@ class LoginFragment : Fragment() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+    override fun onResume() {
+        super.onResume()
+        if (!isHidden) {
+            // Force sensor-based rotation (ignores system auto-rotate setting) for Login
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        }
+    }
+
+    override fun onHiddenChanged(hidden: Boolean) {
+        super.onHiddenChanged(hidden)
+        if (!hidden) {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        } else {
+            // Restore to the app's default landscape orientation with a slight delay
+            // This allows the keyboard to hide and the fragment to transition out smoothly
+            // before the entire screen is forced to flip sideways.
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (isAdded) {
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                }
+            }, 500)
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // This ensures the layout cleanly remeasures when switching between portrait/landscape
+        // without destroying the fragment, utilizing the animateLayoutChanges flag in XML.
+        view?.requestLayout()
     }
 
     override fun onPause() {

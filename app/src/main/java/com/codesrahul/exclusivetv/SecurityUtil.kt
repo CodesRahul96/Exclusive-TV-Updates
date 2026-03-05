@@ -152,6 +152,7 @@ object SecurityUtil {
     /**
      * Retrieves the unique Android Device ID for account binding.
      */
+    @android.annotation.SuppressLint("HardwareIds")
     fun getDeviceId(context: Context): String {
         return cachedDeviceId ?: synchronized(this) {
             cachedDeviceId ?: (Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown_device").also { cachedDeviceId = it }
