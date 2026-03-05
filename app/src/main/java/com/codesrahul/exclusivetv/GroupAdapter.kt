@@ -227,27 +227,12 @@ class GroupAdapter(
             val focusBackground = R.drawable.focus_background
             binding.title.setTextColor(if (hasFocus) colorWhite else colorBlur)
 
-            // Animate root view scale, elevation, and background change
-            // IMPORTANT: Cancel pending animations to avoid glitches
-            binding.root.animate().cancel()
-            
-            binding.root.animate()
-                .scaleX(if (hasFocus) 1.0f else 0.95f)
-                .scaleY(if (hasFocus) 1.0f else 0.95f)
-                .translationZ(if (hasFocus) 8f else 0f)
-                .setDuration(200)
-                .withStartAction {
-                    if (hasFocus) {
-                        binding.root.setBackgroundResource(focusBackground)
-                    }
-                }
-                .withEndAction {
-                    if (!hasFocus) {
-                        binding.root.background = null
-                    }
-                }
-                .start()
-
+            // Apply background immediately to avoid flicker
+            if (hasFocus) {
+                binding.root.setBackgroundResource(focusBackground)
+            } else {
+                binding.root.background = null
+            }
             // Set elevation to ensure it matches the animation
             binding.root.elevation = if (hasFocus) 8f else 0f
         }
@@ -275,7 +260,7 @@ class GroupAdapter(
                     val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
                     if (viewHolder != null) {
                         viewHolder.itemView.requestFocus()
-                        viewHolder.itemView.isSelected = true
+                        // Removed viewHolder.itemView.isSelected = true to prevent sticky items
                     } else if (attempts < 5) {
                         attempts++
                         recyclerView.postDelayed(this, 30)

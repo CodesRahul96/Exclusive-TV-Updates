@@ -418,22 +418,12 @@ class ListAdapter(
             binding.title.setTextColor(if (hasFocus) colorWhite else colorTitleBlur)
             binding.description.setTextColor(if (hasFocus) colorWhite else colorDescriptionBlur)
 
-            // Cancel any ongoing animations to avoid clashing
-            binding.root.animate().cancel()
-
             // Apply background immediately to avoid flicker
             binding.root.setBackgroundResource(
                 if (hasFocus) R.drawable.focus_background else R.drawable.blur_background
             )
 
-            // Animate scale and elevation
-            binding.root.animate()
-                .scaleX(if (hasFocus) 1.0f else 1.0f)
-                .scaleY(if (hasFocus) 1.0f else 1.0f)
-                .setDuration(200)
-                .start()
-
-            // Set elevation (not animatedâ€”applied directly)
+            // Set elevation (not animated—applied directly)
             binding.root.elevation = if (hasFocus) 10f else 0f
         }
 
@@ -499,7 +489,7 @@ class ListAdapter(
                      val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
                      if (viewHolder != null) {
                          viewHolder.itemView.requestFocus()
-                         viewHolder.itemView.isSelected = true 
+                         // Removed viewHolder.itemView.isSelected = true to prevent sticky selected items
                      } else if (attempts < 5) {
                          attempts++
                          recyclerView.postDelayed(this, 30) // Retry after short delay

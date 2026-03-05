@@ -13,7 +13,8 @@
     android:paddingTop="@dimen/list_item_padding_vertical"
     android:paddingBottom="@dimen/list_item_padding_vertical"
     android:focusable="true"
-    android:clickable="true">
+    android:clickable="true"
+    android:stateListAnimator="@animator/tv_focus_animator">
 
     <TextView
         android:id="@+id/channel_number"

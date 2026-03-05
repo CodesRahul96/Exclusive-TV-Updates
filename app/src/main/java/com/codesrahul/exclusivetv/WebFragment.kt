@@ -1051,41 +1051,39 @@ class WebFragment : Fragment() {
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
                 
-                // AUTO RETRY LOGIC
+                // AUTO RETRY & MULTI-URL FALLBACK LOGIC
                 if (retryCount < maxRetries) {
                     retryCount++
-                    
                     val delay = if(error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) 1000L else 3000L
                     
                     // Improved Logic: Don't show "Retrying" immediately on the first transient error.
-                    // This prevents the error screen from flashing on working channels that have a minor hiccup.
+                    // This prevents the error screen from flashing on working channels that have a minor network drop.
                     if (retryCount > 1) {
                         tvModel?.setErrInfo("Retrying... ($retryCount/$maxRetries)")
                     } else {
-                        // First retry - keep silent (looks like loading)
-                        tvModel?.setErrInfo("") 
+                        tvModel?.setErrInfo("") // Keep silent loading UI
                     }
                     
                     playbackHandler.postDelayed({
                         if (retryCount > 0 && currentVideoUrl.isNotEmpty()) { 
-                            initializePlayer(currentVideoUrl)
+                            initializePlayer(currentVideoUrl) // Re-initialize the same URL
                         }
                     }, delay)
                 } else if (currentTv != null && currentUrlIndex < (currentTv.uris.size - 1)) {
-                    // TRY NEXT URL FALLBACK
+                    // TRY NEXT SECONDARY URL FALLBACK
                     currentUrlIndex++
-                    retryCount = 0
+                    retryCount = 0 // Reset retries for the new URL
                     val nextUrl = currentTv.uris[currentUrlIndex]
-                    tvModel?.setErrInfo("Trying Backup Link...")
+                    tvModel?.setErrInfo("Switching to Backup Stream...")
                     
                     playbackHandler.post {
                         initializePlayer(nextUrl)
                     }
                 } else {
-                     // Check if we should fallback to WebView (Universal Support)
+                     // All Retries and Fallbacks failed. Check if we should fallback to WebView (Universal Support)
+                     tvModel?.setErrInfo("Stream Offline or Unsupported")
                      if (isAdded) {
-                         // NEW: If persistent error occurs, it might be due to expired keys/links.
-                         // Trigger a silent force-update in the background to handle key rotation.
+                         // Persistent error. Trigger a silent force-update in the background in case keys rotated.
                          try {
                              com.codesrahul.exclusivetv.models.TVList.update(mainActivity, silent = true, force = true)
                          } catch (e: Exception) {}
@@ -1099,15 +1097,11 @@ class WebFragment : Fragment() {
                                   b.webView.visibility = View.VISIBLE
                                   releasePlayer()
                                   
-                                  // Re-apply WebView settings if needed
                                   val errWebUrl = errorUrl
                                   val errWebUri = Uri.parse(errWebUrl)
-                                  
-                                  // Some site-specifics might need re-triggering
                                   if (errWebUri.host == "tv.cctv.com") {
                                       b.webView.evaluateJavascript("localStorage.setItem('cctv_live_resolution', '720');", null)
                                   }
-      
                                   b.webView.loadUrl(errWebUrl)
                              }
                          }

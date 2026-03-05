@@ -50,6 +50,12 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         binding.group.adapter = groupAdapter
         binding.group.layoutManager =
             LinearLayoutManager(context)
+        
+        // Performance optimizations for TV D-Pad scrolling
+        binding.group.setHasFixedSize(true)
+        binding.group.setItemViewCacheSize(15)
+        binding.group.itemAnimator = null // Prevent DiffUtil flicker during fast scroll
+        
         groupAdapter.setItemListener(this)
         groupAdapter.attachItemTouchHelper()
 
@@ -69,6 +75,12 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         binding.list.adapter = listAdapter
         binding.list.layoutManager =
             LinearLayoutManager(context)
+            
+        // Performance optimizations for TV D-Pad scrolling
+        binding.list.setHasFixedSize(true)
+        binding.list.setItemViewCacheSize(25)
+        binding.list.itemAnimator = null // Prevent DiffUtil flicker during fast scroll
+        
         listAdapter.focusable(false)
         listAdapter.setItemListener(this)
         listAdapter.attachItemTouchHelper()
