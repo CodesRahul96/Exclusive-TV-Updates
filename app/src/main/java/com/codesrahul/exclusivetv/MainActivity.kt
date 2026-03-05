@@ -97,12 +97,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val delayHideSetting = 30 * 1000L
     private val delayHideTrackSelection = 30 * 1000L
     
-    // Right arrow key hold tracking for audio track
+    // Right arrow key hold tracking for Settings Menu
     private val rightArrowHandler = Handler(Looper.getMainLooper())
     private var isRightArrowPressed = false
     private val rightArrowHoldRunnable = Runnable {
         if (isRightArrowPressed) {
-            showAudioSelector()
+            showSetting()
             isRightArrowPressed = false
         }
     }
@@ -1426,7 +1426,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
         
         if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            // Handle right arrow for audio track selector (3s hold) when all fragments are hidden
+            // Handle right arrow for settings menu (3s hold) when all fragments are hidden
             if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
                 if (event.action == KeyEvent.ACTION_DOWN) {
                     if (event.repeatCount == 0) {
