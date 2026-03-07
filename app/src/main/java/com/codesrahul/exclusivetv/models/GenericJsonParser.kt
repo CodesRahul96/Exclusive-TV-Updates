@@ -124,7 +124,7 @@ object GenericJsonParser {
             
             // STRICT MATCHING (Fastest) -> Fallback to loose matching
             when (key) {
-                "url", "stream_url", "play_url", "m3u8_url", "mpd_url", "uri", "link", "file" -> {
+                "url", "stream_url", "play_url", "m3u8_url", "mpd_url", "uri", "link", "file", "stream","m3u_link","m3u8_link","mpd_link","stream_link" -> {
                     var singleUrl = reader.nextString()
                     
                     if (singleUrl.isNotEmpty() && !singleUrl.contains("://")) {
@@ -159,7 +159,7 @@ object GenericJsonParser {
                     }
                 }
                 "name", "title", "channel_name", "station" -> name = reader.nextString()
-                "group", "category", "group_title", "genre" -> group = reader.nextString()
+                "group", "category", "group_title", "groupTitle","group-title", "channel_group", "channel-group", "channel_group_title", "channel-group-title", "channel_group_name", "channel-group-name", "channel_category", "channel-category", "channel_category_title", "channel-category-title", "channel_category_name", "channel-category-name", "genre" -> group = reader.nextString()
                 "logo", "icon", "image", "thumbnail", "tvg-logo", "logo_url" -> logo = reader.nextString()
                 "id", "channel_id", "tvg-id" -> idStr = reader.nextString()
                 "internal_id" -> {
