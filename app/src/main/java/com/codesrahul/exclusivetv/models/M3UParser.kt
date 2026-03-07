@@ -214,6 +214,27 @@ object M3UParser {
                         val group = trimmedLine.substringAfter("#EXTGRP:").trim()
                         if (group.isNotEmpty()) currentGroup = group
 
+                    } else if (trimmedLine.startsWith("#EXT-X-KEY:")) {
+                        // EXT-X-KEY usually for HLS DRM
+                        if (currentUris.isNotEmpty()) saveAndReset()
+
+                        val matches = PROP_REGEX.findAll(trimmedLine)
+                        for (match in matches) {
+                            val key = match.groupValues[1].uppercase()
+                            val value = if (match.groupValues[2].isNotEmpty()) match.groupValues[2] else match.groupValues[3]
+
+                            when (key) {
+                                "METHOD" -> {
+                                    if (value != "NONE") {
+                                        currentDrmScheme = when (value) {
+                                            "AES-128", "SAMPLE-AES", "SAMPLE-AES-CTR" -> "clearkey"
+                                            else -> value.lowercase()
+                                        }
+                                    }
+                                }
+                                "URI" -> currentDrmLicense = value
+                            }
+                        }
                     } else if (trimmedLine.startsWith("#EXTHTTP:") || trimmedLine.startsWith("# EXTHTTP:")) {
                         // Flush previous if URIs exist (meaning this might belong to a new block, though usually headers precede URI)
                         if (currentUris.isNotEmpty()) saveAndReset()

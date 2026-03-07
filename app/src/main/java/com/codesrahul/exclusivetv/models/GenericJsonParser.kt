@@ -127,6 +127,8 @@ object GenericJsonParser {
                 "url", "stream_url", "play_url", "m3u8_url", "mpd_url", "uri", "link", "file", "stream","m3u_link","m3u8_link","mpd_link","stream_link" -> {
                     var singleUrl = reader.nextString()
                     
+                    singleUrl = decodeBase64IfFound(singleUrl)
+
                     if (singleUrl.isNotEmpty() && !singleUrl.contains("://")) {
                         val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
                         val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(singleUrl, key)
@@ -141,17 +143,38 @@ object GenericJsonParser {
                     if (token == JsonToken.BEGIN_ARRAY) {
                         reader.beginArray()
                         while (reader.hasNext()) {
-                            var nextUrl = reader.nextString()
-                            
-                            if (nextUrl.isNotEmpty() && !nextUrl.contains("://")) {
-                                val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
-                                val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(nextUrl, key)
-                                if (decrypted.contains("://")) {
-                                    nextUrl = decrypted
+                            val innerToken = reader.peek()
+                            if (innerToken == JsonToken.STRING) {
+                                var nextUrl = reader.nextString()
+                                
+                                nextUrl = decodeBase64IfFound(nextUrl)
+
+                                if (nextUrl.isNotEmpty() && !nextUrl.contains("://")) {
+                                    val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
+                                    val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(nextUrl, key)
+                                    if (decrypted.contains("://")) {
+                                        nextUrl = decrypted
+                                    }
                                 }
+                                
+                                if (nextUrl.isNotEmpty()) uris.add(nextUrl)
+                            } else if (innerToken == JsonToken.BEGIN_OBJECT) {
+                                // NESTED OBJECT IN ARRAY: Support {"quality": "1080p", "url": "..."}
+                                reader.beginObject()
+                                while (reader.hasNext()) {
+                                    val innerKey = reader.nextName()
+                                    if (innerKey == "url" || innerKey == "link" || innerKey == "uri" || innerKey == "stream") {
+                                        var innerUrl = reader.nextString()
+                                        innerUrl = decodeBase64IfFound(innerUrl)
+                                        if (innerUrl.startsWith("http")) uris.add(innerUrl)
+                                    } else {
+                                        reader.skipValue()
+                                    }
+                                }
+                                reader.endObject()
+                            } else {
+                                reader.skipValue()
                             }
-                            
-                            if (nextUrl.isNotEmpty()) uris.add(nextUrl)
                         }
                         reader.endArray()
                     } else {
@@ -232,7 +255,20 @@ object GenericJsonParser {
 
                         if (url == null && (value.startsWith("http") || value.startsWith("rtmp"))) {
                             url = value // Found a potential stream link
-                        } else if (name == null && value.length < 60 && !value.startsWith("http") && !value.startsWith("{")) {
+                        } else if (url == null) {
+                            // REGEX FALLBACK: Brute force search for URL in unknown string
+                            val urlRegex = Regex("https?://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]")
+                            val match = urlRegex.find(value)
+                            if (match != null) {
+                                url = match.value
+                            }
+                        }
+
+                        if (url != null && uris.isEmpty()) {
+                             uris.add(url!!)
+                        }
+                        
+                        if (name == null && value.length < 60 && !value.startsWith("http") && !value.startsWith("{")) {
                              // Assuming reasonable name length and not JSON or URL
                              name = value
                         }
@@ -309,5 +345,19 @@ object GenericJsonParser {
             "accept" -> "Accept"
             else -> key 
         }
+    }
+
+    private fun decodeBase64IfFound(input: String): String {
+        if (input.length > 20 && !input.contains(" ") && !input.contains("://") && input.matches(Regex("^[A-Za-z0-9+/=]+$"))) {
+            try {
+                val decoded = String(android.util.Base64.decode(input, android.util.Base64.DEFAULT))
+                if (decoded.contains("://") || decoded.startsWith("http")) {
+                    return decoded
+                }
+            } catch (e: Exception) {
+                // Not base64 or failed to decode
+            }
+        }
+        return input
     }
 }
