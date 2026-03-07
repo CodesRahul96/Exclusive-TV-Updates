@@ -226,7 +226,7 @@ object M3UParser {
                             while (keys.hasNext()) {
                                 val key = keys.next()
                                 val value = jsonObject.getString(key)
-                                currentHeaders[key] = value
+                                currentHeaders[normalizeHeaderKey(key)] = value
                             }
                         } catch (e: Exception) {
                         }
@@ -242,10 +242,10 @@ object M3UParser {
 
                             when (key) {
                                 "inputstream.adaptive.license_type" -> {
-                                    currentDrmScheme = when (value) {
-                                        "com.widevine.alpha" -> "widevine"
-                                        "com.microsoft.playready" -> "playready"
-                                        "org.w3.clearkey" -> "clearkey"
+                                    currentDrmScheme = when (value.lowercase()) {
+                                        "com.widevine.alpha", "widevine" -> "widevine"
+                                        "com.microsoft.playready", "playready" -> "playready"
+                                        "org.w3.clearkey", "com.clearkey.alpha", "clearkey" -> "clearkey"
                                         else -> value
                                     }
                                 }
@@ -285,7 +285,7 @@ object M3UParser {
                             val key = parts[0].trim().lowercase()
                             val value = parts[1].trim()
                             when (key) {
-                                "http-user-agent", "user-agent" -> currentHeaders["User-Agent"] = value
+                                "http-user-agent", "user-agent", "useragent" -> currentHeaders["User-Agent"] = value
                                 "http-referrer", "http-referer", "referrer", "referer" -> currentHeaders["Referer"] = value
                                 "http-origin", "origin" -> currentHeaders["Origin"] = value
                                 "http-cookie", "cookie" -> currentHeaders["Cookie"] = value
@@ -362,6 +362,19 @@ object M3UParser {
         return parse(BufferedReader(StringReader(content)))
     }
     
+    private fun normalizeHeaderKey(key: String): String {
+        return when (key.lowercase().replace("_", "-")) {
+            "cookie" -> "Cookie"
+            "user-agent", "useragent" -> "User-Agent"
+            "referer", "referrer" -> "Referer"
+            "origin" -> "Origin"
+            "authorization" -> "Authorization"
+            "content-type" -> "Content-Type"
+            "accept" -> "Accept"
+            else -> key 
+        }
+    }
+
     // Extracted name helper
     private fun extractNameFromUrl(url: String): String {
         try {

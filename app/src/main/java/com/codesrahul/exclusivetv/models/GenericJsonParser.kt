@@ -124,7 +124,7 @@ object GenericJsonParser {
             
             // STRICT MATCHING (Fastest) -> Fallback to loose matching
             when (key) {
-                "url", "stream_url", "play_url", "m3u8_url", "uri", "link", "file" -> {
+                "url", "stream_url", "play_url", "m3u8_url", "mpd_url", "uri", "link", "file" -> {
                     var singleUrl = reader.nextString()
                     
                     if (singleUrl.isNotEmpty() && !singleUrl.contains("://")) {
@@ -176,6 +176,7 @@ object GenericJsonParser {
                     type = when (typeStr.uppercase()) {
                         "WEB" -> com.codesrahul.exclusivetv.models.Type.WEB
                         "HLS" -> com.codesrahul.exclusivetv.models.Type.HLS
+                        "DASH", "MPD" -> com.codesrahul.exclusivetv.models.Type.STREAM
                         "STREAM" -> com.codesrahul.exclusivetv.models.Type.STREAM
                         else -> null 
                     }
@@ -199,8 +200,8 @@ object GenericJsonParser {
                         reader.skipValue()
                     }
                 }
-                "license_key", "drm_license", "drm_url", "license_url", "key", "drm_license_url" -> drmLicense = reader.nextString()
-                "drm_scheme", "drm_type" -> drmScheme = reader.nextString()
+                "license_key", "drm_license", "drm_url", "license_url", "key", "drm_license_url", "drmLicense" -> drmLicense = reader.nextString()
+                "drm_scheme", "drm_type", "drmScheme" -> drmScheme = reader.nextString()
                 "user_agent", "user-agent", "ua" -> {
                     if (headers == null) headers = mutableMapOf()
                     headers["User-Agent"] = reader.nextString()
@@ -208,6 +209,10 @@ object GenericJsonParser {
                 "referer", "referrer" -> {
                     if (headers == null) headers = mutableMapOf()
                     headers["Referer"] = reader.nextString()
+                }
+                "cookie" -> {
+                    if (headers == null) headers = mutableMapOf()
+                    headers["Cookie"] = reader.nextString()
                 }
                 else -> {
                     // HEURISTIC FALLBACK: If we haven't found strict high-confidence keys yet,
@@ -258,7 +263,11 @@ object GenericJsonParser {
         }
         
         // Final Type Logic: Use parsed type if available, else fallback to detection
-        val finalType = type ?: if (primaryUrl.contains(".m3u8")) com.codesrahul.exclusivetv.models.Type.HLS else com.codesrahul.exclusivetv.models.Type.STREAM
+        val finalType = type ?: when {
+            primaryUrl.contains(".m3u8") -> com.codesrahul.exclusivetv.models.Type.HLS
+            primaryUrl.contains(".mpd") -> com.codesrahul.exclusivetv.models.Type.STREAM
+            else -> com.codesrahul.exclusivetv.models.Type.STREAM
+        }
 
         return TV(
             id = finalId,
