@@ -171,6 +171,10 @@ class ListAdapter(
 
         viewHolder.binding.heart.setOnClickListener {
             val currentLike = tvModel.like.value ?: false
+            if (!currentLike && SP.favoriteUrls.size >= 10) {
+                Toast.makeText(context, "Maximum 10 favorites allowed", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             tvModel.setLike(!currentLike)
             viewHolder.like(!currentLike)
             
@@ -526,7 +530,12 @@ class ListAdapter(
             }
 
             override fun onFavoriteSelected() {
-                 tvModel.setLike(!(tvModel.like.value ?: false))
+                 val currentLike = tvModel.like.value ?: false
+                 if (!currentLike && SP.favoriteUrls.size >= 10) {
+                     Toast.makeText(context, "Maximum 10 favorites allowed", Toast.LENGTH_SHORT).show()
+                     return
+                 }
+                 tvModel.setLike(!currentLike)
                  // Refresh handled by like observer in ViewHolder (UI only)
                  // Trigger full model refresh to update "My Collection" group
                  kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {

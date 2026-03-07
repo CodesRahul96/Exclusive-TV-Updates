@@ -55,15 +55,7 @@ object TVList {
         EPGManager.clear()
         
         try {
-            // Clear Room Database
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    com.codesrahul.exclusivetv.db.AppDatabase.getDatabase(context).clearAllTables()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-
+            // Clear Channel Cache File
             if (::appDirectory.isInitialized) {
                 File(appDirectory, FILE_NAME).delete()
             }
@@ -1421,31 +1413,38 @@ object TVList {
         val savedName = SP.lastChannelName
         val savedPos = SP.position
         
-        if (savedUrl.isNotEmpty()) {
+        if (savedUrl.isNotEmpty() || savedName.isNotEmpty()) {
             // Priority 1: Strict Match (URL + Name)
-            if (savedName.isNotEmpty()) {
+            if (savedUrl.isNotEmpty() && savedName.isNotEmpty()) {
                  val strictIndex = listModel.indexOfFirst { model ->
                      model.tv.name == savedName && model.tv.uris.any { it == savedUrl }
                  }
-                 if (strictIndex != -1) {
-                     return strictIndex
-                 }
+                 if (strictIndex != -1) return strictIndex
             }
 
-            // Priority 2: URL Match (Any URL in the list)
-            val index = listModel.indexOfFirst { model ->
-                model.tv.uris.any { it == savedUrl }
+            // Priority 2: URL Match
+            if (savedUrl.isNotEmpty()) {
+                val index = listModel.indexOfFirst { model ->
+                    model.tv.uris.any { it == savedUrl }
+                }
+                if (index != -1) return index
             }
-            if (index != -1) {
-                return index
+
+            // Priority 3: Name Match (handles transient URL changes)
+            if (savedName.isNotEmpty()) {
+                val index = listModel.indexOfFirst { model ->
+                    model.tv.name == savedName
+                }
+                if (index != -1) return index
             }
         }
         
-        // Fallback to saved position if valid
+        // Priority 4: Fallback to saved numerical position if valid
         if (savedPos >= 0 && savedPos < listModel.size) {
             return savedPos
         }
         
+        // Final Fallback: Always return 0 to ensure something plays
         return 0
     }
 }

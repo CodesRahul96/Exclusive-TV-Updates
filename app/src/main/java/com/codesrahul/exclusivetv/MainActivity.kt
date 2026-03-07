@@ -63,6 +63,19 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val spListener = object : OnSharedPreferenceChangeListener {
         override fun onSharedPreferenceChanged(key: String) {
             if (isMaintenanceMode) return
+            
+            // Trigger Cloud Sync for persistent settings
+            val syncKeys = listOf(
+                "channel_reversal", "channel_num", "time", "boot_startup", 
+                "repeat_info", "buffer_mode", SP.KEY_EPG_ENABLED, 
+                "show_date_in_info", "watch_last", "force_high_quality",
+                "pip_mode", "audio_stabilizer", "config_channel_check",
+                "watermark_enabled", "watermark_opacity", "watermark_position", "epg_shift"
+            )
+            if (syncKeys.contains(key)) {
+                SyncManager.syncUp()
+            }
+
             if (key == SP.KEY_EPG) {
                 if (SP.epgEnabled) {
                     runOnUiThread {
@@ -363,8 +376,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // Step 1: Initialize Remote Config
         initRemoteConfig { 
             if (skipSubCheck) {
-                 Log.i(TAG, "Skipping Sub Check (verified by LoginFragment).")
-                 runOnUiThread { onBootstrapComplete() }
+                 Log.i(TAG, "Skipping Sub Check (verified by LoginFragment). Fetching Cloud Settings...")
+                 SyncManager.syncDown {
+                     runOnUiThread { onBootstrapComplete() }
+                 }
             } else {
                 // Step 2: Check Auth & Subscription (Only after config is fetched)
                 checkAuthAndSubscription { 
@@ -937,6 +952,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         }
 
+        private val settingsRunnable = Runnable {
+            if (isLongPressActive) {
+                showSetting()
+                isLongPressActive = false
+            }
+        }
+
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             val screenWidth = windowManager.defaultDisplay.width
             val screenHeight = windowManager.defaultDisplay.height
@@ -966,8 +988,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                  return true
             }
             
-            // 1. Left Side Tap (< 20% width) -> Channels & Categories
-            if (x < screenWidth * 0.2) {
+            // 1. Left Side Tap (< 25% width) -> Channels & Categories
+            if (x < screenWidth * 0.25) {
                 showFragment(menuFragment)
                 return true
             }
@@ -992,18 +1014,22 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            // Double Tap anywhere on screen -> Settings
-            showSetting()
-            return true
+            val screenWidth = windowManager.defaultDisplay.width
+            // Double Tap on Right 25% -> Settings
+            if (e.x > screenWidth * 0.75) {
+                showSetting()
+                return true
+            }
+            return false
         }
 
         fun startTimedLongPress(x: Float, y: Float) {
             val screenWidth = windowManager.defaultDisplay.width
             isLongPressActive = true
             
-            if (x > screenWidth * 0.8) {
-                // Right side -> Audio Menu - DISABLED for Mobile as per user request
-                // longPressHandler.postDelayed(audioRunnable, 2000)
+            if (x > screenWidth * 0.75) {
+                // Right side -> Settings Menu (3s hold)
+                longPressHandler.postDelayed(settingsRunnable, 3000)
             } else if (x > screenWidth * 0.3 && x < screenWidth * 0.7) {
                 // Center -> 2x Speed
                 longPressHandler.postDelayed(speedRunnable, 500)
@@ -1019,7 +1045,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 }
             }
             isLongPressActive = false
-            // longPressHandler.removeCallbacks(audioRunnable) // DISABLED
+            longPressHandler.removeCallbacks(settingsRunnable)
             longPressHandler.removeCallbacks(speedRunnable)
         }
         // showSeekHud moved below GestureListener

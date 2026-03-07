@@ -193,13 +193,7 @@ object SubscriptionManager {
         try { SP.reset() } catch (e: Exception) { e.printStackTrace() }
         try { OrderPreferenceManager.resetAll() } catch (e: Exception) { e.printStackTrace() }
 
-        // 2. Clear Room Database
-        try { 
-            val db = com.codesrahul.exclusivetv.db.AppDatabase.getDatabase(context)
-            db.clearAllTables() 
-        } catch (e: Exception) { e.printStackTrace() }
-
-        // 3. Delete all local files (legacy channels.txt, etc)
+        // 2. Delete all local files (legacy channels.txt, etc)
         try { deleteRecursive(context.filesDir) } catch (e: Exception) { e.printStackTrace() }
         
         // 4. Delete cache (epg_cache.xml.gz, etc)

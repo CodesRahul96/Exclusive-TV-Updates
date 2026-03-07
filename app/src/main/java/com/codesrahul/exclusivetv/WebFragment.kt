@@ -720,7 +720,9 @@ class WebFragment : Fragment() {
         this.currentVideoUrl = url
 
         
-        savedAudioTrackToApply = SP.getAudioTrack(url)
+        // Use the first URI as the canonical key for audio track preference (matches save logic in MainActivity)
+        val channelKey = if (tvModel.tv.uris.isNotEmpty()) tvModel.tv.uris[0] else url
+        savedAudioTrackToApply = SP.getAudioTrack(channelKey)
 
         // Check if explicit type forces Player, or if URL detected as stream
         val isStreamType = tvModel.tv.type == com.codesrahul.exclusivetv.models.Type.STREAM || 

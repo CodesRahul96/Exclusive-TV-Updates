@@ -95,19 +95,39 @@ object SP {
 
     var channelReversal: Boolean
         get() = sp.getBoolean(KEY_CHANNEL_REVERSAL, false)
-        set(value) = sp.edit().putBoolean(KEY_CHANNEL_REVERSAL, value).apply()
+        set(value) {
+            if (value != this.channelReversal) {
+                sp.edit().putBoolean(KEY_CHANNEL_REVERSAL, value).apply()
+                notifyListeners(KEY_CHANNEL_REVERSAL)
+            }
+        }
 
     var channelNum: Boolean
         get() = sp.getBoolean(KEY_CHANNEL_NUM, true)
-        set(value) = sp.edit().putBoolean(KEY_CHANNEL_NUM, value).apply()
+        set(value) {
+            if (value != this.channelNum) {
+                sp.edit().putBoolean(KEY_CHANNEL_NUM, value).apply()
+                notifyListeners(KEY_CHANNEL_NUM)
+            }
+        }
 
     var time: Boolean
         get() = sp.getBoolean(KEY_TIME, true)
-        set(value) = sp.edit().putBoolean(KEY_TIME, value).apply()
+        set(value) {
+            if (value != this.time) {
+                sp.edit().putBoolean(KEY_TIME, value).apply()
+                notifyListeners(KEY_TIME)
+            }
+        }
 
     var bootStartup: Boolean
         get() = sp.getBoolean(KEY_BOOT_STARTUP, false)
-        set(value) = sp.edit().putBoolean(KEY_BOOT_STARTUP, value).apply()
+        set(value) {
+            if (value != this.bootStartup) {
+                sp.edit().putBoolean(KEY_BOOT_STARTUP, value).apply()
+                notifyListeners(KEY_BOOT_STARTUP)
+            }
+        }
 
     var position: Int
         get() = sp.getInt(KEY_POSITION, 0)
@@ -123,13 +143,23 @@ object SP {
 
     var repeatInfo: Boolean
         get() = sp.getBoolean(KEY_REPEAT_INFO, true)
-        set(value) = sp.edit().putBoolean(KEY_REPEAT_INFO, value).apply()
+        set(value) {
+            if (value != this.repeatInfo) {
+                sp.edit().putBoolean(KEY_REPEAT_INFO, value).apply()
+                notifyListeners(KEY_REPEAT_INFO)
+            }
+        }
 
 
 
     var bufferMode: Int
         get() = sp.getInt(KEY_BUFFER_MODE, 0) // 0: Default, 1: Low, 2: High
-        set(value) = sp.edit().putInt(KEY_BUFFER_MODE, value).apply()
+        set(value) {
+            if (value != this.bufferMode) {
+                sp.edit().putInt(KEY_BUFFER_MODE, value).apply()
+                notifyListeners(KEY_BUFFER_MODE)
+            }
+        }
 
     // Remote SSL cert pins for **.indevs.in - fetched from Firebase Remote Config.
     // Stored as a JSON array string, e.g. ["sha256/ABC...","sha256/XYZ..."]
@@ -291,7 +321,12 @@ object SP {
 
     var channelCheck: Boolean
         get() = sp.getBoolean(KEY_CONFIG_CHANNEL_CHECK, false)
-        set(value) = sp.edit().putBoolean(KEY_CONFIG_CHANNEL_CHECK, value).apply()
+        set(value) {
+            if (value != this.channelCheck) {
+                sp.edit().putBoolean(KEY_CONFIG_CHANNEL_CHECK, value).apply()
+                notifyListeners(KEY_CONFIG_CHANNEL_CHECK)
+            }
+        }
 
     var moveMode: Boolean
         get() = sp.getBoolean(KEY_MOVE_MODE, false)
@@ -299,11 +334,21 @@ object SP {
 
     var watchLast: Boolean
         get() = sp.getBoolean(KEY_WATCH_LAST, true)
-        set(value) = sp.edit().putBoolean(KEY_WATCH_LAST, value).apply()
+        set(value) {
+            if (value != this.watchLast) {
+                sp.edit().putBoolean(KEY_WATCH_LAST, value).apply()
+                notifyListeners(KEY_WATCH_LAST)
+            }
+        }
 
     var forceHighQuality: Boolean
         get() = sp.getBoolean(KEY_FORCE_HIGH_QUALITY, true)
-        set(value) = sp.edit().putBoolean(KEY_FORCE_HIGH_QUALITY, value).apply()
+        set(value) {
+            if (value != this.forceHighQuality) {
+                sp.edit().putBoolean(KEY_FORCE_HIGH_QUALITY, value).apply()
+                notifyListeners(KEY_FORCE_HIGH_QUALITY)
+            }
+        }
 
     var lastVersion: Int
         get() = sp.getInt(KEY_LAST_VERSION, 0)
@@ -315,11 +360,17 @@ object SP {
 
     var lastChannelUrl: String
         get() = sp.getString(KEY_LAST_CHANNEL_URL, "") ?: ""
-        set(value) = sp.edit().putString(KEY_LAST_CHANNEL_URL, value).apply()
+        set(value) {
+            sp.edit().putString(KEY_LAST_CHANNEL_URL, value).apply()
+            if (initialized) SyncManager.syncUp()
+        }
 
     var lastChannelName: String
         get() = sp.getString(KEY_LAST_CHANNEL_NAME, "") ?: ""
-        set(value) = sp.edit().putString(KEY_LAST_CHANNEL_NAME, value).apply()
+        set(value) {
+            sp.edit().putString(KEY_LAST_CHANNEL_NAME, value).apply()
+            if (initialized) SyncManager.syncUp()
+        }
 
     var favoriteUrls: Set<String>
         get() = sp.getStringSet(KEY_FAVORITE_URLS, emptySet()) ?: emptySet()
@@ -362,7 +413,12 @@ object SP {
 
     var showDateInInfo: Boolean
         get() = sp.getBoolean(KEY_SHOW_DATE_IN_INFO, true) // Default: true
-        set(value) = sp.edit().putBoolean(KEY_SHOW_DATE_IN_INFO, value).apply()
+        set(value) {
+            if (value != this.showDateInInfo) {
+                sp.edit().putBoolean(KEY_SHOW_DATE_IN_INFO, value).apply()
+                notifyListeners(KEY_SHOW_DATE_IN_INFO)
+            }
+        }
 
     fun getLike(id: Int): Boolean {
         val stringSet = sp.getStringSet(KEY_LIKE, emptySet())
@@ -401,20 +457,55 @@ object SP {
 
     fun setAudioTrack(channelKey: String, index: Int) {
         sp.edit().putInt(KEY_AUDIO_TRACK_PREFIX + channelKey, index).apply()
+        if (initialized) SyncManager.syncUp()
+    }
+
+    fun getAllAudioTracks(): Map<String, Int> {
+        val all = sp.all
+        val audioTracks = mutableMapOf<String, Int>()
+        for ((key, value) in all) {
+            if (key.startsWith(KEY_AUDIO_TRACK_PREFIX) && value is Int) {
+                audioTracks[key.substring(KEY_AUDIO_TRACK_PREFIX.length)] = value
+            }
+        }
+        return audioTracks
+    }
+
+    fun setAllAudioTracks(audioTracks: Map<String, Int>) {
+        val editor = sp.edit()
+        for ((channelKey, index) in audioTracks) {
+            editor.putInt(KEY_AUDIO_TRACK_PREFIX + channelKey, index)
+        }
+        editor.commit() // Use commit() (synchronous) to ensure tracks are readable immediately after syncDown
     }
     
     // Watermark settings
     var watermarkEnabled: Boolean
         get() = sp.getBoolean(KEY_WATERMARK_ENABLED, true) // Default: enabled
-        set(value) = sp.edit().putBoolean(KEY_WATERMARK_ENABLED, value).apply()
+        set(value) {
+            if (value != this.watermarkEnabled) {
+                sp.edit().putBoolean(KEY_WATERMARK_ENABLED, value).apply()
+                notifyListeners(KEY_WATERMARK_ENABLED)
+            }
+        }
 
     var watermarkOpacity: Int
         get() = sp.getInt(KEY_WATERMARK_OPACITY, 40) // Default: 40%
-        set(value) = sp.edit().putInt(KEY_WATERMARK_OPACITY, value).apply()
+        set(value) {
+            if (value != this.watermarkOpacity) {
+                sp.edit().putInt(KEY_WATERMARK_OPACITY, value).apply()
+                notifyListeners(KEY_WATERMARK_OPACITY)
+            }
+        }
 
     var watermarkPosition: String
         get() = sp.getString(KEY_WATERMARK_POSITION, "bottom_right") ?: "bottom_right"
-        set(value) = sp.edit().putString(KEY_WATERMARK_POSITION, value).apply()
+        set(value) {
+            if (value != this.watermarkPosition) {
+                sp.edit().putString(KEY_WATERMARK_POSITION, value).apply()
+                notifyListeners(KEY_WATERMARK_POSITION)
+            }
+        }
 
     // Dynamic URL Properties
     var apiHost: String
@@ -450,14 +541,24 @@ object SP {
     
     var audioStabilizer: Boolean
         get() = sp.getBoolean(KEY_AUDIO_STABILIZER, false) // Default: Disabled
-        set(value) = sp.edit().putBoolean(KEY_AUDIO_STABILIZER, value).apply()
+        set(value) {
+            if (value != this.audioStabilizer) {
+                sp.edit().putBoolean(KEY_AUDIO_STABILIZER, value).apply()
+                notifyListeners(KEY_AUDIO_STABILIZER)
+            }
+        }
 
     // PIP Mode
     private const val KEY_PIP_MODE = "pip_mode"
 
     var pipMode: Boolean
         get() = sp.getBoolean(KEY_PIP_MODE, false) // Default: Disabled
-        set(value) = sp.edit().putBoolean(KEY_PIP_MODE, value).apply()
+        set(value) {
+            if (value != this.pipMode) {
+                sp.edit().putBoolean(KEY_PIP_MODE, value).apply()
+                notifyListeners(KEY_PIP_MODE)
+            }
+        }
 
     fun reset() {
         sp.edit().clear().apply()
