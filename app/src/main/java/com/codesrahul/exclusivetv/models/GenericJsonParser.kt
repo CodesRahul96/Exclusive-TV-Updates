@@ -12,6 +12,25 @@ import java.io.StringReader
 object GenericJsonParser {
     private const val TAG = "GenericJsonParser"
 
+    private val URL_KEYS = setOf(
+        "url", "stream_url", "play_url", "m3u8_url", "mpd_url", "uri", "link", "file", 
+        "stream", "m3u_link", "m3u8_link", "mpd_link", "stream_link"
+    )
+    private val NAME_KEYS = setOf("name", "title", "channel_name", "station", "tvg-name")
+    private val LOGO_KEYS = setOf("logo", "icon", "image", "thumbnail", "tvg-logo", "logo_url")
+    private val GROUP_KEYS = setOf(
+        "group", "category", "group_title", "groupTitle", "group-title", "channel_group", 
+        "channel-group", "channel_group_title", "channel-group-title", "channel_group_name", 
+        "channel-group-name", "channel_category", "channel-category", "channel_category_title", 
+        "channel-category-title", "channel_category_name", "channel-category-name", "genre"
+    )
+    private val ID_KEYS = setOf("id", "channel_id", "tvg-id", "internal_id")
+    private val HEADER_KEYS = setOf("headers", "http_headers")
+    private val DRM_LICENSE_KEYS = setOf("license_key", "drm_license", "drm_url", "license_url", "key", "drm_license_url", "drmLicense")
+    private val DRM_SCHEME_KEYS = setOf("drm_scheme", "drm_type", "drmScheme")
+    private val USER_AGENT_KEYS = setOf("user_agent", "user-agent", "ua")
+    private val REFERER_KEYS = setOf("referer", "referrer")
+
     // FAST PATH: Optimized streaming parser for large lists
     fun parse(reader: Reader): List<TV> {
         val list = mutableListOf<TV>()
@@ -114,7 +133,8 @@ object GenericJsonParser {
         
         reader.beginObject()
         while (reader.hasNext()) {
-            val key = reader.nextName()
+            val rawKey = reader.nextName()
+            val key = rawKey.lowercase()
             val token = reader.peek()
             
             if (token == JsonToken.NULL) {
@@ -122,80 +142,57 @@ object GenericJsonParser {
                 continue
             }
             
-            // STRICT MATCHING (Fastest) -> Fallback to loose matching
-            when (key) {
-                "url", "stream_url", "play_url", "m3u8_url", "mpd_url", "uri", "link", "file", "stream","m3u_link","m3u8_link","mpd_link","stream_link" -> {
+            when {
+                URL_KEYS.contains(key) -> {
                     var singleUrl = reader.nextString()
-                    
                     singleUrl = decodeBase64IfFound(singleUrl)
-
                     if (singleUrl.isNotEmpty() && !singleUrl.contains("://")) {
-                        val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
-                        val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(singleUrl, key)
-                        if (decrypted.contains("://")) {
-                            singleUrl = decrypted
-                        }
+                        val skey = com.codesrahul.exclusivetv.SecretManager.getAppKey()
+                        val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(singleUrl, skey)
+                        if (decrypted.contains("://")) singleUrl = decrypted
                     }
-                    
                     if (singleUrl.isNotEmpty()) uris.add(singleUrl)
                 }
-                "uris", "urls", "streams" -> {
+                key == "uris" || key == "urls" || key == "streams" || key == "stream_list" -> {
                     if (token == JsonToken.BEGIN_ARRAY) {
                         reader.beginArray()
                         while (reader.hasNext()) {
                             val innerToken = reader.peek()
                             if (innerToken == JsonToken.STRING) {
                                 var nextUrl = reader.nextString()
-                                
                                 nextUrl = decodeBase64IfFound(nextUrl)
-
                                 if (nextUrl.isNotEmpty() && !nextUrl.contains("://")) {
-                                    val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
-                                    val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(nextUrl, key)
-                                    if (decrypted.contains("://")) {
-                                        nextUrl = decrypted
-                                    }
+                                    val skey = com.codesrahul.exclusivetv.SecretManager.getAppKey()
+                                    val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(nextUrl, skey)
+                                    if (decrypted.contains("://")) nextUrl = decrypted
                                 }
-                                
                                 if (nextUrl.isNotEmpty()) uris.add(nextUrl)
                             } else if (innerToken == JsonToken.BEGIN_OBJECT) {
-                                // NESTED OBJECT IN ARRAY: Support {"quality": "1080p", "url": "..."}
                                 reader.beginObject()
                                 while (reader.hasNext()) {
-                                    val innerKey = reader.nextName()
-                                    if (innerKey == "url" || innerKey == "link" || innerKey == "uri" || innerKey == "stream") {
+                                    val innerKey = reader.nextName().lowercase()
+                                    if (URL_KEYS.contains(innerKey)) {
                                         var innerUrl = reader.nextString()
                                         innerUrl = decodeBase64IfFound(innerUrl)
                                         if (innerUrl.startsWith("http")) uris.add(innerUrl)
-                                    } else {
-                                        reader.skipValue()
-                                    }
+                                    } else reader.skipValue()
                                 }
                                 reader.endObject()
-                            } else {
-                                reader.skipValue()
-                            }
+                            } else reader.skipValue()
                         }
                         reader.endArray()
-                    } else {
-                        reader.skipValue()
-                    }
+                    } else reader.skipValue()
                 }
-                "name", "title", "channel_name", "station" -> name = reader.nextString()
-                "group", "category", "group_title", "groupTitle","group-title", "channel_group", "channel-group", "channel_group_title", "channel-group-title", "channel_group_name", "channel-group-name", "channel_category", "channel-category", "channel_category_title", "channel-category-title", "channel_category_name", "channel-category-name", "genre" -> group = reader.nextString()
-                "logo", "icon", "image", "thumbnail", "tvg-logo", "logo_url" -> logo = reader.nextString()
-                "id", "channel_id", "tvg-id" -> idStr = reader.nextString()
-                "internal_id" -> {
-                     // Prioritize internal ID for restoration consistency
-                     try {
-                         idStr = reader.nextInt().toString()
-                     } catch (e: Exception) {
-                         idStr = reader.nextString() // Fallback if stored as string
-                     }
+                NAME_KEYS.contains(key) -> name = reader.nextString()
+                GROUP_KEYS.contains(key) -> group = reader.nextString()
+                LOGO_KEYS.contains(key) -> logo = reader.nextString()
+                ID_KEYS.contains(key) -> {
+                    if (key == "internal_id" || token == JsonToken.NUMBER) {
+                        try { idStr = reader.nextInt().toString() } catch (e: Exception) { idStr = reader.nextString() }
+                    } else idStr = reader.nextString()
                 }
-                "type" -> {
+                key == "type" -> {
                     val typeStr = reader.nextString()
-                    // Map string to enum manually to avoid crashes
                     type = when (typeStr.uppercase()) {
                         "WEB" -> com.codesrahul.exclusivetv.models.Type.WEB
                         "HLS" -> com.codesrahul.exclusivetv.models.Type.HLS
@@ -204,36 +201,37 @@ object GenericJsonParser {
                         else -> null 
                     }
                 }
-                "catchup_type", "catchup-type" -> catchupType = reader.nextString()
-                "catchup_days", "catchup-days" -> catchupDays = reader.nextString()
-                "catchup_source", "catchup-source" -> catchupSource = reader.nextString()
-                
-                "headers", "http_headers" -> {
-                    // Special handling for headers object
-                    if (token == JsonToken.BEGIN_OBJECT) {
-                         if (headers == null) headers = mutableMapOf()
-                         reader.beginObject()
-                         while (reader.hasNext()) {
-                             val hKey = reader.nextName()
-                             val hVal = reader.nextString()
-                             headers[normalizeHeaderKey(hKey)] = hVal
-                         }
-                         reader.endObject()
-                    } else {
-                        reader.skipValue()
+                key.startsWith("catchup") -> {
+                    when (key) {
+                        "catchup_type", "catchup-type" -> catchupType = reader.nextString()
+                        "catchup_days", "catchup-days" -> catchupType = reader.nextString()
+                        "catchup_source", "catchup-source" -> catchupSource = reader.nextString()
+                        else -> reader.skipValue()
                     }
                 }
-                "license_key", "drm_license", "drm_url", "license_url", "key", "drm_license_url", "drmLicense" -> drmLicense = reader.nextString()
-                "drm_scheme", "drm_type", "drmScheme" -> drmScheme = reader.nextString()
-                "user_agent", "user-agent", "ua" -> {
+                HEADER_KEYS.contains(key) -> {
+                    if (token == JsonToken.BEGIN_OBJECT) {
+                        if (headers == null) headers = mutableMapOf()
+                        reader.beginObject()
+                        while (reader.hasNext()) {
+                            val hKey = reader.nextName()
+                            val hVal = reader.nextString()
+                            headers[normalizeHeaderKey(hKey)] = hVal
+                        }
+                        reader.endObject()
+                    } else reader.skipValue()
+                }
+                DRM_LICENSE_KEYS.contains(key) -> drmLicense = reader.nextString()
+                DRM_SCHEME_KEYS.contains(key) -> drmScheme = reader.nextString()
+                USER_AGENT_KEYS.contains(key) -> {
                     if (headers == null) headers = mutableMapOf()
                     headers["User-Agent"] = reader.nextString()
                 }
-                "referer", "referrer" -> {
+                REFERER_KEYS.contains(key) -> {
                     if (headers == null) headers = mutableMapOf()
                     headers["Referer"] = reader.nextString()
                 }
-                "cookie" -> {
+                key == "cookie" -> {
                     if (headers == null) headers = mutableMapOf()
                     headers["Cookie"] = reader.nextString()
                 }

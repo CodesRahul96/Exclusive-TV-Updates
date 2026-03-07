@@ -329,25 +329,35 @@ object M3UParser {
 
                         if (isUrl) {
 
-                            // Handle pipe headers
-                            if (finalUrl.contains("|")) {
-                                val urlParts = finalUrl.split("|", limit = 2)
-                                finalUrl = urlParts[0].trim()
-                                val headersPart = urlParts[1]
-
-                                val headerPairs = headersPart.split("&")
-                                for (pair in headerPairs) {
-                                    val kv = pair.split("=", limit = 2)
-                                    if (kv.size == 2) {
-                                        when (kv[0]) {
-                                            "User-Agent" -> currentHeaders["User-Agent"] = kv[1]
-                                            "Referer" -> currentHeaders["Referer"] = kv[1]
-                                            "Cookie" -> currentHeaders["Cookie"] = kv[1]
-                                            else -> currentHeaders[kv[0]] = kv[1]
-                                        }
-                                    }
-                                }
-                            }
+                             // Handle pipe headers
+                             if (finalUrl.contains("|")) {
+                                 val urlParts = finalUrl.split("|", limit = 2)
+                                 finalUrl = urlParts[0].trim()
+                                 val headersPart = urlParts[1]
+                                 val headerPairs = headersPart.split("&")
+                                 for (pair in headerPairs) {
+                                     val kv = pair.split("=", limit = 2)
+                                     if (kv.size == 2) {
+                                         currentHeaders[normalizeHeaderKey(kv[0])] = kv[1]
+                                     }
+                                 }
+                             }
+                             
+                             // Handle query string headers (e.g. http://.../s.m3u8?user-agent=...&referer=...)
+                             // This is common in some IPTV links that don't use pipes
+                             if (finalUrl.contains("?")) {
+                                 val queryParams = finalUrl.substringAfter("?").split("&")
+                                 for (param in queryParams) {
+                                     val kv = param.split("=", limit = 2)
+                                     if (kv.size == 2) {
+                                         val key = kv[0].lowercase()
+                                         if (key == "user-agent" || key == "http-user-agent" || key == "useragent" ||
+                                             key == "referer" || key == "referrer" || key == "origin" || key == "cookie") {
+                                             currentHeaders[normalizeHeaderKey(key)] = kv[1]
+                                         }
+                                     }
+                                 }
+                             }
                             currentUris.add(finalUrl)
                             
                             // Keep track of all URLs for fallback simple parser
