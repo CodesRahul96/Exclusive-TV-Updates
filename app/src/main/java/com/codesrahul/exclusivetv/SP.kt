@@ -57,6 +57,7 @@ object SP {
     private const val KEY_WATERMARK_POSITION = "watermark_position"
  
     private const val KEY_EPG_SHIFT = "epg_shift"
+    private const val KEY_SLEEP_TIMER = "sleep_timer"
     
     private const val KEY_LAST_UPDATE_TIME = "last_update_time"
     private const val KEY_API_HOST = "api_host"
@@ -534,6 +535,15 @@ object SP {
         set(value) {
             sp.edit().putInt(KEY_EPG_SHIFT, value).apply()
             notifyListeners(KEY_EPG_SHIFT)
+        }
+
+    var sleepTimer: Int
+        get() = sp.getInt(KEY_SLEEP_TIMER, 0)
+        set(value) {
+            if (value != this.sleepTimer) {
+                sp.edit().putInt(KEY_SLEEP_TIMER, value).apply()
+                notifyListeners(KEY_SLEEP_TIMER)
+            }
         }
 
     // Audio Stabilizer

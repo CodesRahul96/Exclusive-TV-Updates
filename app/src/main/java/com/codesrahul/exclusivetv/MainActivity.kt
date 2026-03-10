@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -70,7 +70,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 "repeat_info", "buffer_mode", SP.KEY_EPG_ENABLED, 
                 "show_date_in_info", "watch_last", "force_high_quality",
                 "pip_mode", "audio_stabilizer", "config_channel_check",
-                "watermark_enabled", "watermark_opacity", "watermark_position", "epg_shift"
+                "watermark_enabled", "watermark_opacity", "watermark_position", "epg_shift", "sleep_timer"
             )
             if (syncKeys.contains(key)) {
                 SyncManager.syncUp()
