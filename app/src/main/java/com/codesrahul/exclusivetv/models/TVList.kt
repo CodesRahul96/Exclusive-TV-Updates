@@ -529,19 +529,27 @@ object TVList {
                       lastListHash = newListHash
                       SP.lastUpdateTime = System.currentTimeMillis() // Update success timestamp
 
-                      // MEMORY OPTIMIZATION: Use streaming writer instead of loading huge JSON string
-                      // This prevents OutOfMemoryError on large playlists (5000+ channels)
-                      val file = File(ctx.filesDir, FILE_NAME)
-                      val writer = JsonWriter(FileWriter(file))
-                      writer.setIndent("  ") // Optional: Remove for even smaller size
+                      // ATOMIC SAVE: Write to temp file first then rename to prevent corruption on crash
+                      val finalFile = File(ctx.filesDir, FILE_NAME)
+                      val tempFile = File(ctx.filesDir, "$FILE_NAME.tmp")
                       
                       try {
+                          val writer = JsonWriter(FileWriter(tempFile))
+                          writer.setIndent("  ")
                           val gson = com.google.gson.Gson()
                           gson.toJson(finalChannels, finalChannels::class.java, writer)
+                          writer.close()
+                          
+                          // Atomic rename
+                          if (tempFile.renameTo(finalFile)) {
+                              Log.i("TVList", "Cache saved atomically: ${finalChannels.size} channels")
+                          } else {
+                              Log.e("TVList", "Failed to rename temp cache file")
+                          }
                       } catch (e: Exception) {
-                           Log.e("TVList", "Error writing JSON", e)
+                          Log.e("TVList", "Error writing atomic cache", e)
                       } finally {
-                           try { writer.close() } catch (e: Exception) {}
+                          if (tempFile.exists()) tempFile.delete() // Cleanup if rename failed
                       }
                       
                       // Update memory

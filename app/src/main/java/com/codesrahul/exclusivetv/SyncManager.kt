@@ -8,6 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * SyncManager handles bidirectional Firestore sync of user favorites and custom sources.
@@ -23,6 +25,7 @@ object SyncManager {
 
     // Debounce: only one sync job at a time, cancels previous if new one comes
     private var syncJob: Job? = null
+    private val syncMutex = Mutex()
     @Volatile private var isRestoring = false
 
     fun syncUp() {
@@ -32,7 +35,8 @@ object SyncManager {
         syncJob?.cancel()
         syncJob = CoroutineScope(Dispatchers.IO).launch {
             delay(1000) // 1 second debounce
-            try {
+            syncMutex.withLock {
+                try {
                 val favorites = SP.favoriteUrls.toList()
                 val sources = SP.playlistUrls.toList()
                 
@@ -90,8 +94,9 @@ object SyncManager {
                     .addOnFailureListener { e ->
                         Log.e(TAG, "Cloud Sync Up failed: ${e.message}")
                     }
-            } catch (e: Exception) {
-                Log.e(TAG, "syncUp exception: ${e.message}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "syncUp exception: ${e.message}")
+                }
             }
         }
     }
@@ -104,7 +109,8 @@ object SyncManager {
 
         isRestoring = true
         CoroutineScope(Dispatchers.IO).launch {
-            try {
+            syncMutex.withLock {
+                try {
                 FirebaseFirestore.getInstance()
                     .collection(COLLECTION_USERS)
                     .document(userId)
@@ -177,10 +183,11 @@ object SyncManager {
                         isRestoring = false
                         onComplete?.invoke()
                     }
-            } catch (e: Exception) {
-                Log.e(TAG, "syncDown exception: ${e.message}")
-                isRestoring = false
-                onComplete?.invoke()
+                } catch (e: Exception) {
+                    Log.e(TAG, "syncDown exception: ${e.message}")
+                    isRestoring = false
+                    onComplete?.invoke()
+                }
             }
         }
     }

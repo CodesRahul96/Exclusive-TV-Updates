@@ -7,8 +7,23 @@
     android:clickable="true"
     android:focusable="false"
     android:clipChildren="false"
-    android:clipToPadding="false"
-    android:background="@drawable/bg_main_gradient">
+    android:clipToPadding="false">
+
+    <!-- Dimmed Full-Screen Overlay (Rest of screen) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000" />
+
+    <!-- Localized Background for Lists Area -->
+    <View
+        android:id="@+id/menu_panel_bg"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:alpha="0.3"
+        android:background="@drawable/bg_main_gradient"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/list" />
 
     <!-- The 50% Guide (Left Half) -->
     <androidx.constraintlayout.widget.Guideline

@@ -66,12 +66,13 @@ class InfoFragment : Fragment() {
                     val program = tvModel.currentProgram.value
                     
                     _binding?.let { b ->
-                        b.programProgress.visibility = View.VISIBLE
-                        b.currentTimeLabel.visibility = View.GONE
-                        b.totalTimeLabel.visibility = View.GONE
-                        b.programProgress.isEnabled = false // Disable seeking for Live TV
+                        if (SP.epgEnabled && program != null) {
+                            b.progressContainer.visibility = View.VISIBLE
+                            b.programProgress.visibility = View.VISIBLE
+                            b.currentTimeLabel.visibility = View.GONE
+                            b.totalTimeLabel.visibility = View.GONE
+                            b.programProgress.isEnabled = false // Disable seeking for Live TV
 
-                        if (program != null) {
                             val epgShiftMs = SP.epgShift * 3600_000L
                             val now = (Utils.getDateTimestamp() * 1000L) - epgShiftMs
                             val start = program.start
@@ -87,7 +88,7 @@ class InfoFragment : Fragment() {
                                 b.programProgress.progress = 0
                             }
                         } else {
-                            b.programProgress.progress = 0
+                            b.progressContainer.visibility = View.GONE
                         }
                     }
                 } else {
@@ -97,10 +98,14 @@ class InfoFragment : Fragment() {
                     
                     if (duration > 0) {
                         _binding?.let { b ->
+                            b.progressContainer.visibility = View.VISIBLE
                             b.programProgress.visibility = View.VISIBLE
                             b.currentTimeLabel.visibility = View.VISIBLE
                             b.totalTimeLabel.visibility = View.VISIBLE
-                            b.programProgress.isEnabled = true // Enable seeking for VOD
+                            
+                            // Enable seeking only for VOD on touch devices
+                            val hasTouch = requireContext().packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)
+                            b.programProgress.isEnabled = hasTouch 
 
                             b.programProgress.max = duration.toInt()
                             if (!isSeeking) {
@@ -137,6 +142,17 @@ class InfoFragment : Fragment() {
         _binding!!.root.setOnClickListener {
             dismiss()
         }
+
+        // Prevent dismissal when clicking the card itself
+        _binding!!.infoCard.setOnClickListener {
+            resetAutoHide()
+        }
+        
+        // Handle touch events on the card to reset timer
+        _binding!!.infoCard.setOnTouchListener { _, _ ->
+            resetAutoHide()
+            false // Continue to allow other events (like SeekBar)
+        }
         
         // SeekBar Listener
         _binding!!.programProgress.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
@@ -161,6 +177,11 @@ class InfoFragment : Fragment() {
         })
         
         return binding.root
+    }
+
+    private fun resetAutoHide() {
+        handler.removeCallbacks(removeRunnable)
+        handler.postDelayed(removeRunnable, delay)
     }
 
     fun show(tvViewModel: TVModel) {
@@ -229,6 +250,9 @@ class InfoFragment : Fragment() {
                     b.desc.text = "No current program info\nStatus: ${EPGManager.epgStatus}"
                     b.desc.visibility = View.VISIBLE
                     b.desc.isSelected = false
+                    
+                    // Hide progress if no EPG
+                    b.progressContainer.visibility = View.GONE
                 }
             }
 
@@ -258,13 +282,14 @@ class InfoFragment : Fragment() {
             b.nextProgramLabel.visibility = View.GONE
             b.nextProgramTitle.visibility = View.GONE
             b.nextProgramTime.visibility = View.GONE
+            b.progressContainer.visibility = View.GONE
         }
         // -------------------
 
         handler.removeCallbacks(removeRunnable)
         handler.removeCallbacks(updateProgressRunnable)
         view?.visibility = View.VISIBLE
-        handler.postDelayed(removeRunnable, delay)
+        resetAutoHide()
         handler.post(updateProgressRunnable) // Start updates
     }
 
