@@ -251,14 +251,12 @@ object TVList {
                 
                 // 1. Update Cooldown (Prevent redundant hits if not forced)
                 if (!force && (now - SP.lastUpdateTime < UPDATE_COOLDOWN_MS) && list.isNotEmpty()) {
-                    android.util.Log.i(TAG, "Update skipped: Cooldown active (${(now - SP.lastUpdateTime)/1000}s since last success)")
                     return@launch
                 }
 
                 // 2. Thundering Herd Protection (Silent/Startup Jitter)
                 if (silent && !force) {
                     val jitter = (0..5000).random().toLong()
-                    android.util.Log.d(TAG, "Thundering Herd Protection: Delaying update by ${jitter}ms")
                     kotlinx.coroutines.delay(jitter)
                 }
                 
@@ -281,7 +279,6 @@ object TVList {
                 val urls = mutableListOf<String>()
 
                 val allPlaylistUrls = SP.playlistUrls
-                android.util.Log.e("TVList", "SP.playlistUrls contains: $allPlaylistUrls")
 
                 // [NEW] EXCLUSIVE SOURCE MODE
                 // Check if user has added custom sources (excluding the system URLs and dead legacy URLs)
@@ -296,28 +293,22 @@ object TVList {
                 if (isPremium) {
                     // PREMIUM PRIORITY STACK
                     if (premiumUrl.isNotEmpty()) {
-                        android.util.Log.d("TVList", "Adding Premium Source: $premiumUrl")
                         urls.add(premiumUrl)
                     }
                     if (standardUrl.isNotEmpty() && standardUrl != premiumUrl) {
-                        android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
                         urls.add(standardUrl)
                     }
                 } else {
                     // STANDARD PRIORITY STACK
                     if (standardUrl.isNotEmpty()) {
-                        android.util.Log.d("TVList", "Adding Standard Source: $standardUrl")
                         urls.add(standardUrl)
                     }
                 }
                 
                 // Add custom user sources
                 if (customUrls.isNotEmpty()) {
-                    android.util.Log.i("TVList", "Adding ${customUrls.size} custom sources.")
                     urls.addAll(customUrls)
                 }
-                
-                android.util.Log.i("TVList", "Final Pooling List: $urls")
 
                 
                 withContext(Dispatchers.Main) {
@@ -353,11 +344,9 @@ object TVList {
                            }
                            val request = requestBuilder.build()
                            
-                           android.util.Log.d("TVList", "Requesting: $url (ETag: $etag)")
                            client.newCall(request).execute().use { response ->
                                // 1. Handle 304 Not Modified (Server says content hasn't changed)
                                if (response.code == 304) {
-                                   android.util.Log.d("TVList", "304 Not Modified for $url")
                                    withContext(Dispatchers.Main) {
                                         if (showUi) _importStatus.value = "Optimizing Stream Quality..."
                                    }
@@ -422,7 +411,6 @@ object TVList {
 
                                            // UPDATE CACHE
                                            sourceCache[url] = channels
-                                           android.util.Log.e("TVList", "Successfully parsed ${channels.size} channels from $url. File size: ${tempFile.length()} bytes")
                                            
                                            withContext(Dispatchers.Main) {
                                                if (showUi) _importStatus.value = "Curating Channels..."
@@ -542,7 +530,7 @@ object TVList {
                           
                           // Atomic rename
                           if (tempFile.renameTo(finalFile)) {
-                              Log.i("TVList", "Cache saved atomically: ${finalChannels.size} channels")
+                              // Cache saved successfully
                           } else {
                               Log.e("TVList", "Failed to rename temp cache file")
                           }

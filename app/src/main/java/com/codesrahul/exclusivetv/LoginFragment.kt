@@ -202,7 +202,6 @@ class LoginFragment : Fragment() {
                     }
                     
                     if (isValid) {
-                        Log.d(TAG, "Custom OTP verified successfully.")
                         signInWithPhoneAuthCredential(phoneNumber)
                     } else {
                         Log.w(TAG, "Invalid Custom OTP entered.")
@@ -214,7 +213,6 @@ class LoginFragment : Fragment() {
                     // Document doesn't exist -> New user trying to log in.
                     // Only allow access with the default OTP "123321".
                     if (code == "123321") {
-                        Log.d(TAG, "New user auto-registering with default OTP.")
                         signInWithPhoneAuthCredential(phoneNumber)
                     } else {
                         Log.w(TAG, "New user attempted login with invalid OTP: $code")
@@ -235,7 +233,6 @@ class LoginFragment : Fragment() {
     private fun signInWithPhoneAuthCredential(phoneNumber: String) {
         // We effectively bypass Firebase Auth sign in.
         // Save the phone number into SharedPreferences (SP.userId) instead.
-        Log.d(TAG, "Saving phone number to SP: $phoneNumber")
         SP.userId = phoneNumber
         checkSubscription()
     }

@@ -68,7 +68,6 @@ object SecureHttpClient {
      */
     @Synchronized
     fun refresh() {
-        Log.i(TAG, "Refreshing OkHttpClient with updated cert pins.")
         // Close old client's resources before replacing (releases thread pools + connection pool)
         _client?.connectionPool?.evictAll()
         _client?.dispatcher?.executorService?.shutdown()
@@ -78,16 +77,13 @@ object SecureHttpClient {
     private fun buildClient(): OkHttpClient {
         val remotePinsIndevs = parsePins(SP.sslPinsIndevs)
         val effectivePinsIndevs = if (remotePinsIndevs.isNotEmpty()) {
-            Log.i(TAG, "Using ${remotePinsIndevs.size} remote cert pin(s) for **.indevs.in")
             remotePinsIndevs
         } else {
-            Log.i(TAG, "No remote pins found for indevs — using ${FALLBACK_PINS_INDEVS.size} hardcoded fallback pin(s)")
             FALLBACK_PINS_INDEVS
         }
 
         val remotePinsGithub = parsePins(SP.sslPinsGithub)
         val effectivePinsGithub = if (remotePinsGithub.isNotEmpty()) {
-            Log.i(TAG, "Using ${remotePinsGithub.size} remote cert pin(s) for Github domains")
             remotePinsGithub
         } else {
             FALLBACK_PINS_GITHUB
@@ -95,7 +91,6 @@ object SecureHttpClient {
 
         val remotePinsVercel = parsePins(SP.sslPinsVercel)
         val effectivePinsVercel = if (remotePinsVercel.isNotEmpty()) {
-            Log.i(TAG, "Using ${remotePinsVercel.size} remote cert pin(s) for Vercel")
             remotePinsVercel
         } else {
             FALLBACK_PINS_VERCEL

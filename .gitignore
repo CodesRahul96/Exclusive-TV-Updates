@@ -29,8 +29,12 @@ keystore.properties
 testing/
 testing
 Testing
-debug_build_log_*.txt
+
+# Keep logs out of repository
 *.log
 *.logs
+*log*.txt
+*logs*.txt
 
-firebase_remote_config_reference.txt
+# Preserve important text files
+!firebase_remote_config_reference.txt

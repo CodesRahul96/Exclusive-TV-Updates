@@ -358,7 +358,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun bootstrap(skipSubCheck: Boolean = false) {
-        Log.i(TAG, "Starting Professional Bootstrap Flow (skipSubCheck=$skipSubCheck)...")
         showFragment(loadingFragment)
         
         // Step 0: Play Integrity Check (Phase 4 Security)
@@ -376,7 +375,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // Step 1: Initialize Remote Config
         initRemoteConfig { 
             if (skipSubCheck) {
-                 Log.i(TAG, "Skipping Sub Check (verified by LoginFragment). Fetching Cloud Settings...")
                  SyncManager.syncDown {
                      runOnUiThread { onBootstrapComplete() }
                  }
@@ -384,7 +382,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 // Step 2: Check Auth & Subscription (Only after config is fetched)
                 checkAuthAndSubscription { 
                     // Step 3: Trigger Final Data Load (Only after plan is known)
-                    Log.i(TAG, "Bootstrap Complete. Triggering final TVList update.")
                     runOnUiThread {
                         onBootstrapComplete()
                     }
@@ -397,7 +394,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         bootstrapWatchdogHandler.removeCallbacks(bootstrapWatchdogRunnable)
         if (!loadingFragment.isVisible && !loginFragment.isVisible) return // Already handled or done
 
-        Log.i(TAG, "Bootstrap Complete. Triggering final TVList update.")
         hideFragment(loginFragment)
         com.codesrahul.exclusivetv.models.TVList.update(this, silent = true)
         
@@ -422,12 +418,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         val integrityEnabled = remoteConfig.getBoolean("integrity_enabled")
         
         if (!integrityEnabled && !BuildConfig.DEBUG) {
-            Log.i(TAG, "Play Integrity check disabled via Remote Config.")
             onComplete()
             return
         }
 
-        Log.i(TAG, "Requesting Play Integrity token...")
         val integrityManager = IntegrityManagerFactory.create(applicationContext)
         
         // Use a random nonce for security
@@ -440,7 +434,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         integrityManager.requestIntegrityToken(integrityTokenRequest)
             .addOnSuccessListener { response ->
                 val integrityToken = response.token()
-                Log.i(TAG, "Play Integrity token received successfully.")
                 // Store or send this token to your backend for verification
                 // SP.integrityToken = integrityToken 
                 onComplete()
@@ -458,18 +451,15 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun checkAuthAndSubscription(onFinished: () -> Unit) {
-        Log.d(TAG, "Bootstrap Step 2: Checking Auth and Subscriptions")
         val currentUser = SP.userId
         
         if (currentUser == null) {
-            Log.d(TAG, "No user logged in, showing LoginFragment")
             runOnUiThread {
                 webFragment.stop()
                 showFragment(loginFragment)
                 hideFragment(loadingFragment)
             }
         } else {
-            Log.d(TAG, "User logged in: ${currentUser}, checking subscription...")
             runOnUiThread {
                 showFragment(loadingFragment)
                 hideFragment(loginFragment)
@@ -777,7 +767,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     // BUG FIX: OkHttpClient construction (thread pool + connection pool allocation)
                     // must NOT run on the main thread. Dispatch to IO.
                     CoroutineScope(Dispatchers.IO).launch {
-                        Log.i(TAG, "Remote cert pins fetched → rebuilding HTTP client on IO thread.")
                         SecureHttpClient.refresh()
                     }
                 }
@@ -1841,7 +1830,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // VPN enforcement on a TV stick is not a meaningful security boundary (users cannot
         // install unauthorized VPN apps on FireTV without sideloading), so we skip all checks.
         if (isTvDevice()) {
-            Log.d(TAG, "TV device detected. Skipping VPN check to prevent false positives.")
             return false
         }
 
