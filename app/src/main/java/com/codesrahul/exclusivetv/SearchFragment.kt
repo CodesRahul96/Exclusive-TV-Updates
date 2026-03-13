@@ -14,6 +14,12 @@ import com.codesrahul.exclusivetv.databinding.FragmentSearchBinding
 import com.codesrahul.exclusivetv.models.TVList
 import com.codesrahul.exclusivetv.models.TVListModel
 import com.codesrahul.exclusivetv.models.TVModel
+import android.os.Handler
+import android.os.Looper
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.app.Activity
+import androidx.activity.result.contract.ActivityResultContracts
 
 class SearchFragment : Fragment(), ListAdapter.ItemListener {
     private var _binding: FragmentSearchBinding? = null
@@ -21,6 +27,20 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
     
     private lateinit var listAdapter: ListAdapter
     private val searchResultsModel = TVListModel("Search Results", "Search Results", -1)
+    
+    private val voiceSearchLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.getOrNull(0)
+            if (!spokenText.isNullOrEmpty()) {
+                binding.searchEditText.setText(spokenText)
+                binding.searchEditText.setSelection(spokenText.length)
+                filter(spokenText)
+            }
+        }
+    }
+    
+    private val searchHandler = Handler(Looper.getMainLooper())
+    private var searchRunnable: Runnable? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -35,17 +55,32 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
         
         listAdapter.setItemListener(this)
         
+        showSuggestions()
+        
         binding.searchEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                filter(s.toString())
-                binding.btnClear.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+                val query = s.toString()
+                binding.btnClear.visibility = if (query.isEmpty()) View.GONE else View.VISIBLE
+                
+                if (query.isEmpty()) {
+                    showSuggestions()
+                    return
+                }
+
+                searchRunnable?.let { searchHandler.removeCallbacks(it) }
+                searchRunnable = Runnable { filter(query) }
+                searchHandler.postDelayed(searchRunnable!!, 300)
             }
             override fun afterTextChanged(s: Editable?) {}
         })
         
         binding.btnClear.setOnClickListener {
             binding.searchEditText.setText("")
+        }
+
+        binding.btnVoice.setOnClickListener {
+            startVoiceSearch()
         }
         
         binding.searchContainer.setOnClickListener { 
@@ -61,16 +96,27 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
 
     private fun filter(query: String) {
         if (query.isEmpty()) {
-            searchResultsModel.setTVListModel(emptyList())
-            listAdapter.update(searchResultsModel)
-            binding.noResults.visibility = View.GONE
+            showSuggestions()
             return
         }
 
+        val keywords = query.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        
         val filtered = TVList.listModel.filter { model ->
-            model.tv.title.contains(query, ignoreCase = true) || 
-            (model.tv.id + 1).toString() == query
+            val title = model.tv.title
+            
+            // 1. Exact match for channel number
+            val numMatch = (model.tv.id + 1).toString() == query.trim()
+            
+            // 2. Multi-word match for title (ALL keywords must be present)
+            val titleMatch = keywords.all { keyword -> 
+                title.contains(keyword, ignoreCase = true) 
+            }
+            
+            numMatch || titleMatch
         }
+
+        listAdapter.setSearchQuery(query)
 
         searchResultsModel.setTVListModel(filtered)
         listAdapter.update(searchResultsModel)
@@ -87,6 +133,11 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
     override fun onItemFocusChange(tvModel: TVModel, hasFocus: Boolean) {}
 
     override fun onItemClicked(tvModel: TVModel) {
+        val query = binding.searchEditText.text.toString()
+        if (query.isNotEmpty()) {
+            SP.addSearchHistory(query)
+        }
+        
         binding.searchEditText.setText("")
         TVList.setPositionByModel(tvModel)
         (activity as? MainActivity)?.hideSearchFragment()
@@ -96,9 +147,42 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
         return false
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    private fun showSuggestions() {
+        val recentlyWatched = SP.recentlyWatchedUrls
+        val history = SP.searchHistory
+        
+        val suggestedChannels = mutableListOf<TVModel>()
+        
+        // Add Recently Watched first
+        recentlyWatched.forEach { url ->
+            TVList.listModel.find { it.tv.uris.contains(url) }?.let { 
+                if (!suggestedChannels.contains(it)) suggestedChannels.add(it)
+            }
+        }
+        
+        // Add matching channels from Search History keywords if any (Optional, let's keep it simple for now)
+        // For now, let's just show "Recently Watched" as the initial state
+        
+        searchResultsModel.updateMetadata(
+            if (suggestedChannels.isEmpty()) "Search History" else "Recently Watched",
+            -1
+        )
+        searchResultsModel.setTVListModel(suggestedChannels)
+        listAdapter.setSearchQuery("") // Clear highlighting
+        listAdapter.update(searchResultsModel)
+        binding.noResults.visibility = View.GONE
+    }
+
+    private fun startVoiceSearch() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak channel name...")
+        }
+        try {
+            voiceSearchLauncher.launch(intent)
+        } catch (e: Exception) {
+            // Voice search not supported
+        }
     }
 
     companion object {
