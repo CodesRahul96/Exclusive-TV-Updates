@@ -18,6 +18,7 @@ class ChannelFragment : Fragment() {
     private val handler = Handler()
     private val delay: Long = 3000
     private var channel = 0
+    private var isManualEntry = false
 
     fun isShowing(): Boolean {
         return view?.visibility == View.VISIBLE
@@ -28,6 +29,7 @@ class ChannelFragment : Fragment() {
         handler.removeCallbacks(playRunnable)
         _binding?.let {
             it.content.text = ""
+            isManualEntry = false
             view?.visibility = View.GONE
         }
     }
@@ -61,11 +63,17 @@ class ChannelFragment : Fragment() {
         handler.removeCallbacks(hideRunnable)
         handler.removeCallbacks(playRunnable)
         binding.content.text = (tvViewModel.tv.id.plus(1)).toString()
+        isManualEntry = false
         view?.visibility = View.VISIBLE
         handler.postDelayed(hideRunnable, delay)
     }
 
     fun show(channel: String) {
+        if (!isManualEntry) {
+            binding.content.text = ""
+            isManualEntry = true
+        }
+
         if (binding.content.text.length >= 4) {
             return
         }
@@ -107,6 +115,7 @@ class ChannelFragment : Fragment() {
     private val hideRunnable = Runnable {
         _binding?.let {
             it.content.text = ""
+            isManualEntry = false
             view?.visibility = View.GONE
         }
     }

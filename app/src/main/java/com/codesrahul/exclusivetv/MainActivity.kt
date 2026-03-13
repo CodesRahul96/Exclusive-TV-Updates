@@ -58,7 +58,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     internal var epgGridFragment = EpgGridFragment()
     internal var offlineFragment = OfflineFragment()
     internal var maintenanceFragment = MaintenanceFragment()
-    internal var loginFragment = LoginFragment() // [NEW]
+    internal var loginFragment = LoginFragment()
+    internal var searchFragment = SearchFragment() // [NEW]
 
     private val spListener = object : OnSharedPreferenceChangeListener {
         override fun onSharedPreferenceChanged(key: String) {
@@ -117,6 +118,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (isRightArrowPressed) {
             showSetting()
             isRightArrowPressed = false
+        }
+    }
+
+    // [NEW] Search trigger hold tracking
+    private val searchHoldHandler = Handler(Looper.getMainLooper())
+    private var isSearchPressed = false
+    private val searchHoldRunnable = Runnable {
+        if (isSearchPressed) {
+            showSearchFragment()
+            isSearchPressed = false
         }
     }
 
@@ -297,6 +308,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             supportFragmentManager.findFragmentByTag("offline")?.let { offlineFragment = it as OfflineFragment }
             supportFragmentManager.findFragmentByTag("maintenance")?.let { maintenanceFragment = it as MaintenanceFragment }
             supportFragmentManager.findFragmentByTag("login")?.let { loginFragment = it as LoginFragment }
+            supportFragmentManager.findFragmentByTag("search")?.let { searchFragment = it as SearchFragment }
         }
 
         if (savedInstanceState == null) {
@@ -315,10 +327,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .add(R.id.main_browse_fragment, offlineFragment, "offline")
                 .add(R.id.main_browse_fragment, maintenanceFragment, "maintenance")
                 .add(R.id.main_browse_fragment, loginFragment, "login")
+                .add(R.id.main_browse_fragment, searchFragment, "search")
                 .hide(menuFragment).hide(settingFragment).hide(importProgressFragment)
                 .hide(trackSelectionFragment).hide(offlineFragment).hide(maintenanceFragment)
                 .hide(epgGridFragment).hide(errorFragment).hide(timeFragment)
-                .hide(webFragment)
+                .hide(webFragment).hide(searchFragment)
 
             // Smart Startup: Check Login Status
             if (SP.userId != null) {
@@ -820,6 +833,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // Hide error and show loader
         hideErrorFragment()
         showFragment(loadingFragment)
+        hideSearchFragment()
         
         // Remove previous observers to avoid leaks/multi-triggers
         tvModel.errInfo.removeObservers(this)
@@ -932,18 +946,18 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         }
         */
-        private val speedRunnable = Runnable {
-            if (isLongPressActive) {
-                webFragment.setPlaybackSpeed(2.0f)
-                gestureHudRoot.visibility = View.VISIBLE
-                hudSpeed.visibility = View.VISIBLE
-                hudSpeed.text = "2X Speed"
-            }
-        }
 
         private val settingsRunnable = Runnable {
             if (isLongPressActive) {
                 showSetting()
+                isLongPressActive = false
+            }
+        }
+
+        // [NEW] Mobile center hold search trigger (3s)
+        private val mobileSearchRunnable = Runnable {
+            if (isLongPressActive) {
+                showSearchFragment()
                 isLongPressActive = false
             }
         }
@@ -1020,22 +1034,19 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 // Right side -> Settings Menu (3s hold)
                 longPressHandler.postDelayed(settingsRunnable, 3000)
             } else if (x > screenWidth * 0.3 && x < screenWidth * 0.7) {
-                // Center -> 2x Speed
-                longPressHandler.postDelayed(speedRunnable, 500)
+                // Center -> Search (1.5s)
+
+                longPressHandler.postDelayed(mobileSearchRunnable, 1500)
             }
         }
 
         fun cancelTimedLongPress() {
             if (isLongPressActive) {
-                webFragment.setPlaybackSpeed(1.0f)
-                if (hudSpeed.visibility == View.VISIBLE) {
-                    gestureHudRoot.visibility = View.GONE
-                    hudSpeed.visibility = View.GONE
-                }
             }
             isLongPressActive = false
             longPressHandler.removeCallbacks(settingsRunnable)
-            longPressHandler.removeCallbacks(speedRunnable)
+
+            longPressHandler.removeCallbacks(mobileSearchRunnable)
         }
         // showSeekHud moved below GestureListener
 
@@ -1111,12 +1122,37 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 adjustVolume(distanceY)
                 return true
             }
+
+            // 3. Horizontal Swipe on Center 40% -> Seek
+            if (x > screenWidth * 0.3 && x < screenWidth * 0.7) {
+                if (Math.abs(distanceX) > Math.abs(distanceY)) {
+                    adjustSeek(distanceX)
+                    return true
+                }
+            }
             
             return true
         }
 
+        private fun adjustSeek(deltaX: Float) {
+            val screenWidth = windowManager.defaultDisplay.width
+            val duration = webFragment.getDuration()
+            if (duration <= 0) return // Cannot seek if no duration (live stream without buffer)
+
+            // Total swipe of screen width = 5 minutes (300,000 ms)
+            // But let's limit it to duration if it's shorter
+            val maxSeekRange = Math.min(300000L, duration).toFloat()
+            val seekScale = maxSeekRange / screenWidth
+            
+            scrollSeekDelta -= (deltaX * seekScale).toLong()
+            showSeekHud(scrollSeekDelta)
+        }
+
         fun onScrollEnd() {
             if (isScrolling) {
+                if (scrollSeekDelta != 0L) {
+                    webFragment.seekRelative(scrollSeekDelta)
+                }
                 isScrolling = false
                 scrollSeekDelta = 0
                 
@@ -1410,25 +1446,36 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (!trackSelectionFragment.isHidden) trackSelectionActive()
         
         // Intercept Select/Enter for Info Card or Channel Switch when in Playback Mode (No menus visible)
-        if (event.action == KeyEvent.ACTION_DOWN && 
-           (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER)) {
-             
-             if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
-                 if (channelFragment.isNumberEntering()) {
-                     channelFragment.playNow()
-                     return true
-                 }
-                 
-                 if (infoFragment.isShowing()) {
-                     infoFragment.dismiss()
-                 } else {
-                     val tvModel = TVList.getTVModel()
-                     if (tvModel != null) {
-                         infoFragment.show(tvModel)
-                     }
-                 }
-                 return true // Consumed
-             }
+        if (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER) {
+            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && searchFragment.isHidden) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    if (event.repeatCount == 0) {
+                        isSearchPressed = true
+                        searchHoldHandler.postDelayed(searchHoldRunnable, 1500)
+                    }
+                    if (channelFragment.isNumberEntering()) {
+                        channelFragment.playNow()
+                        return true
+                    }
+                } else if (event.action == KeyEvent.ACTION_UP) {
+                    if (isSearchPressed) {
+                        isSearchPressed = false
+                        searchHoldHandler.removeCallbacks(searchHoldRunnable)
+                        
+                        // Short press behavior
+                        if (infoFragment.isShowing()) {
+                            infoFragment.dismiss()
+                        } else {
+                            val tvModel = TVList.getTVModel()
+                            if (tvModel != null) {
+                                infoFragment.show(tvModel)
+                            }
+                        }
+                    }
+                    return true
+                }
+                return true
+            }
         }
         
         if (event.action == KeyEvent.ACTION_DOWN) {
@@ -1546,6 +1593,17 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         return super.dispatchKeyEvent(event)
     }
 
+    fun showSearchFragment() {
+        if (!searchFragment.isHidden) return
+        showFragment(searchFragment)
+        searchFragment.showKeyboard()
+    }
+
+    fun hideSearchFragment() {
+        if (searchFragment.isHidden) return
+        hideFragment(searchFragment)
+    }
+
     private fun toggleEpgGrid() {
         if (epgGridFragment.isHidden) {
             showEpgGrid()
@@ -1628,6 +1686,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun back() {
+        if (!searchFragment.isHidden) {
+            hideSearchFragment()
+            return
+        }
         if (!menuFragment.isHidden) {
             hideMenuFragment()
             return
