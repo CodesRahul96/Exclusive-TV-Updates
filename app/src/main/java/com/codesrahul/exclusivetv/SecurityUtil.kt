@@ -66,7 +66,7 @@ object SecurityUtil {
         }
 
         // Root Check
-        if (RootCheckUtil.isDeviceRooted()) {
+        if (RootCheckUtil.isDeviceRooted(context)) {
             android.util.Log.e("SecurityUtil", "Security Violation: Root detected")
             return true
         }
@@ -189,8 +189,8 @@ object SecurityUtil {
                 hmacPool.set(mac)
             }
             val secretKeySpec = javax.crypto.spec.SecretKeySpec(key.toByteArray(Charsets.UTF_8), "HmacSHA256")
-            mac.init(secretKeySpec)
-            val hash = mac.doFinal(data.toByteArray(Charsets.UTF_8))
+            mac?.init(secretKeySpec)
+            val hash = mac?.doFinal(data.toByteArray(Charsets.UTF_8)) ?: return ""
             return android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
         } catch (e: Exception) {
             return ""

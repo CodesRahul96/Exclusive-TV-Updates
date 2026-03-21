@@ -5,12 +5,18 @@ import java.io.InputStreamReader
 
 object RootCheckUtil {
 
-    fun isDeviceRooted(): Boolean {
-        return checkRootMethod1() || checkRootMethod2() || checkRootMethod3() || checkRootMethod4()
+    fun isDeviceRooted(context: android.content.Context): Boolean {
+        val isTV = isTvDevice(context)
+        
+        // On TV devices, we skip checkRootMethod3 ('which su') as it's a common false positive
+        return checkRootMethod1() || 
+               checkRootMethod2() || 
+               (!isTV && checkRootMethod3()) || 
+               checkRootByPackages(context)
     }
 
     private fun checkRootMethod1(): Boolean {
-        // Disabled: Many Android TV boxes use test-keys by default, which causes false positives.
+        // Many Android TV boxes use test-keys by default, which causes false positives.
         return false
     }
 
@@ -32,6 +38,7 @@ object RootCheckUtil {
     }
 
     private fun checkRootMethod3(): Boolean {
+        // Only run 'which su' on non-TV devices or if other checks are uncertain
         return try {
             val process = Runtime.getRuntime().exec(arrayOf("which", "su"))
             val input = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
@@ -40,16 +47,36 @@ object RootCheckUtil {
             false
         }
     }
-    
-    private fun checkRootMethod4(): Boolean {
-        var process: Process? = null
-        return try {
-            process = Runtime.getRuntime().exec("su")
-            true
-        } catch (e: Exception) {
-            false
-        } finally {
-            process?.destroy()
+
+    private fun checkRootByPackages(context: android.content.Context): Boolean {
+        val rootPackages = arrayOf(
+            "com.noshufou.android.su",
+            "com.thirdparty.superuser",
+            "eu.chainfire.supersu",
+            "com.koushikdutta.superuser",
+            "com.zacharee1.systemuituner",
+            "com.topjohnwu.magisk",
+            "com.kingroot.kinguser",
+            "com.kingo.root",
+            "com.smedialink.oneclickroot",
+            "com.zhiqupk.root.global",
+            "com.alephzain.framaroot"
+        )
+        
+        val pm = context.packageManager
+        return rootPackages.any { pkg ->
+            try {
+                pm.getPackageInfo(pkg, 0)
+                true
+            } catch (e: Exception) {
+                false
+            }
         }
+    }
+
+    fun isTvDevice(context: android.content.Context): Boolean {
+        val uiModeManager = context.getSystemService(android.content.Context.UI_MODE_SERVICE) as? android.app.UiModeManager
+        return uiModeManager?.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION ||
+               context.packageManager.hasSystemFeature("android.software.leanback")
     }
 }

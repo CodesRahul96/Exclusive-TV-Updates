@@ -1963,7 +1963,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         CoroutineScope(Dispatchers.IO).launch {
             while (!isFinishing) {
                 try {
-                    val isRooted = RootCheckUtil.isDeviceRooted()
+                    val isRooted = RootCheckUtil.isDeviceRooted(this@MainActivity)
                     if (isRooted && !wasRooted) {
                         runOnUiThread {
                             if (!isFinishing) {
