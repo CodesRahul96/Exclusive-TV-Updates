@@ -2,11 +2,20 @@ package com.codesrahul.exclusivetv
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.functions.FirebaseFunctions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Date
+import java.util.Locale
+import java.text.SimpleDateFormat
 
 object SubscriptionManager {
 
     private const val COLLECTION_USERS = "users"
+    private const val COLLECTION_TRIALS = "trials"
+    private const val COLLECTION_MASTER_BYPASS = "master_bypass"
     private const val FIELD_EXPIRY_DATE = "expiry_date"
     
     var expiryDate: Date? = null
@@ -137,6 +146,18 @@ object SubscriptionManager {
 
 
 
+                    // --- SHADOW BAN CHECK ---
+                    val status = (document.getString("status") ?: "active").lowercase()
+                    if (status == "banned") {
+                        android.util.Log.e("SubscriptionManager", "ACCESS DENIED: User $phoneNumber is shadow-banned.")
+                        // We simulate a successful "Standard" response so the user doesn't immediately 
+                        // know they are banned, but we restrict their experience.
+                        this.planName = "Standard"
+                        this.expiryDate = null
+                        onSuccess() 
+                        return@addOnSuccessListener
+                    }
+                    
                     // PLAN VALIDATION
                     if ("Premium".equals(plan, ignoreCase = true)) {
                         if (expiryDate != null && expiryDate.after(Date())) {
@@ -152,31 +173,93 @@ object SubscriptionManager {
                         onSuccess()
                     }
                 } else {
-                    // Auto-register new user as "Standard"
+                    // --- ADVANCED AUTO-REGISTRATION: CLOUD FUNCTIONS + INTEGRITY ---
                     val context = com.codesrahul.exclusivetv.MyTVApplication.getInstance()
                     val currentDeviceId = SecurityUtil.getDeviceId(context)
-                    val newUser = hashMapOf(
-                        "plan" to "Standard",
-                        "device_id" to currentDeviceId,
-                        "created_at" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
-                        "phone_number" to phoneNumber // Storing redundantly inside document for convenience
-                    )
-                    db.collection(COLLECTION_USERS).document(phoneNumber)
-                        .set(newUser)
-                        .addOnSuccessListener {
-                            android.util.Log.i("SubscriptionManager", "Auto-registered new user: $phoneNumber")
-                            this.planName = "Standard"
-                            onSuccess()
+                    val robustFingerprint = SecurityUtil.getDeviceFingerprint(context)
+                    
+                    CoroutineScope(Dispatchers.Main).launch {
+                        try {
+                            // 1. Get Integrity Token
+                            val integrityToken = IntegrityManager.getIntegrityToken(context)
+                            
+                            // 2. Call registerUser Cloud Function
+                            val functions = FirebaseFunctions.getInstance()
+                            val data = hashMapOf(
+                                "phoneNumber" to phoneNumber,
+                                "deviceFingerprint" to robustFingerprint,
+                                "integrityToken" to integrityToken,
+                                "deviceId" to currentDeviceId
+                            )
+
+                            functions
+                                .getHttpsCallable("registerUser")
+                                .call(data)
+                                .addOnSuccessListener { result ->
+                                    val resData = result.data as? Map<*, *>
+                                    val plan = resData?.get("plan") as? String ?: "Standard"
+                                    
+                                    android.util.Log.i("SubscriptionManager", "Server Registration Success: $plan")
+                                    this@SubscriptionManager.planName = plan
+                                    
+                                    val expiryStr = resData?.get("expiry_date") as? String
+                                    if (expiryStr != null) {
+                                        this@SubscriptionManager.expiryDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).parse(expiryStr)
+                                    }
+                                    onSuccess()
+                                }
+                                .addOnFailureListener { e ->
+                                    android.util.Log.e("SubscriptionManager", "Cloud Function failed: ${e.message}")
+                                    performLegacyRegistration(db, phoneNumber, currentDeviceId, robustFingerprint, onSuccess, onError)
+                                }
+                        } catch (e: Exception) {
+                            android.util.Log.e("SubscriptionManager", "Registration error: ${e.message}")
+                            performLegacyRegistration(db, phoneNumber, currentDeviceId, robustFingerprint, onSuccess, onError)
                         }
-                        .addOnFailureListener { e ->
-                            android.util.Log.e("SubscriptionManager", "Failed to auto-register user: $e")
-                            onError("Failed to create account. Please try again.")
-                        }
+                    }
                 }
             }
             .addOnFailureListener { exception ->
                 onError("Verification failed: ${exception.message}")
             }
+    }
+
+    private fun performLegacyRegistration(
+        db: FirebaseFirestore,
+        phoneNumber: String,
+        currentDeviceId: String,
+        robustFingerprint: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        android.util.Log.w("SubscriptionManager", "Falling back to legacy client-side registration")
+        db.collection(COLLECTION_MASTER_BYPASS).document(phoneNumber).get()
+            .addOnSuccessListener { bypassDoc ->
+                val isMasterUser = bypassDoc.exists()
+                db.collection(COLLECTION_TRIALS).document(robustFingerprint).get()
+                    .addOnSuccessListener { trialDoc ->
+                        val hasHadTrial = trialDoc.exists()
+                        val newUser = hashMapOf<String, Any>(
+                            "device_id" to currentDeviceId,
+                            "device_fingerprint" to robustFingerprint,
+                            "created_at" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                            "phone_number" to phoneNumber,
+                            "plan" to if (isMasterUser || !hasHadTrial) "Premium" else "Standard"
+                        )
+                        if (newUser["plan"] == "Premium") {
+                            val cal = java.util.Calendar.getInstance()
+                            cal.add(java.util.Calendar.DAY_OF_YEAR, 7)
+                            newUser[FIELD_EXPIRY_DATE] = cal.time
+                        }
+                        db.collection(COLLECTION_USERS).document(phoneNumber).set(newUser).addOnSuccessListener {
+                            this.planName = newUser["plan"] as String
+                            this.expiryDate = newUser[FIELD_EXPIRY_DATE] as? Date
+                            onSuccess()
+                        }.addOnFailureListener { onError("Registration failed") }
+                    }
+                    .addOnFailureListener { onError("Trial check failed") }
+            }
+            .addOnFailureListener { onError("Bypass check failed") }
     }
     
     fun signOut(context: android.content.Context) {

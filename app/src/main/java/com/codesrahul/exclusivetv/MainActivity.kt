@@ -863,6 +863,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
 
         // Play in WebFragment
+        val url = tvModel.videoUrl.value ?: ""
+        if (url.isNotEmpty()) {
+            SP.addRecentlyWatched(url)
+        }
+
         webFragment.play(tvModel)
         
         // Show info overlay
@@ -1447,7 +1452,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         
         // Intercept Select/Enter for Info Card or Channel Switch when in Playback Mode (No menus visible)
         if (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || event.keyCode == KeyEvent.KEYCODE_ENTER) {
-            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && searchFragment.isHidden) {
+            // Only toggle Info/Search if NO overlay menu is showing
+            if (menuFragment.isHidden && settingFragment.isHidden && 
+                trackSelectionFragment.isHidden && epgGridFragment.isHidden && 
+                searchFragment.isHidden && loginFragment.isHidden && 
+                loadingFragment.isHidden && maintenanceFragment.isHidden && 
+                offlineFragment.isHidden) {
                 if (event.action == KeyEvent.ACTION_DOWN) {
                     if (event.repeatCount == 0) {
                         isSearchPressed = true

@@ -160,6 +160,25 @@ object SecurityUtil {
     }
 
     /**
+     * Generates a robust hardware fingerprint by combining multiple hardware traits.
+     * This makes it harder to bypass trial restrictions by just changing the Android ID.
+     */
+    fun getDeviceFingerprint(context: Context): String {
+        val androidId = getDeviceId(context)
+        val hardwareInfo = Build.BOARD + Build.BRAND + Build.DEVICE + Build.DISPLAY +
+                          Build.HOST + Build.ID + Build.MANUFACTURER + Build.MODEL +
+                          Build.PRODUCT + Build.TAGS + Build.TYPE + Build.USER
+        
+        return try {
+            val md = java.security.MessageDigest.getInstance("MD5")
+            val bytes = md.digest((androidId + hardwareInfo).toByteArray())
+            bytes.joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            androidId // Fallback to plain Android ID on error
+        }
+    }
+
+    /**
      * Generates an HMAC-SHA256 signature for API requests.
      */
     fun generateHmacSha256(data: String, key: String): String {

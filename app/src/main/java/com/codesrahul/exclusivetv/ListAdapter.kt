@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -32,6 +32,9 @@ import android.view.MotionEvent
 import java.util.Collections
 import kotlinx.coroutines.launch
 import androidx.recyclerview.widget.DiffUtil
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
+import android.text.Spannable
 
 
 class ListAdapter(
@@ -52,6 +55,11 @@ class ListAdapter(
 
     val application = context.applicationContext as MyTVApplication
     private var movingPosition = -1
+    private var searchQuery: String = ""
+
+    fun setSearchQuery(query: String) {
+        this.searchQuery = query
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(context)
@@ -160,7 +168,7 @@ class ListAdapter(
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
         val tvModel = internalList.getOrNull(position) ?: return
         
-        viewHolder.bind(tvModel, movingPosition, position)
+        viewHolder.bind(tvModel, movingPosition, position, searchQuery)
 
         // Reset selected state to prevent sticky yellow borders from recycled views
         viewHolder.itemView.isSelected = false
@@ -352,7 +360,7 @@ class ListAdapter(
             like(liked)
         }
 
-        fun bind(tvModel: TVModel, movePos: Int, currentPos: Int) {
+        fun bind(tvModel: TVModel, movePos: Int, currentPos: Int, query: String = "") {
             // Unsubscribe from old model
             if (isAttached) {
                 currentTvModel?.currentProgram?.removeObserver(epgObserver)
@@ -367,11 +375,14 @@ class ListAdapter(
                 currentTvModel?.like?.observeForever(likeObserver)
             }
             
-            bindTitle(tvModel.tv.title)
+            bindTitle(tvModel.tv.title, query)
             
             // Initial EPG bind
             if (SP.epgEnabled) {
                 bindDescription(tvModel.currentProgram.value?.title)
+            } else if (query.isNotEmpty() && tvModel.tv.group.isNotEmpty()) {
+                // Show Group Tag in search results if EPG is off/empty
+                bindDescription("Category: ${tvModel.tv.group}")
             } else {
                 bindDescription(null)
             }
@@ -398,8 +409,28 @@ class ListAdapter(
             currentTvModel?.like?.removeObserver(likeObserver)
         }
 
-        fun bindTitle(text: String) {
-            binding.title.text = text
+        fun bindTitle(text: String, query: String = "") {
+            if (query.isEmpty()) {
+                binding.title.text = text
+                return
+            }
+
+            val spannable = SpannableString(text)
+            val keywords = query.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+            
+            for (keyword in keywords) {
+                var index = text.indexOf(keyword, ignoreCase = true)
+                while (index >= 0) {
+                    spannable.setSpan(
+                        ForegroundColorSpan(Color.parseColor("#FFD700")), // Gold
+                        index,
+                        index + keyword.length,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                    index = text.indexOf(keyword, index + keyword.length, ignoreCase = true)
+                }
+            }
+            binding.title.text = spannable
         }
 
         fun bindDescription(text: String?) {

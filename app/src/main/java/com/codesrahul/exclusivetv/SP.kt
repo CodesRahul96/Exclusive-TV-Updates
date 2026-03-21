@@ -70,6 +70,8 @@ object SP {
     private const val KEY_SSL_PINS_INDEVS = "ssl_pins_indevs" // [NEW] Remote cert pinning
     private const val KEY_SSL_PINS_GITHUB = "ssl_pins_github" // [NEW]
     private const val KEY_SSL_PINS_VERCEL = "ssl_pins_vercel" // [NEW]
+    private const val KEY_SEARCH_HISTORY = "search_history"
+    private const val KEY_RECENTLY_WATCHED = "recently_watched"
 
     private lateinit var sp: SharedPreferences
     private lateinit var esp: SharedPreferences
@@ -401,6 +403,30 @@ object SP {
         } else {
             sp.edit().putString(KEY_ETAG_MAP + "_" + url.hashCode(), etag).apply()
         }
+    }
+
+    var searchHistory: List<String>
+        get() = sp.getString(KEY_SEARCH_HISTORY, "")?.split("|")?.filter { it.isNotEmpty() } ?: emptyList()
+        set(value) = sp.edit().putString(KEY_SEARCH_HISTORY, value.take(10).joinToString("|")).apply()
+
+    fun addSearchHistory(query: String) {
+        if (query.isBlank()) return
+        val current = searchHistory.toMutableList()
+        current.remove(query)
+        current.add(0, query)
+        searchHistory = current
+    }
+
+    var recentlyWatchedUrls: List<String>
+        get() = sp.getString(KEY_RECENTLY_WATCHED, "")?.split("|")?.filter { it.isNotEmpty() } ?: emptyList()
+        set(value) = sp.edit().putString(KEY_RECENTLY_WATCHED, value.take(10).joinToString("|")).apply()
+
+    fun addRecentlyWatched(url: String) {
+        if (url.isBlank()) return
+        val current = recentlyWatchedUrls.toMutableList()
+        current.remove(url)
+        current.add(0, url)
+        recentlyWatchedUrls = current
     }
 
     var epgEnabled: Boolean

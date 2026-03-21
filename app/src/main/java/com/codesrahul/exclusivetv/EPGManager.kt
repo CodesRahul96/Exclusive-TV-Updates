@@ -23,9 +23,7 @@ object EPGManager {
         "https://avkb.short.gy/jioepg.xml.gz",
         "https://avkb.short.gy/epg.xml.gz",
         "https://avkb.short.gy/tsepg.xml.gz",
-        "https://tsepg.cf/epg.xml.gz",
-        "https://whythishome.github.io/epg/guides/dishtv.in_en.xml.gz",
-        "https://avkb.short.gy/skyepg.xml.gz"
+        "https://tsepg.cf/epg.xml.gz"
     )
 
     private val REGEX_BRACKETS = Regex("\\(.*?\\)")
