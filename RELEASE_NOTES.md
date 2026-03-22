@@ -1,21 +1,19 @@
-# ExclusiveTV v1.1.6
+# ExclusiveTV v1.1.7
 
-## 🚀 Features & Enhancements
-- **Advanced Player Controls**: Integrated gesture zones for intuitive navigation and playback control.
-- **Settings Synchronization**: Implemented Firestore settings sync to maintain user preferences across devices.
-- **Sleep Timer**: Added sleep timer functionality with cloud synchronization.
-- **UI/UX Polish**: 
-    - Refined UI consistency with stability guardrails.
-    - Mobile-optimized information cards for better readability.
-    - Added quick-access shortcut: Hold Right Arrow (3s) to open Settings.
-- **Performance Optimization**: Removed developer log overhead and optimized background data handling.
+## 🛡️ Security & Anti-Fraud
+- **7-Day Premium Trial**: Introduced a secure 7-day trial for new users with device-based anti-fraud protection.
+- **Google Play Integrity**: Integrated the Integrity API to ensure the app is running on a genuine, untampered device.
+- **Server-Side Registration**: Moved user registration to Firebase Cloud Functions for enhanced security.
+- **Advanced Root Detection**: Refined detection logic for better compatibility with Android TV devices.
+- **Shadow Banning**: Implemented a stealth banning system to protect premium content.
 
-## 🛠 Parser & Backend Improvements
-- **Resilient Metadata Parsing**: Enhanced M3U and JSON parsers with Base64 decoding and #EXT-X-KEY support.
-- **Advanced Architecture**: Introduced `ParserFactory` and expanded alias sets for superior compatibility with JioTV, Kodi, and other formats.
-- **Parser Resilience**: Robust Regex fallbacks and improved query header support for varied playlist sources.
+## 📺 Playback & UI Enhancements
+- **Universal Dynamic Streams**: Added HLS hinting for `.php` and `.aspx` streams, ensuring reliable playback across more providers.
+- **Refined Category Modal**: Added a native-feeling drag handle and optimized bottom padding for better accessibility.
+- **SafeArea Fixes**: Improved layout responsiveness to prevent UI elements from being cut off by system bars.
 
-## 🐛 Bug Fixes & Stability
-- Corrected audio track synchronization during playback.
-- Fixed last-channel state persistence and sync logic.
-- Comprehensive cleanup of legacy log artifacts and repository state.
+## 🛠️ Bug Fixes & Stability
+- Corrected Enter key interception on the login screen and emulators.
+- Fixed native library extraction issues (`UnsatisfiedLinkError`) for broader device support.
+- Optimized `EmbeddedPlayer` buffer handling to prevent crashes during long sessions.
+
