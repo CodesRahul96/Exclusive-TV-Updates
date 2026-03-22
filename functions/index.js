@@ -20,7 +20,7 @@ exports.registerUser = functions.https.onCall(async (data, context) => {
     }
 
     // 2. IP-Based Rate Limiting
-    const ipRef = db.collection("registrations_by_ip").document(ipAddress);
+    const ipRef = db.collection("registrations_by_ip").doc(ipAddress);
     const ipDoc = await ipRef.get();
     const now = admin.firestore.Timestamp.now();
     
@@ -56,7 +56,18 @@ exports.registerUser = functions.https.onCall(async (data, context) => {
     const bypassDoc = await bypassRef.get();
     const isMasterUser = bypassDoc.exists;
 
-    // 5. Trial Check (Device Fingerprint)
+    // 5. Check if device already has a user
+    const deviceUsers = await db.collection("users")
+        .where("device_fingerprint", "==", deviceFingerprint)
+        .limit(1)
+        .get();
+    
+    if (!deviceUsers.empty) {
+        // Device already registered with a DIFFERENT phone number
+        throw new functions.https.HttpsError("already-exists", "This device is already registered with another account.");
+    }
+
+    // 6. Trial Check (Device Fingerprint)
     const trialRef = db.collection("trials").doc(deviceFingerprint);
     const trialDoc = await trialRef.get();
     const hasHadTrial = trialDoc.exists;

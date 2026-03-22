@@ -2,8 +2,10 @@ package com.codesrahul.exclusivetv
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -164,8 +166,39 @@ object SubscriptionManager {
                             android.util.Log.d("SubscriptionManager", "Premium Validated. Expires: $expiryDate")
                             onSuccess()
                         } else {
-                            android.util.Log.w("SubscriptionManager", "Premium Expired: $expiryDate")
-                            onError("Subscription expired on ${expiryDate ?: "Unknown"}")
+                            android.util.Log.w("SubscriptionManager", "Premium Expired. Checking Master Status for Downgrade...")
+                            
+                            // Check master_bypass before downgrading
+                            db.collection(COLLECTION_MASTER_BYPASS).document(phoneNumber).get()
+                                .addOnCompleteListener { task ->
+                                    val isMaster = task.isSuccessful && task.result?.exists() == true
+                                    
+                                    if (isMaster) {
+                                        android.util.Log.i("SubscriptionManager", "User $phoneNumber is a Master User. Expiry ignored.")
+                                        onSuccess()
+                                    } else {
+                                        android.util.Log.w("SubscriptionManager", "User $phoneNumber is NOT a Master User. Downgrading to Standard.")
+                                        
+                                        // 1. Update Firestore
+                                        db.collection(COLLECTION_USERS).document(phoneNumber)
+                                            .update("plan", "Standard", FIELD_EXPIRY_DATE, null)
+                                            .addOnSuccessListener {
+                                                android.util.Log.i("SubscriptionManager", "Firestore Downgrade Successful")
+                                            }
+                                            .addOnFailureListener { e ->
+                                                android.util.Log.e("SubscriptionManager", "Firestore Downgrade Failed: ${e.message}")
+                                            }
+                                        
+                                        // 2. Update Local State
+                                        this.planName = "Standard"
+                                        this.expiryDate = null
+                                        
+                                        // 3. Force Channel Refresh
+                                        com.codesrahul.exclusivetv.models.TVList.clear(com.codesrahul.exclusivetv.MyTVApplication.getInstance())
+                                        
+                                        onSuccess()
+                                    }
+                                }
                         }
                     } else {
                         // Standard users don't need expiry validation
@@ -206,10 +239,17 @@ object SubscriptionManager {
                                     if (expiryStr != null) {
                                         this@SubscriptionManager.expiryDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).parse(expiryStr)
                                     }
+                                    
+                                    // Ensure channel list is cleared so Premium channels load immediately
+                                    com.codesrahul.exclusivetv.models.TVList.clear(context)
+                                    
                                     onSuccess()
                                 }
                                 .addOnFailureListener { e ->
-                                    android.util.Log.e("SubscriptionManager", "Cloud Function failed: ${e.message}")
+                                    android.util.Log.e("SubscriptionManager", "Cloud Function 'registerUser' failed: ${e.message}")
+                                    if (e is FirebaseFunctionsException) {
+                                        android.util.Log.e("SubscriptionManager", "Code: ${e.code}, Details: ${e.details}")
+                                    }
                                     performLegacyRegistration(db, phoneNumber, currentDeviceId, robustFingerprint, onSuccess, onError)
                                 }
                         } catch (e: Exception) {
@@ -232,34 +272,93 @@ object SubscriptionManager {
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        android.util.Log.w("SubscriptionManager", "Falling back to legacy client-side registration")
+        android.util.Log.w("SubscriptionManager", "Falling back to legacy client-side registration for $phoneNumber")
+        
+        // --- ROBUST BYPASS CHECK ---
+        // If we can't check the master_bypass collection (e.g. Permission Denied), 
+        // we should NOT block the entire registration. We just assume isMasterUser = false.
         db.collection(COLLECTION_MASTER_BYPASS).document(phoneNumber).get()
-            .addOnSuccessListener { bypassDoc ->
-                val isMasterUser = bypassDoc.exists()
+            .addOnCompleteListener { task ->
+                val isMasterUser = if (task.isSuccessful) {
+                    task.result?.exists() == true
+                } else {
+                    android.util.Log.w("SubscriptionManager", "Bypass check failed (might be expected): ${task.exception?.message}")
+                    false // Proceed as non-master user
+                }
+
+                // --- ROBUST TRIAL CHECK ---
+                // If we can't check the trials collection (e.g. Permission Denied), 
+                // we should NOT block the entire registration. We proceed as if they haven't had a trial.
                 db.collection(COLLECTION_TRIALS).document(robustFingerprint).get()
-                    .addOnSuccessListener { trialDoc ->
-                        val hasHadTrial = trialDoc.exists()
-                        val newUser = hashMapOf<String, Any>(
-                            "device_id" to currentDeviceId,
-                            "device_fingerprint" to robustFingerprint,
-                            "created_at" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
-                            "phone_number" to phoneNumber,
-                            "plan" to if (isMasterUser || !hasHadTrial) "Premium" else "Standard"
-                        )
-                        if (newUser["plan"] == "Premium") {
-                            val cal = java.util.Calendar.getInstance()
-                            cal.add(java.util.Calendar.DAY_OF_YEAR, 7)
-                            newUser[FIELD_EXPIRY_DATE] = cal.time
+                    .addOnCompleteListener { trialTask ->
+                        val hasHadTrial = if (trialTask.isSuccessful) {
+                            trialTask.result?.exists() == true
+                        } else {
+                            android.util.Log.w("SubscriptionManager", "Trial check failed (might be expected): ${trialTask.exception?.message}")
+                            false // Proceed as if no previous trial (generous)
                         }
-                        db.collection(COLLECTION_USERS).document(phoneNumber).set(newUser).addOnSuccessListener {
-                            this.planName = newUser["plan"] as String
-                            this.expiryDate = newUser[FIELD_EXPIRY_DATE] as? Date
-                            onSuccess()
-                        }.addOnFailureListener { onError("Registration failed") }
+
+                        // --- ROBUST MULTI-ACCOUNT CHECK ---
+                        // Before allowing a new registration, ensure no other account is tied to this fingerprint.
+                        db.collection(COLLECTION_USERS).whereEqualTo("device_fingerprint", robustFingerprint).limit(1).get()
+                            .addOnSuccessListener { querySnapshot ->
+                                if (!querySnapshot.isEmpty) {
+                                    android.util.Log.w("SubscriptionManager", "BLOCKING REGISTRATION: Device $robustFingerprint already has another account.")
+                                    onError("This device is already registered with another account. Please use your original login.")
+                                    return@addOnSuccessListener
+                                }
+                                
+                                val newUser = hashMapOf<String, Any>(
+                                    "device_id" to currentDeviceId,
+                                    "device_fingerprint" to robustFingerprint,
+                                    "created_at" to FieldValue.serverTimestamp(),
+                                    "phone_number" to phoneNumber,
+                                    "plan" to if (isMasterUser || !hasHadTrial) "Premium" else "Standard"
+                                )
+                                
+                                if (newUser["plan"] == "Premium") {
+                                    val cal = java.util.Calendar.getInstance()
+                                    cal.add(java.util.Calendar.DAY_OF_YEAR, 7) // 7-Day Trial
+                                    newUser[FIELD_EXPIRY_DATE] = cal.time
+                                }
+                                
+                                db.collection(COLLECTION_USERS).document(phoneNumber).set(newUser)
+                                    .addOnSuccessListener {
+                                        this.planName = newUser["plan"] as String
+                                        this.expiryDate = newUser[FIELD_EXPIRY_DATE] as? Date
+                                        
+                                        // Record Trial if it was a new Premium claim
+                                        if (newUser["plan"] == "Premium" && !hasHadTrial) {
+                                            val trialData = hashMapOf(
+                                                "claimed_by" to phoneNumber,
+                                                "claimed_at" to FieldValue.serverTimestamp(),
+                                                "master_bypass" to isMasterUser
+                                            )
+                                            // Soft record trial - if this fails, it's not critical for this session
+                                            db.collection(COLLECTION_TRIALS).document(robustFingerprint).set(trialData)
+                                                .addOnFailureListener { e ->
+                                                    android.util.Log.w("SubscriptionManager", "Failed to record trial: ${e.message}")
+                                                }
+                                        }
+                                        
+                                        android.util.Log.i("SubscriptionManager", "Legacy Registration Successful for $phoneNumber (Plan: ${this.planName})")
+                                        
+                                        // Ensure channel list is cleared so Premium channels load immediately
+                                        com.codesrahul.exclusivetv.models.TVList.clear(com.codesrahul.exclusivetv.MyTVApplication.getInstance())
+                                        
+                                        onSuccess()
+                                    }
+                                    .addOnFailureListener { e -> 
+                                        android.util.Log.e("SubscriptionManager", "User document creation failed", e)
+                                        onError("Registration failed: ${e.message}") 
+                                    }
+                            }
+                            .addOnFailureListener { e ->
+                                android.util.Log.e("SubscriptionManager", "Fingerprint check failed: ${e.message}")
+                                onError("Registration security check failed. Please try again later.")
+                            }
                     }
-                    .addOnFailureListener { onError("Trial check failed") }
             }
-            .addOnFailureListener { onError("Bypass check failed") }
     }
     
     fun signOut(context: android.content.Context) {
