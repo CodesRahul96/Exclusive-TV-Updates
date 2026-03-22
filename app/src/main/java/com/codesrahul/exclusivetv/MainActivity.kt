@@ -486,10 +486,24 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 },
                 onError = { error ->
                     runOnUiThread {
-                        Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show()
                         webFragment.stop() // Stop any previous playback
                         showFragment(loginFragment)
                         hideFragment(loadingFragment)
+                    }
+                },
+                onDowngrade = { message ->
+                    runOnUiThread {
+                        showDowngradeDialog(message)
+                    }
+                },
+                onTrialInfo = { daysLeft ->
+                    runOnUiThread {
+                        if (daysLeft > 0) {
+                            Toast.makeText(this@MainActivity, "Premium Trial: $daysLeft days remaining!", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(this@MainActivity, "Premium Trial: Last day! Enjoy!", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             )
@@ -2021,5 +2035,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     companion object {
         private const val TAG = "MainActivity"
+    }
+    private fun showDowngradeDialog(message: String) {
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("Premium Trial Ended")
+            .setMessage(message)
+            .setCancelable(false)
+            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            .create()
+        dialog.show()
     }
 }

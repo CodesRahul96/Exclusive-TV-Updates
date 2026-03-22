@@ -25,7 +25,12 @@ object SubscriptionManager {
         get() = SP.planName
         set(value) { SP.planName = value }
 
-    fun checkSubscription(onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun checkSubscription(
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit,
+        onDowngrade: (String) -> Unit = {},
+        onTrialInfo: (Int) -> Unit = {}
+    ) {
         val phoneNumber = SP.userId
         if (phoneNumber == null) {
             onError("User not logged in")
@@ -108,10 +113,10 @@ object SubscriptionManager {
                         ?: document.getTimestamp("expiry")
                         ?: document.getTimestamp("Expiry")
                     
-                    var expiryDate = expiryTimestamp?.toDate()
+                    var parsedExpiry = expiryTimestamp?.toDate()
                     
                     // Fallback: If it's a String (manual entry)
-                    if (expiryDate == null) {
+                    if (parsedExpiry == null) {
                         val expiryStr = (document.getString("expiry_date") 
                                     ?: document.getString("Expiry Date")
                                     ?: document.getString("ExpiryDate")
@@ -125,8 +130,8 @@ object SubscriptionManager {
                                 val formats = listOf("yyyy-MM-dd", "dd-MM-yyyy", "MMM dd, yyyy")
                                 for (format in formats) {
                                     try {
-                                        expiryDate = java.text.SimpleDateFormat(format, java.util.Locale.getDefault()).parse(expiryStr)
-                                        if (expiryDate != null) break
+                                        parsedExpiry = java.text.SimpleDateFormat(format, java.util.Locale.getDefault()).parse(expiryStr)
+                                        if (parsedExpiry != null) break
                                     } catch (e: Exception) {}
                                 }
                             } catch (e: Exception) {
@@ -135,7 +140,7 @@ object SubscriptionManager {
                         }
                     }
 
-                    this.expiryDate = expiryDate
+                    SubscriptionManager.expiryDate = parsedExpiry
 
                     // DETECT PLAN CHANGE
                     val oldPlan = SP.planName
@@ -154,17 +159,26 @@ object SubscriptionManager {
                         android.util.Log.e("SubscriptionManager", "ACCESS DENIED: User $phoneNumber is shadow-banned.")
                         // We simulate a successful "Standard" response so the user doesn't immediately 
                         // know they are banned, but we restrict their experience.
-                        this.planName = "Standard"
-                        this.expiryDate = null
+                        SubscriptionManager.planName = "Standard"
+                        SubscriptionManager.expiryDate = null
                         onSuccess() 
                         return@addOnSuccessListener
                     }
                     
                     // PLAN VALIDATION
                     if ("Premium".equals(plan, ignoreCase = true)) {
-                        if (expiryDate != null && expiryDate.after(Date())) {
-                            android.util.Log.d("SubscriptionManager", "Premium Validated. Expires: $expiryDate")
-                            onSuccess()
+                        val currentExpiry = SubscriptionManager.expiryDate
+                        if (currentExpiry != null && currentExpiry.after(java.util.Date())) {
+                            android.util.Log.d("SubscriptionManager", "Premium Validated. Expires: $currentExpiry")
+                            
+                            // Calculate remaining days for Trial Countdown
+                            val diff = currentExpiry.time - System.currentTimeMillis()
+                            val days = (diff / (1000 * 60 * 60 * 24)).toInt()
+                            if (days in 0..7) {
+                                onTrialInfo(days)
+                            }
+                            
+                            fetchPlaylistUrls(phoneNumber, { onSuccess() })
                         } else {
                             android.util.Log.w("SubscriptionManager", "Premium Expired. Checking Master Status for Downgrade...")
                             
@@ -175,7 +189,7 @@ object SubscriptionManager {
                                     
                                     if (isMaster) {
                                         android.util.Log.i("SubscriptionManager", "User $phoneNumber is a Master User. Expiry ignored.")
-                                        onSuccess()
+                                        fetchPlaylistUrls(phoneNumber) { onSuccess() }
                                     } else {
                                         android.util.Log.w("SubscriptionManager", "User $phoneNumber is NOT a Master User. Downgrading to Standard.")
                                         
@@ -190,20 +204,26 @@ object SubscriptionManager {
                                             }
                                         
                                         // 2. Update Local State
-                                        this.planName = "Standard"
-                                        this.expiryDate = null
+                                        SubscriptionManager.planName = "Standard"
+                                        SubscriptionManager.expiryDate = null
                                         
                                         // 3. Force Channel Refresh
                                         com.codesrahul.exclusivetv.models.TVList.clear(com.codesrahul.exclusivetv.MyTVApplication.getInstance())
                                         
-                                        onSuccess()
+                                        // 4. Notify UI of downgrade
+                                        onDowngrade("Your premium trial has expired. You are now on the Standard plan.")
+                                        
+                                        // 5. Refresh Authorized Playlists
+                                        fetchPlaylistUrls(phoneNumber) {
+                                            onSuccess()
+                                        }
                                     }
                                 }
                         }
                     } else {
                         // Standard users don't need expiry validation
                         android.util.Log.d("SubscriptionManager", "Standard User Validated")
-                        onSuccess()
+                        fetchPlaylistUrls(phoneNumber) { onSuccess() }
                     }
                 } else {
                     // --- ADVANCED AUTO-REGISTRATION: CLOUD FUNCTIONS + INTEGRITY ---
@@ -243,7 +263,9 @@ object SubscriptionManager {
                                     // Ensure channel list is cleared so Premium channels load immediately
                                     com.codesrahul.exclusivetv.models.TVList.clear(context)
                                     
-                                    onSuccess()
+                                    fetchPlaylistUrls(phoneNumber) {
+                                        onSuccess()
+                                    }
                                 }
                                 .addOnFailureListener { e ->
                                     android.util.Log.e("SubscriptionManager", "Cloud Function 'registerUser' failed: ${e.message}")
@@ -324,8 +346,8 @@ object SubscriptionManager {
                                 
                                 db.collection(COLLECTION_USERS).document(phoneNumber).set(newUser)
                                     .addOnSuccessListener {
-                                        this.planName = newUser["plan"] as String
-                                        this.expiryDate = newUser[FIELD_EXPIRY_DATE] as? Date
+                                        SubscriptionManager.planName = newUser["plan"] as String
+                                        SubscriptionManager.expiryDate = newUser[FIELD_EXPIRY_DATE] as? Date
                                         
                                         // Record Trial if it was a new Premium claim
                                         if (newUser["plan"] == "Premium" && !hasHadTrial) {
@@ -346,7 +368,9 @@ object SubscriptionManager {
                                         // Ensure channel list is cleared so Premium channels load immediately
                                         com.codesrahul.exclusivetv.models.TVList.clear(com.codesrahul.exclusivetv.MyTVApplication.getInstance())
                                         
-                                        onSuccess()
+                                        fetchPlaylistUrls(phoneNumber) {
+                                            onSuccess()
+                                        }
                                     }
                                     .addOnFailureListener { e -> 
                                         android.util.Log.e("SubscriptionManager", "User document creation failed", e)
@@ -361,6 +385,40 @@ object SubscriptionManager {
             }
     }
     
+    /**
+     * Fetches authorized playlist URLs from the server using the getPlaylist Cloud Function.
+     * This ensures the logic of which URL to use is strictly enforced on the server.
+     */
+    private fun fetchPlaylistUrls(phoneNumber: String, onComplete: () -> Unit) {
+        val functions = FirebaseFunctions.getInstance()
+        val data = hashMapOf(
+            "phoneNumber" to phoneNumber
+        )
+
+        functions.getHttpsCallable("getPlaylist")
+            .call(data)
+            .addOnSuccessListener { result ->
+                val response = result.data as? Map<*, *>
+                val url = response?.get("url") as? String
+                val plan = response?.get("plan") as? String
+                
+                if (url != null) {
+                    if ("Premium".equals(plan, ignoreCase = true)) {
+                        SP.premiumConfig = url
+                    } else {
+                        SP.standardConfig = url
+                    }
+                    android.util.Log.i("SubscriptionManager", "Authorized $plan playlist URL updated from server.")
+                }
+                onComplete()
+            }
+            .addOnFailureListener { e ->
+                android.util.Log.w("SubscriptionManager", "Failed to fetch playlist URL from server: ${e.message}")
+                // Fallback to local logic (already in TVList)
+                onComplete()
+            }
+    }
+
     fun signOut(context: android.content.Context) {
         clearAppData(context)
     }

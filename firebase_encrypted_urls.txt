@@ -1,8 +1,0 @@
-standard_api_url:
-P3PxtcmFl9nlRdB4AugX8amToEbgORb2z8uJuzAoopYaAZ6z/FOBahXtaDAdHoZ/fiaRUus+EfGcVl3CE/5+Cw==
-
-premium_api_url:
-eD96wS0OzksMFN9XcRsbQDvqrdhoN09ip3MYrp/3xfllwUGS8HDVuQ2Mu2+fUV8go9G7IN9vgp4td9fvTmqi4Q==
-
-waves_api_url:
-KtkVr53rcGpgkmbXJgTz1tHSxHhqZpr8GJWX86siyWHbH92MIQOIvUDWi6K615AgyHOp4ocNKWcn5N4Fq8rXo9G4zSXrUbc6zx4MR36BsL+Wwi0SvrmUfqbIqhVITI8m

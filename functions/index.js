@@ -109,3 +109,46 @@ exports.registerUser = functions.https.onCall(async (data, context) => {
         expiry_date: expiryDate ? expiryDate.toDate().toISOString() : null 
     };
 });
+
+/**
+ * getPlaylist Cloud Function
+ * Securely returns the appropriate playlist URL based on the user's plan.
+ */
+exports.getPlaylist = functions.https.onCall(async (data, context) => {
+    const phoneNumber = data.phoneNumber;
+    if (!phoneNumber) {
+        throw new functions.https.HttpsError("invalid-argument", "Missing phone number.");
+    }
+
+    const userRef = db.collection("users").doc(phoneNumber);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Account not found.");
+    }
+
+    const userData = userDoc.data();
+    const plan = userData.plan || "Standard";
+
+    // Fetch master config for URLs
+    // [NOTE] Admin must populate config/playlists with 'standard' and 'premium' fields.
+    const configRef = db.collection("config").doc("playlists");
+    const configDoc = await configRef.get();
+
+    if (!configDoc.exists) {
+        throw new functions.https.HttpsError("internal", "Playlist configuration is not set up on the server.");
+    }
+
+    const playlists = configDoc.data();
+    const playlistUrl = (plan === "Premium") ? playlists.premium : playlists.standard;
+
+    if (!playlistUrl) {
+        throw new functions.https.HttpsError("internal", `No ${plan} playlist available.`);
+    }
+
+    return { 
+        success: true, 
+        url: playlistUrl,
+        plan: plan 
+    };
+});

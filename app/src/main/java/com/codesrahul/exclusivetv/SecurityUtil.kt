@@ -160,18 +160,46 @@ object SecurityUtil {
     }
 
     /**
+     * Extracts a unique hardware ID from MediaDRM (Widevine).
+     * This ID is highly persistent across factory resets on most modern devices.
+     */
+    private fun getMediaDrmId(): String {
+        return try {
+            // Widevine UUID: edef8ba9-79d6-4ace-a3c8-27dcd51d21ed
+            val widevineUuid = java.util.UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed")
+            val mediaDrm = android.media.MediaDrm(widevineUuid)
+            val deviceUniqueId = mediaDrm.getPropertyByteArray(android.media.MediaDrm.PROPERTY_DEVICE_UNIQUE_ID)
+            
+            // Close resource properly (API 28+ uses close, earlier uses release)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                mediaDrm.close()
+            } else {
+                mediaDrm.release()
+            }
+            
+            // Hash the raw bytes to create a stable string representation
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            val hash = md.digest(deviceUniqueId)
+            hash.joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    /**
      * Generates a robust hardware fingerprint by combining multiple hardware traits.
      * This makes it harder to bypass trial restrictions by just changing the Android ID.
      */
     fun getDeviceFingerprint(context: Context): String {
         val androidId = getDeviceId(context)
+        val mediaDrmId = getMediaDrmId()
         val hardwareInfo = Build.BOARD + Build.BRAND + Build.DEVICE + Build.DISPLAY +
                           Build.HOST + Build.ID + Build.MANUFACTURER + Build.MODEL +
                           Build.PRODUCT + Build.TAGS + Build.TYPE + Build.USER
         
         return try {
-            val md = java.security.MessageDigest.getInstance("MD5")
-            val bytes = md.digest((androidId + hardwareInfo).toByteArray())
+            val md = java.security.MessageDigest.getInstance("SHA-256")
+            val bytes = md.digest((androidId + mediaDrmId + hardwareInfo).toByteArray())
             bytes.joinToString("") { "%02x".format(it) }
         } catch (e: Exception) {
             androidId // Fallback to plain Android ID on error

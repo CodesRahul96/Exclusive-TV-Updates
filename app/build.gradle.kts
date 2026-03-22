@@ -154,6 +154,7 @@ dependencies {
 
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     implementation("io.github.lizongying:gua64:1.4.5")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
