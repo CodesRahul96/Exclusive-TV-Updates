@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -24,6 +24,8 @@ class SettingFragment : Fragment() {
 
     private var _binding: SettingBinding? = null
     private val binding get() = _binding!!
+
+    private var devClickCount = 0
 
     private lateinit var uri: Uri
     private lateinit var updateManager: UpdateManager
@@ -84,7 +86,15 @@ class SettingFragment : Fragment() {
         binding.config.apply {
             isFocusable = true
             isFocusableInTouchMode = true
-            requestFocus()
+        }
+        
+        if (binding.playlistUrlContainer.visibility == View.VISIBLE) {
+            binding.config.requestFocus()
+        } else {
+            binding.managePlaylists.apply {
+                isFocusable = true
+                requestFocus()
+            }
         }
 
         // Reset timer on scroll interactions
@@ -205,6 +215,7 @@ class SettingFragment : Fragment() {
             binding.portfolioWebsite,
             binding.portfolioLinkedin,
             binding.portfolioGithub,
+            binding.portfolioCompactCard,
             binding.closeMenu
         )
 
@@ -241,6 +252,19 @@ class SettingFragment : Fragment() {
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
         binding.cardAudioLanguage.setOnClickListener { setupAudioLanguageDialog() }
         binding.cardAudioStabilizer.setOnClickListener { toggleSetting("audioStabilizer") }
+        
+        binding.portfolioCompactCard.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            devClickCount++
+            if (devClickCount >= 10) {
+                if (binding.playlistUrlContainer.visibility != View.VISIBLE) {
+                    binding.playlistUrlContainer.visibility = View.VISIBLE
+                    binding.playlistUrlDivider.visibility = View.VISIBLE
+                    Toast.makeText(requireContext(), "Playlist URL option unlocked!", Toast.LENGTH_SHORT).show()
+                    binding.config.requestFocus() // Focus the newly visible input
+                }
+            }
+        }
         
         // [NEW] Logout Listener
         binding.btnLogout.setOnClickListener {
