@@ -271,6 +271,11 @@ object SubscriptionManager {
                                     android.util.Log.e("SubscriptionManager", "Cloud Function 'registerUser' failed: ${e.message}")
                                     if (e is FirebaseFunctionsException) {
                                         android.util.Log.e("SubscriptionManager", "Code: ${e.code}, Details: ${e.details}")
+                                        // Server rejected on purpose - DO NOT FALLBACK!
+                                        if (e.code == FirebaseFunctionsException.Code.ALREADY_EXISTS || e.code == FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED) {
+                                            onError(e.message ?: "Registration blocked by server.")
+                                            return@addOnFailureListener
+                                        }
                                     }
                                     performLegacyRegistration(db, phoneNumber, currentDeviceId, robustFingerprint, onSuccess, onError)
                                 }
@@ -321,10 +326,19 @@ object SubscriptionManager {
                         }
 
                         // --- ROBUST MULTI-ACCOUNT CHECK ---
-                        // Before allowing a new registration, ensure no other account is tied to this fingerprint.
-                        db.collection(COLLECTION_USERS).whereEqualTo("device_fingerprint", robustFingerprint).limit(1).get()
-                            .addOnSuccessListener { querySnapshot ->
-                                if (!querySnapshot.isEmpty) {
+                        // Before allowing a new registration, ensure no other account is tied to this fingerprint or Android ID.
+                        val checkTasks = mutableListOf<com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot>>()
+                        checkTasks.add(db.collection(COLLECTION_USERS).whereEqualTo("device_fingerprint", robustFingerprint).limit(1).get())
+                        if (currentDeviceId.isNotBlank() && currentDeviceId != "unknown_device") {
+                            checkTasks.add(db.collection(COLLECTION_USERS).whereEqualTo("device_id", currentDeviceId).limit(1).get())
+                            checkTasks.add(db.collection(COLLECTION_USERS).whereEqualTo("device_id_2", currentDeviceId).limit(1).get())
+                        }
+                        
+                        com.google.android.gms.tasks.Tasks.whenAllSuccess<com.google.firebase.firestore.QuerySnapshot>(checkTasks)
+                            .addOnSuccessListener { results ->
+                                val isBlocked = results.any { !it.isEmpty }
+                                
+                                if (isBlocked) {
                                     android.util.Log.w("SubscriptionManager", "BLOCKING REGISTRATION: Device $robustFingerprint already has another account.")
                                     onError("This device is already registered with another account. Please use your original login.")
                                     return@addOnSuccessListener

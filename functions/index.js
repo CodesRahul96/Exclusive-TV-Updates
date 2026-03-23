@@ -57,12 +57,33 @@ exports.registerUser = functions.https.onCall(async (data, context) => {
     const isMasterUser = bypassDoc.exists;
 
     // 5. Check if device already has a user
-    const deviceUsers = await db.collection("users")
+    const deviceId = data.deviceId;
+    
+    // Check by robust fingerprint
+    const fpUsers = await db.collection("users")
         .where("device_fingerprint", "==", deviceFingerprint)
         .limit(1)
         .get();
+        
+    let idUsersEmpty = true;
+    let idUsers2Empty = true;
     
-    if (!deviceUsers.empty) {
+    // Check by raw Android ID for legacy/updated devices
+    if (deviceId && deviceId !== "unknown_device" && deviceId.trim() !== "") {
+        const idUsers = await db.collection("users")
+            .where("device_id", "==", deviceId)
+            .limit(1)
+            .get();
+        idUsersEmpty = idUsers.empty;
+        
+        const idUsers2 = await db.collection("users")
+            .where("device_id_2", "==", deviceId)
+            .limit(1)
+            .get();
+        idUsers2Empty = idUsers2.empty;
+    }
+    
+    if (!fpUsers.empty || !idUsersEmpty || !idUsers2Empty) {
         // Device already registered with a DIFFERENT phone number
         throw new functions.https.HttpsError("already-exists", "This device is already registered with another account.");
     }
