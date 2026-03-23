@@ -1,3 +1,8 @@
+# ExclusiveTV v1.1.8
+
+## 🛠️ Enhancements & Bug Fixes
+- **Improved UI Focus**: Adjusted focus routing when hidden elements are not visible to ensure smooth navigation with D-Pad controls.
+
 # ExclusiveTV v1.1.7
 
 ## 🛡️ Security & Anti-Fraud
