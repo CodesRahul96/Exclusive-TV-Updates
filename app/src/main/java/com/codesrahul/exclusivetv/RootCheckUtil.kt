@@ -8,9 +8,10 @@ object RootCheckUtil {
     fun isDeviceRooted(context: android.content.Context): Boolean {
         val isTV = isTvDevice(context)
         
-        // On TV devices, we skip checkRootMethod3 ('which su') as it's a common false positive
+        // On TV devices, we skip checks that produce high false-positives (test-keys, su-files, su-command)
+        // because generic TV firmware often includes inactive su binaries or dev-tags.
         return checkRootMethod1() || 
-               checkRootMethod2() || 
+               (!isTV && checkRootMethod2()) || 
                (!isTV && checkRootMethod3()) || 
                checkRootByPackages(context)
     }
