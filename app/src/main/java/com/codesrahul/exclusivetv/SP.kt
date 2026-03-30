@@ -346,6 +346,8 @@ object SP {
             }
         }
 
+    const val KEY_DEFAULT_AUDIO_LANG = "default_audio_language"
+
     var bitrateMode: Int
         get() = sp.getInt(KEY_BITRATE_MODE, if (sp.getBoolean(KEY_FORCE_HIGH_QUALITY, true)) 3 else 1)
         set(value) {
@@ -360,8 +362,13 @@ object SP {
         set(value) = sp.edit().putInt(KEY_LAST_VERSION, value).apply()
 
     var defaultAudioLanguage: String
-        get() = sp.getString("default_audio_language", "") ?: ""
-        set(value) = sp.edit().putString("default_audio_language", value).apply()
+        get() = sp.getString(KEY_DEFAULT_AUDIO_LANG, "") ?: ""
+        set(value) {
+            if (value != this.defaultAudioLanguage) {
+                sp.edit().putString(KEY_DEFAULT_AUDIO_LANG, value).apply()
+                notifyListeners(KEY_DEFAULT_AUDIO_LANG)
+            }
+        }
 
     var lastChannelUrl: String
         get() = sp.getString(KEY_LAST_CHANNEL_URL, "") ?: ""

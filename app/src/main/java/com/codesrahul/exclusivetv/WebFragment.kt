@@ -1761,6 +1761,13 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     }
                 }
             }
+            SP.KEY_DEFAULT_AUDIO_LANG -> {
+                activity?.runOnUiThread {
+                    if (isAdded && exoPlayer != null) {
+                        updateAudioTrackFromSettings()
+                    }
+                }
+            }
         }
     }
 
@@ -1769,9 +1776,9 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val builder = player.trackSelectionParameters.buildUpon()
         
         when (SP.bitrateMode) {
-            0 -> { // Data Saver (360p) - Aggressive data saving
-                builder.setMaxVideoSize(640, 360)
-                builder.setMaxVideoBitrate(800_000)
+            0 -> { // Data Saver (480p) - Strict Limit
+                builder.setMaxVideoSize(854, 480)
+                builder.setMaxVideoBitrate(1_000_000)
             }
             1 -> { // Low (720p HD Max)
                 builder.setMaxVideoSize(1280, 720)
@@ -1791,24 +1798,42 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         updateQualityLabel(player.videoSize.height)
     }
 
+    private fun updateAudioTrackFromSettings() {
+        val player = exoPlayer ?: return
+        val lang = SP.defaultAudioLanguage
+        try {
+            val builder = player.trackSelectionParameters.buildUpon()
+            if (lang.isNotEmpty()) {
+                builder.setPreferredAudioLanguages(lang)
+            } else {
+                builder.setPreferredAudioLanguages()
+            }
+            player.trackSelectionParameters = builder.build()
+            
+            // Show feedback toast if language was changed manually in settings
+            if (lang.isNotEmpty()) {
+                val locale = java.util.Locale(lang)
+                Toast.makeText(requireContext(), "Audio Language: ${locale.displayLanguage}", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update audio track: ${e.message}")
+        }
+    }
+
     private fun updateQualityLabel(height: Int) {
-        var label = if (height >= 2160) {
-            "4K"
-        } else if (height >= 1440) {
-            "2K"
-        } else if (height >= 1080) {
-            "FHD"
-        } else if (height >= 720) {
-            "HD"
-        } else if (height > 0) {
-            "SD"
-        } else {
-            ""
+        var label = when {
+            height >= 2160 -> "4K"
+            height >= 1440 -> "2K"
+            height >= 1080 -> "FHD"
+            height >= 720 -> "HD"
+            height >= 480 -> "SD+"
+            height > 0 -> "SD"
+            else -> ""
         }
 
-        // Force 'SD' label if Data Saver is active to reflect user choice
-        if (SP.bitrateMode == 0 && label.isNotEmpty() && label != "SD") {
-            label = "SD"
+        // Force 'Data Saver' label if mode 0 is active to reflect user choice
+        if (SP.bitrateMode == 0 && label.isNotEmpty()) {
+            label = "Data Saver"
         }
         
         tvModel?.setVideoQuality(label)

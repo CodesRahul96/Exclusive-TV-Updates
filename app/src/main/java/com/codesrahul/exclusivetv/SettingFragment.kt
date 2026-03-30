@@ -147,7 +147,7 @@ class SettingFragment : Fragment() {
         binding.statusTime.text = if (SP.time) "ON" else "OFF"
         binding.statusWatchLast.text = if (SP.watchLast) "ON" else "OFF"
         
-        val bitrateLabels = arrayOf("Data Saver (480p)", "Low (720p)", "Medium (1080p)", "High (No Limit)")
+        val bitrateLabels = arrayOf("Data Saver (480p Max)", "Low (720p HD Max)", "Medium (1080p FHD Max)", "High (No Limit / 4K)")
         binding.statusBitrateMode.text = bitrateLabels.getOrElse(SP.bitrateMode) { "High" }
         
         val aspectLabels = arrayOf("Fit", "Fill", "Zoom")
