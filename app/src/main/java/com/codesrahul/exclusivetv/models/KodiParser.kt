@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv.models
+package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import java.io.BufferedReader
@@ -181,28 +181,32 @@ object KodiParser {
                         
                         when (key) {
                             "inputstream.adaptive.license_type" -> {
-                                currentDrmScheme = when(value) {
-                                    "com.widevine.alpha" -> "widevine"
-                                    "com.microsoft.playready" -> "playready"
-                                    "org.w3.clearkey" -> "clearkey" 
+                                currentDrmScheme = when(value.lowercase()) {
+                                    "com.widevine.alpha", "widevine" -> "widevine"
+                                    "com.microsoft.playready", "playready" -> "playready"
+                                    "org.w3.clearkey", "com.clearkey.alpha", "clearkey", "cl" -> "clearkey" 
                                     else -> value
                                 }
                             }
                             "inputstream.adaptive.license_key" -> {
-                                if (value.contains("|")) {
+                                val licenseValue = if (value.contains("|")) {
                                     val parts = value.split("|")
-                                    currentDrmLicense = parts[0]
                                     if (parts.size > 1) {
                                         val headerParts = parts[1].split("&")
                                         for (h in headerParts) {
                                             val kv = h.split("=", limit = 2)
-                                            if (kv.size == 2) {
-                                                currentHeaders[kv[0]] = kv[1]
-                                            }
+                                            if (kv.size == 2) currentHeaders[kv[0]] = kv[1]
                                         }
                                     }
+                                    parts[0]
                                 } else {
-                                    currentDrmLicense = value
+                                    value
+                                }
+
+                                if (currentDrmLicense.isNullOrEmpty()) {
+                                    currentDrmLicense = licenseValue
+                                } else if (currentDrmLicense?.contains(licenseValue) == false) {
+                                    currentDrmLicense += ",$licenseValue"
                                 }
                             }
                             "inputstream.adaptive.manifest_type" -> {

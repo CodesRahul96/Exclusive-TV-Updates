@@ -59,6 +59,7 @@ object SP {
  
     private const val KEY_EPG_SHIFT = "epg_shift"
     private const val KEY_SLEEP_TIMER = "sleep_timer"
+    const val KEY_RESIZE_MODE = "resize_mode"
     
     private const val KEY_LAST_UPDATE_TIME = "last_update_time"
     private const val KEY_API_HOST = "api_host"
@@ -582,6 +583,16 @@ object SP {
             if (value != this.audioStabilizer) {
                 sp.edit().putBoolean(KEY_AUDIO_STABILIZER, value).apply()
                 notifyListeners(KEY_AUDIO_STABILIZER)
+            }
+        }
+
+    // Aspect Ratio / Resize Mode
+    var resizeMode: Int
+        get() = sp.getInt(KEY_RESIZE_MODE, 1) // 0: Fit, 1: Fill (Default), 2: Zoom
+        set(value) {
+            if (value != this.resizeMode) {
+                sp.edit().putInt(KEY_RESIZE_MODE, value).apply()
+                notifyListeners(KEY_RESIZE_MODE)
             }
         }
 

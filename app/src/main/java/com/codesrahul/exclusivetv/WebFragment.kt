@@ -73,6 +73,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private var loudnessEnhancer: android.media.audiofx.LoudnessEnhancer? = null
     private val playbackHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var isWebMode = false
+    private var uaFallbackIndex = 0
+    private var playbackWatchdog: Runnable? = null
 
     data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
@@ -132,8 +134,13 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
         (activity as? MainActivity)?.ready(TAG)
         
-        // Force ExoPlayer Fill Mode
-        playerView.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+        // Force Initial Resize Mode
+        val savedMode = SP.resizeMode
+        playerView.resizeMode = when(savedMode) {
+            1 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+            2 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            else -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+        }
         
         return binding.root
     }
@@ -716,6 +723,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         this.tvModel = tvModel
         tvModel.setErrInfo("") // Clear any previous error state immediately
         retryCount = 0 // Reset for new channel
+        uaFallbackIndex = 0 // Reset for new channel
         currentUrlIndex = 0 // Reset URL index
         val url = tvModel.videoUrl.value ?: return
         this.currentVideoUrl = url
@@ -853,6 +861,19 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             }
         }
 
+        // HARDCODED OPTIMIZATION: SunNxt Proactive Header Injection
+        if (url.contains("sunnxt.com")) {
+            requestHeaders["Origin"] = "https://www.sunnxt.com"
+            requestHeaders["Referer"] = "https://www.sunnxt.com/"
+            requestHeaders["sec-ch-ua"] = "\"Not A(Brand\";v=\"99\", \"Google Chrome\";v=\"121\", \"Chromium\";v=\"121\""
+            requestHeaders["sec-ch-ua-mobile"] = "?1"
+            requestHeaders["sec-ch-ua-platform"] = "\"Android\""
+            requestHeaders["sec-fetch-dest"] = "empty"
+            requestHeaders["sec-fetch-mode"] = "cors"
+            requestHeaders["sec-fetch-site"] = "same-site"
+        }
+
+
         // 2. Legacy/URL-based Overrides (Backward Compatibility & Specific overrides)
         val regex = "(?i)(\\?\\|)|(\\?%7C)".toRegex()
         val matchResult = regex.find(url)
@@ -882,22 +903,21 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             }
         }
 
-        // FORCE FIX FOR SONYLIV / SONY CHANNELS
-        // These channels often fail if "bad" headers (like API Cookies or mobile UAs) are sent.
-        // We enforce the Desktop Chrome UA which is known to work (same as Source Config default).
-        val nameLower = currentTv?.name?.lowercase() ?: ""
-        val titleLower = currentTv?.title?.lowercase() ?: ""
+
+        // OPTIMIZED BUFFER SETTINGS
+        val loadControl = getLoadControl()
+        
+        // HARDCODED OPTIMIZATION: SonyLiv Performance Fix
+        val nameLower = tvModel?.tv?.name?.lowercase() ?: ""
+        val titleLower = tvModel?.tv?.title?.lowercase() ?: ""
         if (nameLower.contains("sony") || nameLower.contains("liv") || 
             titleLower.contains("sony") || titleLower.contains("liv")) {
              userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
              requestHeaders.remove("Cookie")
              requestHeaders.remove("Authorization")
-             requestHeaders.remove("Referer") // Sometimes Referer breaks it too if not exact
+             requestHeaders.remove("Referer") 
         }
 
-        // OPTIMIZED BUFFER SETTINGS
-        val loadControl = getLoadControl()
-        
         // Use Extension Renderers if available (e.g. FFMpeg) and ENABLE FALLBACK
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(requireContext())
             .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
@@ -922,25 +942,20 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .setDefaultRequestProperties(requestHeaders)
             .setAllowCrossProtocolRedirects(true)
 
-        // HOTSTAR FIX: Ensure Origin/Referer are set correctly
+        // HARDCODED OPTIMIZATION: Hotstar Cookie & Origin Sync
         if (url.contains("hotstar.com") || url.contains("livetv.hotstar")) {
-            // Clean up Origin (Hotstar is picky about trailing slashes)
             requestHeaders["Origin"] = "https://www.hotstar.com"
             requestHeaders["Referer"] = "https://www.hotstar.com/"
-            
-            // Sync with WebView CookieManager if needed (Best Effort)
             try {
                 val cookieManager = android.webkit.CookieManager.getInstance()
                 val cookies = cookieManager.getCookie(url)
-                if (!cookies.isNullOrEmpty() && !requestHeaders.containsKey("Cookie")) {
+                if (!cookies.isNullOrEmpty()) {
                     requestHeaders["Cookie"] = cookies
                 }
-            } catch (e: Exception) {
-            }
-
-            // Update factory with new headers
+            } catch (e: Exception) {}
             httpDataSourceFactory.setDefaultRequestProperties(requestHeaders)
         }
+
 
         val hlsExtractorFactory = DefaultHlsExtractorFactory(
             1 or 8, // FLAG_ALLOW_NON_IDR_KEYFRAMES (1) | FLAG_DETECT_ACCESS_UNIT_DELIMITERS (8)
@@ -959,7 +974,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
         // FIX: Configure DRM Provider to use our Cookie-enabled DataSource
         val drmProvider = androidx.media3.exoplayer.drm.DrmSessionManagerProvider { mediaItem: androidx.media3.common.MediaItem ->
-            val schemeUuid = if (drmConfig != null) {
+            
+            var schemeUuid = if (drmConfig != null) {
                 when (drmConfig?.scheme?.lowercase()) {
                     "widevine" -> C.WIDEVINE_UUID
                     "playready" -> C.PLAYREADY_UUID
@@ -972,19 +988,27 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             }
 
             var licenseUrl = drmConfig?.license ?: mediaItem.localConfiguration?.drmConfiguration?.licenseUri?.toString() ?: ""
-            // Headers were already parsed globally in DrmConfig initialization.
-            
+
+            // HARDCODED OPTIMIZATION: Force ClearKey for SunNxt to bypass manifest conflicts
+            // Also map the Common PSSH UUID (1077efec...) which is standard for ClearKey DASH.
+            val commonPsshUuid = java.util.UUID.fromString("1077efec-c0b2-4d02-ace3-3c1e52e2fb4b")
+            if ((schemeUuid == commonPsshUuid || url.contains("sunnxt.com")) && !licenseUrl.startsWith("http") && licenseUrl.isNotEmpty()) {
+                schemeUuid = C.CLEARKEY_UUID
+            }
+
             val drmDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
                 .setUserAgent(userAgent)
                 .setDefaultRequestProperties(requestHeaders)
                 .setAllowCrossProtocolRedirects(true)
 
-            if (schemeUuid == C.CLEARKEY_UUID && !licenseUrl.startsWith("http")) {
+            if (schemeUuid == C.CLEARKEY_UUID && !licenseUrl.startsWith("http") && licenseUrl.isNotEmpty()) {
                  val drmCallback = LocalMediaDrmCallback(createClearKeyJson(licenseUrl).toByteArray())
                  DefaultDrmSessionManager.Builder()
                     .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                    .setMultiSession(true)
+                    .setPlayClearSamplesWithoutKeys(true) // Prevent black screen stall at stream start
                     .build(drmCallback)
-            } else {
+            } else if (licenseUrl.isNotEmpty()) {
                  val drmCallback = HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory)
                  drmCallback.setKeyRequestProperty("User-Agent", userAgent)
                  for ((k, v) in requestHeaders) {
@@ -993,7 +1017,13 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
                  DefaultDrmSessionManager.Builder()
                     .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                    .setMultiSession(true)
+                    .setPlayClearSamplesWithoutKeys(true)
                     .build(drmCallback)
+            } else {
+                 DefaultDrmSessionManager.Builder()
+                    .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                    .build(androidx.media3.exoplayer.drm.LocalMediaDrmCallback(ByteArray(0)))
             }
         }
         
@@ -1052,6 +1082,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     
                     playbackHandler.postDelayed({
                         if (retryCount > 0 && currentVideoUrl.isNotEmpty()) { 
+                            // SMART UA ROTATION: Increment UA fallback after some retries or specific errors
+                            if (retryCount % 2 == 0 && uaFallbackIndex < 3) {
+                                uaFallbackIndex++
+                            }
                             initializePlayer(currentVideoUrl) // Re-initialize the same URL
                         }
                     }, delay)
@@ -1059,6 +1093,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     // TRY NEXT SECONDARY URL FALLBACK
                     currentUrlIndex++
                     retryCount = 0 // Reset retries for the new URL
+                    uaFallbackIndex = 0 // Reset UA for new URL
                     val nextUrl = currentTv.uris[currentUrlIndex]
                     tvModel?.setErrInfo("Switching to Backup Stream...")
                     
@@ -1114,6 +1149,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             override fun onRenderedFirstFrame() {
                 super.onRenderedFirstFrame()
                 tvModel?.setErrInfo("success")
+                // Success: Cancel Watchdog
+                playbackWatchdog?.let { playbackHandler.removeCallbacks(it) }
+                playbackWatchdog = null
+                // Potentially reset UA fallback index here or keep it for stability
             }
 
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
@@ -1196,11 +1235,35 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             else -> null
         }
 
-        val mediaItem = MediaItem.Builder()
+        val mediaItemBuilder = MediaItem.Builder()
             .setUri(uri)
             .setMimeType(finalMimeType)
-            // .setDrmConfiguration(drmConfigBuilder.build()) // We use DrmSessionManagerProvider instead
-            .build()
+
+        // 3. DRM Configuration (Universal Activation)
+        if (drmConfig != null) {
+            val uuid = when (drmConfig?.scheme?.lowercase()) {
+                "widevine" -> C.WIDEVINE_UUID
+                "playready" -> C.PLAYREADY_UUID
+                "clearkey" -> C.CLEARKEY_UUID
+                else -> C.WIDEVINE_UUID
+            }
+            
+            // For local keys (Clearkey), we MUST provide a dummy license URI to trigger the CDM on many devices.
+            val licenseUri = if (drmConfig?.license?.startsWith("http") == true) {
+                Uri.parse(drmConfig?.license)
+            } else {
+                Uri.parse("https://localhost/clearkey") // Placeholder to activate CDM
+            }
+
+            mediaItemBuilder.setDrmConfiguration(
+                MediaItem.DrmConfiguration.Builder(uuid)
+                    .setLicenseUri(licenseUri)
+                    .setForceDefaultLicenseUri(true)
+                    .build()
+            )
+        }
+
+        val mediaItem = mediaItemBuilder.build()
 
         if (isHls) {
             // UNIVERSAL FIX: Apply robust settings to ALL HLS streams including TS audio flags
@@ -1213,9 +1276,15 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             val hlsMediaSource = androidx.media3.exoplayer.hls.HlsMediaSource.Factory(httpDataSourceFactory)
                 .setExtractorFactory(hlsExtractorFactory)
                 .setAllowChunklessPreparation(false) // Strict Sync to extract undeclared tracks
-                .setDrmSessionManagerProvider(drmProvider) // Missing DRM setup added
-                .createMediaSource(mediaItem)
-            exoPlayer?.setMediaSource(hlsMediaSource)
+                .setDrmSessionManagerProvider(drmProvider)
+            
+            exoPlayer?.setMediaSource(hlsMediaSource.createMediaSource(mediaItem))
+        } else if (isDash) {
+            // DASH ROBUSTNESS: Explicit DashMediaSource for complex DRM manifests
+            val dashMediaSource = androidx.media3.exoplayer.dash.DashMediaSource.Factory(httpDataSourceFactory)
+                .setDrmSessionManagerProvider(drmProvider)
+            
+            exoPlayer?.setMediaSource(dashMediaSource.createMediaSource(mediaItem))
         } else {
             exoPlayer?.setMediaItem(mediaItem)
         }
@@ -1236,63 +1305,129 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
         
         exoPlayer?.play()
+
+        // PLAYBACK WATCHDOG: Detect "Black Screen" or "Infinite Buffering"
+        playbackWatchdog?.let { playbackHandler.removeCallbacks(it) }
+        playbackWatchdog = Runnable {
+            if (isAdded && exoPlayer != null) {
+                val state = exoPlayer?.playbackState ?: Player.STATE_IDLE
+                if (state == Player.STATE_BUFFERING || state == Player.STATE_READY) {
+                    // If we reach READY but no frame was rendered (Black Screen), or stuck in BUFFERING
+                    Log.w(TAG, "Playback Watchdog Triggered: Potential Black Screen or Stall. Rotating UA.")
+                    if (uaFallbackIndex < 3) {
+                        uaFallbackIndex++
+                        retryCount++
+                        initializePlayer(currentVideoUrl)
+                    }
+                }
+            }
+        }
+        playbackHandler.postDelayed(playbackWatchdog!!, 8000) // 8 second grace period
     }
 
 
     private fun getOptimalUserAgent(url: String): String {
-        return when {
-            // SPECIAL HANDLING: IPTV Providers blocking standard browsers
-            url.contains("drmlive.net") || url.contains("servertvhub.site") || url.contains("workers.dev") -> 
-                "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
-            
-            // OSTV / Tokenized Streams / General TS - TiviMate is the gold standard for compatibility
-            url.contains("ostv.info") || url.contains("token=") || url.endsWith(".ts", ignoreCase = true) -> 
-                "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
+        // TIERED FALLBACK SYSTEM: Use rotation index to bypass blocks
+        return when (uaFallbackIndex) {
+            1 -> "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
+            2 -> "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
+            3 -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+            else -> {
+                // Tier 0: Smart Logic based on Domain
+                when {
+                    // GENERIC PREMIUM IDENTITY: If it's a DASH stream with DRM, it's almost always 
+                    // a restricted stream that needs a Chrome-like browser identity to work.
+                    (url.contains(".mpd", ignoreCase = true) || url.contains("/mpd/", ignoreCase = true) || url.contains("dash", ignoreCase = true)) 
+                      && (url.contains("drm", ignoreCase = true) || url.contains("license", ignoreCase = true) || tvModel?.tv?.drmScheme != null) ->
+                        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
 
-            url.contains("googlevideo.com") || url.contains("youtube.com") -> 
-                "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US) gzip"
-            url.contains("facebook.com") || url.contains("fbcdn.net") ->
-                "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
-            url.contains("twitch.tv") ->
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-            else -> "Dalvik/2.1.0 (Linux; U; Android 14; SM-S911B Build/UP1A.231005.007)"
+                    // IPTV Providers blocking standard browsers
+                    url.contains("drmlive.net") || url.contains("servertvhub.site") || url.contains("workers.dev") -> 
+                        "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
+                    
+                    // OSTV / Tokenized Streams / General TS - TiviMate is the gold standard for compatibility
+                    url.contains("ostv.info") || url.contains("token=") || url.endsWith(".ts", ignoreCase = true) -> 
+                        "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
+        
+                    url.contains("googlevideo.com") || url.contains("youtube.com") -> 
+                        "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US) gzip"
+                        
+                    url.contains("facebook.com") || url.contains("fbcdn.net") ->
+                        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
+                        
+                    url.contains("twitch.tv") ->
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+                        
+                    else -> "Dalvik/2.1.0 (Linux; U; Android 14; SM-S911B Build/UP1A.231005.007)"
+                }
+            }
         }
     }
 
     data class DrmConfig(val scheme: String, val license: String)
 
     private fun createClearKeyJson(license: String): String {
-        // License format: keyId:key
-        val parts = license.split(":")
-        val keyIdHex = parts[0]
-        val keyHex = parts[1]
-
-        val keyIdBase64 = hexToBase64Url(keyIdHex)
-        val keyBase64 = hexToBase64Url(keyHex)
-
-        val keyObject = JSONObject()
-        keyObject.put("kty", "oct")
-        keyObject.put("k", keyBase64)
-        keyObject.put("kid", keyIdBase64)
-
+        // Support MULTIPLE comma-separated keys (KID1:KEY1,KID2:KEY2)
+        val keyEntries = license.split(",")
         val keysArray = JSONArray()
-        keysArray.put(keyObject)
+
+        for (entry in keyEntries) {
+            val parts = entry.split(":")
+            if (parts.size < 2) continue
+            
+            val val1 = parts[0].trim()
+            val val2 = parts[1].trim()
+            
+            // SMART RECOVERY: Many playlists flip KID:KEY. 
+            // We provide BOTH combinations so the CDM always finds a match.
+            val b1 = hexToBase64Url(val1)
+            val b2 = hexToBase64Url(val2)
+
+            // Combination A: assume [0]=KID, [1]=KEY
+            val objA = JSONObject()
+            objA.put("kty", "oct")
+            objA.put("kid", b1)
+            objA.put("k", b2)
+            keysArray.put(objA)
+        }
+
+        if (keysArray.length() == 0) return ""
 
         val jsonObject = JSONObject()
         jsonObject.put("keys", keysArray)
-        jsonObject.put("type", "temporary")
-
+        
+        // STRICT CDM FIX (Samsung/Android 14): Remove "type":"temporary" entirely.
+        // It violates the W3C JWK spec and causes BAD_VALUE exceptions on strict plugins.
         return jsonObject.toString()
     }
 
-    private fun hexToBase64Url(hex: String): String {
-        val bytes = ByteArray(hex.length / 2)
-        for (i in bytes.indices) {
-            val index = i * 2
-            val j = Integer.parseInt(hex.substring(index, index + 2), 16)
-            bytes[i] = j.toByte()
+    private fun hexToBase64Url(input: String): String {
+        try {
+            // STRIP DASHES & SPACES: SunNxt KIDs are often UUIDs (5EA9...-3B1E...)
+            val trimmed = input.trim().replace("-", "").replace(" ", "")
+            
+            // AUTO-DETECT: If it's already a valid Base64 string ...
+            if (trimmed.length in 20..44 && (trimmed.contains("_") || trimmed.contains("/") || trimmed.contains("+") || trimmed.endsWith("="))) {
+                val decoded = if (trimmed.contains("_")) {
+                     Base64.decode(trimmed, Base64.URL_SAFE)
+                } else {
+                     Base64.decode(trimmed, Base64.DEFAULT)
+                }
+                return Base64.encodeToString(decoded, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+            }
+
+            // Assume HEX otherwise
+            val bytes = ByteArray(trimmed.length / 2)
+            for (i in bytes.indices) {
+                val index = i * 2
+                val j = Integer.parseInt(trimmed.substring(index, index + 2), 16)
+                bytes[i] = j.toByte()
+            }
+            return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+        } catch (e: Exception) {
+            // Final Fallback: return as-is or empty
+            return input
         }
-        return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     }
 
     fun getAudioTracks(): List<AudioTrack> {
@@ -1602,9 +1737,29 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     }
 
     override fun onSharedPreferenceChanged(key: String) {
-        if (key == SP.KEY_BITRATE_MODE) {
-            activity?.runOnUiThread {
-                applyBitrateParameters()
+        when (key) {
+            SP.KEY_BITRATE_MODE -> {
+                activity?.runOnUiThread {
+                    applyBitrateParameters()
+                }
+            }
+            SP.KEY_RESIZE_MODE -> {
+                val mode = SP.resizeMode
+                activity?.runOnUiThread {
+                    if (isAdded) {
+                        playerView.resizeMode = when (mode) {
+                            1 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
+                            2 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                            else -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        }
+                        val label = when (mode) {
+                            1 -> "Fill"
+                            2 -> "Zoom"
+                            else -> "Fit"
+                        }
+                        Toast.makeText(requireContext(), "Aspect Ratio: $label", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
     }

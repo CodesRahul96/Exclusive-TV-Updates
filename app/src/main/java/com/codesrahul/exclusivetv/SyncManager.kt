@@ -61,7 +61,8 @@ object SyncManager {
                     "watermarkOpacity" to SP.watermarkOpacity,
                     "watermarkPosition" to SP.watermarkPosition,
                     "epgShift" to SP.epgShift,
-                    "sleepTimer" to SP.sleepTimer
+                    "sleepTimer" to SP.sleepTimer,
+                    "resizeMode" to SP.resizeMode
                 )
 
                 // Store audio tracks as a JSON string inside settings to avoid Firestore map key issues (URLs contain '.', '/', '?')
@@ -172,6 +173,7 @@ object SyncManager {
                                 (s["watermarkPosition"] as? String)?.let { SP.watermarkPosition = it }
                                 (s["epgShift"] as? Long)?.let { SP.epgShift = it.toInt() }
                                 (s["sleepTimer"] as? Long)?.let { SP.sleepTimer = it.toInt() }
+                                (s["resizeMode"] as? Long)?.let { SP.resizeMode = it.toInt() }
                             }
 
                             Log.i(TAG, "Cloud Sync Down successful.")

@@ -301,6 +301,18 @@
                     <View style="@style/SettingsDivider"/>
 
                     <LinearLayout
+                        android:id="@+id/card_aspect_ratio"
+                        style="@style/SettingsToggleItem">
+                        <ImageView style="@style/SettingsIcon" android:src="@drawable/ic_video_quality"/>
+                        <LinearLayout style="@style/SettingsTextContainer">
+                            <TextView style="@style/SettingsTitle" android:text="Channel Aspect Ratio"/>
+                            <TextView style="@style/SettingsSubtitle" android:text="Adjust video scaling (Fit, Fill, Zoom)"/>
+                        </LinearLayout>
+                        <TextView android:id="@+id/status_aspect_ratio" style="@style/SettingsStatusText" android:text="Fit"/>
+                    </LinearLayout>
+                    <View style="@style/SettingsDivider"/>
+
+                    <LinearLayout
                         android:id="@+id/card_pip_mode"
                          style="@style/SettingsToggleItem">
                         <ImageView style="@style/SettingsIcon" android:src="@drawable/ic_video_quality"/>

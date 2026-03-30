@@ -149,6 +149,10 @@ class SettingFragment : Fragment() {
         
         val bitrateLabels = arrayOf("Data Saver (480p)", "Low (720p)", "Medium (1080p)", "High (No Limit)")
         binding.statusBitrateMode.text = bitrateLabels.getOrElse(SP.bitrateMode) { "High" }
+        
+        val aspectLabels = arrayOf("Fit", "Fill", "Zoom")
+        binding.statusAspectRatio.text = aspectLabels.getOrElse(SP.resizeMode) { "Fit" }
+
         binding.statusBootStartup.text = if (SP.bootStartup) "ON" else "OFF"
         binding.statusConfigAutoLoad.text = if (SP.configAutoLoad) "ON" else "OFF"
         binding.statusChannelCheck.text = if (SP.channelCheck) "ON" else "OFF"
@@ -166,7 +170,8 @@ class SettingFragment : Fragment() {
         val statusViews = listOf(
             binding.statusChannelReversal, binding.statusChannelNum, binding.statusTime,
             binding.statusShowDateInInfo,
-            binding.statusWatchLast, binding.statusBitrateMode, binding.statusBootStartup,
+            binding.statusWatchLast, binding.statusBitrateMode, binding.statusAspectRatio,
+            binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, 
             binding.statusAudioStabilizer, binding.statusEpgShift
@@ -199,6 +204,7 @@ class SettingFragment : Fragment() {
             binding.cardTime,
             binding.cardWatchLast,
             binding.cardForceHighQuality,
+            binding.cardAspectRatio,
             binding.cardBootStartup,
             binding.cardConfigAutoLoad,
             binding.cardChannelCheck,
@@ -246,6 +252,7 @@ class SettingFragment : Fragment() {
         binding.cardTime.setOnClickListener { toggleSetting("time") }
         binding.cardWatchLast.setOnClickListener { toggleSetting("watchLast") }
         binding.cardForceHighQuality.setOnClickListener { toggleSetting("forceHighQuality") }
+        binding.cardAspectRatio.setOnClickListener { setupAspectRatioDialog() }
         binding.cardBootStartup.setOnClickListener { toggleSetting("bootStartup") }
         binding.cardConfigAutoLoad.setOnClickListener { toggleSetting("configAutoLoad") }
         binding.cardChannelCheck.setOnClickListener { toggleSetting("channelCheck") }
@@ -527,6 +534,23 @@ class SettingFragment : Fragment() {
         if (_binding != null) {
             binding.versionName.text = versionName
         }
+    }
+
+    private fun setupAspectRatioDialog() {
+        tvUiUtils?.playClickSound()
+        val options = arrayOf("Fit (Original)", "Fill (Stretched)", "Zoom (Cropped)")
+        val current = SP.resizeMode
+
+        android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Channel Aspect Ratio")
+            .setSingleChoiceItems(options, current) { dialog, which ->
+                SP.resizeMode = which
+                syncStatusUI()
+                dialog.dismiss()
+                Toast.makeText(requireContext(), "Aspect Ratio: ${options[which]}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun hideSelf() {

@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv.models
+package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import java.io.BufferedReader
@@ -205,7 +205,14 @@ object M3UParser {
                                         currentDrmLicense = value
                                     }
                                 }
-                                "license-type", "license_type", "drm-scheme", "drm" -> currentDrmScheme = value
+                                "license-type", "license_type", "drm-scheme", "drm" -> {
+                                    currentDrmScheme = when (value.lowercase()) {
+                                        "com.widevine.alpha", "widevine" -> "widevine"
+                                        "com.microsoft.playready", "playready" -> "playready"
+                                        "org.w3.clearkey", "com.clearkey.alpha", "clearkey" -> "clearkey"
+                                        else -> value
+                                    }
+                                }
                             }
                         }
 

@@ -72,7 +72,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 "repeat_info", "buffer_mode", SP.KEY_EPG_ENABLED, 
                 "show_date_in_info", "watch_last", "force_high_quality",
                 "pip_mode", "audio_stabilizer", "config_channel_check",
-                "watermark_enabled", "watermark_opacity", "watermark_position", "epg_shift", "sleep_timer"
+                "watermark_enabled", "watermark_opacity", "watermark_position", "epg_shift", "sleep_timer", SP.KEY_RESIZE_MODE
             )
             if (syncKeys.contains(key)) {
                 SyncManager.syncUp()
@@ -140,9 +140,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     private var doubleBackToExitPressedOnce = false
 
-    lateinit var gestureDetector: GestureDetector
     lateinit var gestureListener: GestureListener
-    private lateinit var scaleDetector: ScaleGestureDetector
+    lateinit var gestureDetector: GestureDetector
 
     // Gesture HUD Views
     private lateinit var gestureHudRoot: View
@@ -280,18 +279,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         seekTime = findViewById(R.id.seek_time)
         seekProgress = findViewById(R.id.seek_progress)
         hudSpeed = findViewById(R.id.hud_speed)
-
-        scaleDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScaleEnd(detector: ScaleGestureDetector) {
-                if (detector.scaleFactor > 1.1f) {
-                    webFragment.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM)
-                    Toast.makeText(this@MainActivity, "Zoom Mode", Toast.LENGTH_SHORT).show()
-                } else if (detector.scaleFactor < 0.9f) {
-                    webFragment.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT)
-                    Toast.makeText(this@MainActivity, "Fit Mode", Toast.LENGTH_SHORT).show()
-                }
-            }
-        })
 
         if (savedInstanceState != null) {
             // Restore fragment references from FragmentManager after recreation
@@ -962,7 +949,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
             
             if (loginFragment.isHidden) {
-                scaleDetector.onTouchEvent(event)
                 gestureDetector.onTouchEvent(event)
             }
         }
@@ -1621,6 +1607,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     Toast.makeText(this, "Move mode: ${if(SP.moveMode) "on" else "off"}", Toast.LENGTH_SHORT).show()
                     return true
                 }
+                KeyEvent.KEYCODE_A -> {
+                    cycleAspectRatio()
+                    return true
+                }
                 // Numeric Entry
                 in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
                     if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
@@ -2048,6 +2038,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             Log.w(TAG, "System under maintenance. UI locked.")
             Toast.makeText(this, "System under maintenance", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun cycleAspectRatio() {
+        val nextMode = (SP.resizeMode + 1) % 3
+        SP.resizeMode = nextMode
     }
 
     companion object {
