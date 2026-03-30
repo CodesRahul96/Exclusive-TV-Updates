@@ -131,6 +131,7 @@ class SettingFragment : Fragment() {
         tvUiUtils?.tintTextViewDrawable(binding.checkVersion, iconColorSecondary)
         tvUiUtils?.tintTextViewDrawable(binding.copyrightInfo, iconColorSecondary)
         tvUiUtils?.tintTextViewDrawable(binding.appWebsite, iconColorSecondary)
+        tvUiUtils?.tintTextViewDrawable(binding.btnUserManual, iconColorSecondary)
 
         // Tint Portfolio Icons
         val goldColor = ContextCompat.getColor(requireContext(), R.color.accent_gold)
@@ -145,7 +146,9 @@ class SettingFragment : Fragment() {
         binding.statusShowDateInInfo.text = if (SP.showDateInInfo) "ON" else "OFF" // Sync status
         binding.statusTime.text = if (SP.time) "ON" else "OFF"
         binding.statusWatchLast.text = if (SP.watchLast) "ON" else "OFF"
-        binding.statusForceHighQuality.text = if (SP.forceHighQuality) "ON" else "OFF"
+        
+        val bitrateLabels = arrayOf("Data Saver (480p)", "Low (720p)", "Medium (1080p)", "High (No Limit)")
+        binding.statusBitrateMode.text = bitrateLabels.getOrElse(SP.bitrateMode) { "High" }
         binding.statusBootStartup.text = if (SP.bootStartup) "ON" else "OFF"
         binding.statusConfigAutoLoad.text = if (SP.configAutoLoad) "ON" else "OFF"
         binding.statusChannelCheck.text = if (SP.channelCheck) "ON" else "OFF"
@@ -163,7 +166,7 @@ class SettingFragment : Fragment() {
         val statusViews = listOf(
             binding.statusChannelReversal, binding.statusChannelNum, binding.statusTime,
             binding.statusShowDateInInfo,
-            binding.statusWatchLast, binding.statusForceHighQuality, binding.statusBootStartup,
+            binding.statusWatchLast, binding.statusBitrateMode, binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, 
             binding.statusAudioStabilizer, binding.statusEpgShift
@@ -209,6 +212,7 @@ class SettingFragment : Fragment() {
             binding.managePlaylists,
             binding.manageCategories,
             binding.clear,
+            binding.btnUserManual,
             binding.checkVersion,
             binding.copyrightInfo,
             binding.appWebsite,
@@ -372,6 +376,12 @@ class SettingFragment : Fragment() {
             showCopyrightDialog()
         }
 
+        binding.btnUserManual.setOnClickListener {
+             tvUiUtils?.playClickSound()
+             hideSelf()
+             (activity as? MainActivity)?.showOnboarding()
+        }
+
         binding.appWebsite.setOnClickListener {
             openUrl("https://exclusivetv.indevs.in/")
         }
@@ -412,7 +422,7 @@ class SettingFragment : Fragment() {
             "showDateInInfo" -> SP.showDateInInfo = !SP.showDateInInfo
             "time" -> SP.time = !SP.time
             "watchLast" -> SP.watchLast = !SP.watchLast
-            "forceHighQuality" -> SP.forceHighQuality = !SP.forceHighQuality
+            "forceHighQuality" -> setupBitrateDialog()
             "bootStartup" -> SP.bootStartup = !SP.bootStartup
             "configAutoLoad" -> SP.configAutoLoad = !SP.configAutoLoad
             "channelCheck" -> SP.channelCheck = !SP.channelCheck
@@ -928,7 +938,24 @@ class SettingFragment : Fragment() {
              .setNegativeButton("Cancel", null)
              .show()
      }
- 
+
+     private fun setupBitrateDialog() {
+         tvUiUtils?.playClickSound()
+         val options = arrayOf("Data Saver (480p Max)", "Low (720p HD Max)", "Medium (1080p FHD Max)", "High (No Limit / 4K)")
+         val currentMode = SP.bitrateMode
+         
+         android.app.AlertDialog.Builder(requireContext(), android.app.AlertDialog.THEME_HOLO_DARK)
+             .setTitle("Select Bitrate & Quality Priority")
+             .setSingleChoiceItems(options, currentMode) { dialog, which ->
+                 SP.bitrateMode = which
+                 syncStatusUI()
+                 Toast.makeText(context, "Bitrate Priority: ${options[which]}", Toast.LENGTH_SHORT).show()
+                 dialog.dismiss()
+             }
+             .setNegativeButton("Cancel", null)
+             .show()
+     }
+
      companion object {
         const val TAG = "SettingFragment"
         const val PERMISSION_READ = 30

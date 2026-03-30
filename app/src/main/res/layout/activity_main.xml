@@ -17,5 +17,10 @@
     <include layout="@layout/watermark_overlay" />
     
     <include layout="@layout/gesture_hud" />
+
+    <FrameLayout
+        android:id="@+id/onboarding_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
     
 </FrameLayout>

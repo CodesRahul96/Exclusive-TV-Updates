@@ -293,10 +293,10 @@
                         style="@style/SettingsToggleItem">
                         <ImageView style="@style/SettingsIcon" android:src="@drawable/ic_video_quality"/>
                         <LinearLayout style="@style/SettingsTextContainer">
-                            <TextView style="@style/SettingsTitle" android:text="High Bitrate Priority"/>
-                            <TextView style="@style/SettingsSubtitle" android:text="Always choose highest available resolution"/>
+                            <TextView style="@style/SettingsTitle" android:text="Bitrate &amp; Quality Priority"/>
+                            <TextView style="@style/SettingsSubtitle" android:text="Balance data usage and video resolution"/>
                         </LinearLayout>
-                        <TextView android:id="@+id/status_force_high_quality" style="@style/SettingsStatusText" android:text="OFF"/>
+                        <TextView android:id="@+id/status_bitrate_mode" style="@style/SettingsStatusText" android:text="High"/>
                     </LinearLayout>
                     <View style="@style/SettingsDivider"/>
 
@@ -337,8 +337,8 @@
                          style="@style/SettingsToggleItem">
                         <ImageView style="@style/SettingsIcon" android:src="@drawable/ic_audio_track"/>
                         <LinearLayout style="@style/SettingsTextContainer">
-                            <TextView style="@style/SettingsTitle" android:text="Preferred Audio Track"/>
-                            <TextView style="@style/SettingsSubtitle" android:text="Select default language for streams"/>
+                            <TextView style="@style/SettingsTitle" android:text="Default Audio Track"/>
+                            <TextView style="@style/SettingsSubtitle" android:text="Set your preferred language for all channels"/>
                         </LinearLayout>
                         <TextView android:id="@+id/status_audio_language" style="@style/SettingsValueText" android:text="Default"/>
                          <ImageView style="@style/SettingsChevron"/>
@@ -482,6 +482,14 @@
                         style="@style/SettingsActionItem"
                         android:text="System Integrity &amp; Updates"
                         android:drawableStart="@drawable/ic_update" />
+                    
+                     <View style="@style/SettingsDivider"/>
+
+                     <TextView
+                         android:id="@+id/btn_user_manual"
+                         style="@style/SettingsActionItem"
+                         android:text="Replay User Manual / Tutorial"
+                         android:drawableStart="@drawable/ic_info_outline" />
                     
                      <View style="@style/SettingsDivider"/>
                     

@@ -43,6 +43,7 @@ object SP {
 
     private const val KEY_MOVE_MODE = "move_mode"
     private const val KEY_WATCH_LAST = "watch_last"
+    const val KEY_BITRATE_MODE = "bitrate_mode"
     private const val KEY_FORCE_HIGH_QUALITY = "force_high_quality"
     private const val KEY_LAST_VERSION = "last_version"
     private const val KEY_LAST_CHANNEL_URL = "last_channel_url"
@@ -344,12 +345,12 @@ object SP {
             }
         }
 
-    var forceHighQuality: Boolean
-        get() = sp.getBoolean(KEY_FORCE_HIGH_QUALITY, true)
+    var bitrateMode: Int
+        get() = sp.getInt(KEY_BITRATE_MODE, if (sp.getBoolean(KEY_FORCE_HIGH_QUALITY, true)) 3 else 1)
         set(value) {
-            if (value != this.forceHighQuality) {
-                sp.edit().putBoolean(KEY_FORCE_HIGH_QUALITY, value).apply()
-                notifyListeners(KEY_FORCE_HIGH_QUALITY)
+            if (value != this.bitrateMode) {
+                sp.edit().putInt(KEY_BITRATE_MODE, value).apply()
+                notifyListeners(KEY_BITRATE_MODE)
             }
         }
 
@@ -595,6 +596,12 @@ object SP {
                 notifyListeners(KEY_PIP_MODE)
             }
         }
+
+    private const val KEY_HAS_COMPLETED_ONBOARDING = "has_completed_onboarding"
+
+    var hasCompletedOnboarding: Boolean
+        get() = sp.getBoolean(KEY_HAS_COMPLETED_ONBOARDING, false)
+        set(value) = sp.edit().putBoolean(KEY_HAS_COMPLETED_ONBOARDING, value).apply()
 
     fun reset() {
         sp.edit().clear().apply()

@@ -5,100 +5,103 @@
     android:id="@+id/root_container"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/overlay_background">
+    android:background="@color/overlay_background"
+    android:clickable="true"
+    android:focusable="true">
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
+    <!-- Centered Card with constrained width -->
+    <LinearLayout
+        android:layout_width="560dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_copyright_glass"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:elevation="12dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <ImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_info_outline"
+            app:tint="@color/accent_gold"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/tv_button_bg"
+            android:padding="10dp"
+            tools:ignore="UseAppTint" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Copyright &amp; Disclaimer"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.01"/>
+
+        <View
+            android:layout_width="60dp"
+            android:layout_height="2dp"
+            android:background="@color/accent_gold"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="24dp"
+            android:alpha="0.8"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Exclusive TV does not stream or host any of the content included in this application.\n\nAll streaming links are gathered from third-party sources available freely on the internet. Exclusive TV merely provides a user-friendly interface for playback.\n\nAll content is the copyright of their respective owners."
+            android:textSize="15sp"
+            android:textColor="#E0E0E0"
+            android:lineSpacingMultiplier="1.3"
+            android:gravity="center"
+            android:paddingHorizontal="8dp"
+            android:layout_marginBottom="28dp" />
 
         <LinearLayout
-            style="@style/ResponsiveDialogStyle"
-            android:background="@drawable/bg_copyright_glass"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="32dp"
-            android:elevation="12dp">
-
-            <ImageView
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:src="@drawable/ic_info_outline"
-                app:tint="@color/accent_gold"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/tv_button_bg"
-                android:padding="12dp"
-                tools:ignore="UseAppTint" />
+            android:gravity="center"
+            android:layout_marginBottom="32dp"
+            android:alpha="0.8">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Copyright &amp; Disclaimer"
-                android:textSize="22sp"
+                android:text="Developed by CodesRahul"
+                android:textSize="14sp"
+                android:textColor="@color/accent_gold"
                 android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="20dp"
-                android:fontFamily="sans-serif-medium"/>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="#26FFFFFF"
-                android:layout_marginBottom="24dp"/>
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="4dp" />
 
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Exclusive TV does not stream or host any of the content included in this application.\n\nAll streaming links are gathered from third-party sources available freely on the internet. Exclusive TV merely provides a user-friendly interface for playback.\n\nAll content is the copyright of their respective owners."
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:lineSpacingMultiplier="1.4"
-                android:paddingHorizontal="12dp"
-                android:gravity="center"
-                android:layout_marginBottom="28dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:layout_marginBottom="28dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Developed by CodesRahul"
-                    android:textSize="13sp"
-                    android:textColor="@color/accent_gold"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="4dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="© 2026 All Rights Reserved"
-                    android:textSize="10sp"
-                    android:textColor="@color/text_secondary"
-                    android:alpha="0.5" />
-            </LinearLayout>
-
-            <Button
-                android:id="@+id/btn_close"
-                android:layout_width="160dp"
-                android:layout_height="44dp"
-                android:text="Dismiss"
-                android:layout_gravity="center_horizontal"
-                android:background="@drawable/bg_dialog_btn"
-                android:textColor="@color/white"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:textAllCaps="false"
-                android:focusable="true"
-                android:stateListAnimator="@null" />
-
+                android:text="© 2026 All Rights Reserved"
+                android:textSize="10sp"
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
-    </ScrollView>
+
+        <Button
+            android:id="@+id/btn_close"
+            android:layout_width="160dp"
+            android:layout_height="44dp"
+            android:text="Dismiss"
+            android:layout_gravity="center_horizontal"
+            android:background="@drawable/bg_dialog_btn"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:focusable="true"
+            android:stateListAnimator="@null" />
+
+    </LinearLayout>
 </FrameLayout>

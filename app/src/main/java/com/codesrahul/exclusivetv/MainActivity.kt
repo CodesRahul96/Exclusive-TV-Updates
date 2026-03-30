@@ -60,6 +60,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     internal var maintenanceFragment = MaintenanceFragment()
     internal var loginFragment = LoginFragment()
     internal var searchFragment = SearchFragment() // [NEW]
+    internal var onboardingFragment = OnboardingFragment() // [NEW]
 
     private val spListener = object : OnSharedPreferenceChangeListener {
         override fun onSharedPreferenceChanged(key: String) {
@@ -309,6 +310,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             supportFragmentManager.findFragmentByTag("maintenance")?.let { maintenanceFragment = it as MaintenanceFragment }
             supportFragmentManager.findFragmentByTag("login")?.let { loginFragment = it as LoginFragment }
             supportFragmentManager.findFragmentByTag("search")?.let { searchFragment = it as SearchFragment }
+            supportFragmentManager.findFragmentByTag("onboarding")?.let { onboardingFragment = it as OnboardingFragment }
         }
 
         if (savedInstanceState == null) {
@@ -328,10 +330,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 .add(R.id.main_browse_fragment, maintenanceFragment, "maintenance")
                 .add(R.id.main_browse_fragment, loginFragment, "login")
                 .add(R.id.main_browse_fragment, searchFragment, "search")
+                .add(R.id.onboarding_container, onboardingFragment, "onboarding")
                 .hide(menuFragment).hide(settingFragment).hide(importProgressFragment)
                 .hide(trackSelectionFragment).hide(offlineFragment).hide(maintenanceFragment)
                 .hide(epgGridFragment).hide(errorFragment).hide(timeFragment)
-                .hide(webFragment).hide(searchFragment)
+                .hide(webFragment).hide(searchFragment).hide(onboardingFragment)
 
             // Smart Startup: Check Login Status
             if (SP.userId != null) {
@@ -423,6 +426,20 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         } else if (TVList.listModel.isNotEmpty()) {
             com.codesrahul.exclusivetv.models.TVList.setPosition(0)
         }
+
+        // Trigger Onboarding for new users
+        if (!SP.hasCompletedOnboarding) {
+            showOnboarding()
+        }
+    }
+
+    fun showOnboarding() {
+        showFragment(onboardingFragment)
+        onboardingFragment.resetAndShow()
+    }
+
+    fun hideOnboarding() {
+        hideFragment(onboardingFragment)
     }
 
     private fun checkIntegrity(onComplete: () -> Unit) {

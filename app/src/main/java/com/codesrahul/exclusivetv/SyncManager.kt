@@ -51,7 +51,7 @@ object SyncManager {
                     "epgEnabled" to SP.epgEnabled,
                     "showDateInInfo" to SP.showDateInInfo,
                     "watchLast" to SP.watchLast,
-                    "forceHighQuality" to SP.forceHighQuality,
+                    "bitrateMode" to SP.bitrateMode,
                     "pipMode" to SP.pipMode,
                     "audioStabilizer" to SP.audioStabilizer,
                     "channelCheck" to SP.channelCheck,
@@ -160,7 +160,8 @@ object SyncManager {
                                 (s["epgEnabled"] as? Boolean)?.let { SP.epgEnabled = it }
                                 (s["showDateInInfo"] as? Boolean)?.let { SP.showDateInInfo = it }
                                 (s["watchLast"] as? Boolean)?.let { SP.watchLast = it }
-                                (s["forceHighQuality"] as? Boolean)?.let { SP.forceHighQuality = it }
+                                (s["bitrateMode"] as? Long)?.let { SP.bitrateMode = it.toInt() }
+                                     ?: (s["forceHighQuality"] as? Boolean)?.let { SP.bitrateMode = if (it) 3 else 1 }
                                 (s["pipMode"] as? Boolean)?.let { SP.pipMode = it }
                                 (s["audioStabilizer"] as? Boolean)?.let { SP.audioStabilizer = it }
                                 (s["channelCheck"] as? Boolean)?.let { SP.channelCheck = it }

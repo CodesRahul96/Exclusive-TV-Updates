@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.graphics.Bitmap
 import android.net.Uri
@@ -60,7 +60,7 @@ import androidx.media3.common.util.UnstableApi
 
 @OptIn(UnstableApi::class)
 @android.annotation.SuppressLint("SetJavaScriptEnabled")
-class WebFragment : Fragment() {
+class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private lateinit var mainActivity: MainActivity
 
     private lateinit var webView: WebView
@@ -164,6 +164,7 @@ class WebFragment : Fragment() {
                 wifiLock = wifiManager.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "ExclusiveTV:WifiLock")
             }
             wifiLock?.setReferenceCounted(false)
+            SP.setOnSharedPreferenceChangeListener(this)
         } catch (e: Exception) {
         }
 
@@ -1006,25 +1007,8 @@ class WebFragment : Fragment() {
         // If the toggle is ON, we want MAX resolution.
         // If the toggle is OFF, we might want to save data (SD)?
         // For now, let's assume the user wants the BEST quality by default.
-        if (!SP.forceHighQuality) {
-            // If High Quality is FORCED OFF (i.e. User wants Data Saver), we cap at SD
-            val trackSelectionParameters = exoPlayer?.trackSelectionParameters
-                ?.buildUpon()
-                ?.setMaxVideoSizeSd() 
-                ?.build()
-            if (trackSelectionParameters != null) {
-                exoPlayer?.trackSelectionParameters = trackSelectionParameters
-            }
-        } else {
-             // Ensure no limits suitable for HD/4K
-             val trackSelectionParameters = exoPlayer?.trackSelectionParameters
-                ?.buildUpon()
-                ?.clearVideoSizeConstraints()
-                ?.build()
-             if (trackSelectionParameters != null) {
-                exoPlayer?.trackSelectionParameters = trackSelectionParameters
-             }
-        }
+        // BITRATE & QUALITY SELECTION LOGIC
+        applyBitrateParameters()
 
         // Apply Default Audio Language Preference & FireTV Audio Stability Fixes
         val defaultLang = SP.defaultAudioLanguage
@@ -1134,15 +1118,7 @@ class WebFragment : Fragment() {
 
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                 super.onVideoSizeChanged(videoSize)
-                val height = videoSize.height
-                val label = when {
-                    height >= 2160 -> "4K"
-                    height >= 1440 -> "2K"
-                    height >= 1080 -> "FHD"
-                    height >= 720 -> "HD"
-                    else -> "SD"
-                }
-                tvModel?.setVideoQuality(label)
+                updateQualityLabel(videoSize.height)
             }
 
 
@@ -1434,6 +1410,7 @@ class WebFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        SP.removeOnSharedPreferenceChangeListener(this)
         releasePlayer()
         _binding = null
     }
@@ -1622,5 +1599,63 @@ class WebFragment : Fragment() {
             }
             it.seekTo(newPos)
         }
+    }
+
+    override fun onSharedPreferenceChanged(key: String) {
+        if (key == SP.KEY_BITRATE_MODE) {
+            activity?.runOnUiThread {
+                applyBitrateParameters()
+            }
+        }
+    }
+
+    private fun applyBitrateParameters() {
+        val player = exoPlayer ?: return
+        val builder = player.trackSelectionParameters.buildUpon()
+        
+        when (SP.bitrateMode) {
+            0 -> { // Data Saver (360p) - Aggressive data saving
+                builder.setMaxVideoSize(640, 360)
+                builder.setMaxVideoBitrate(800_000)
+            }
+            1 -> { // Low (720p HD Max)
+                builder.setMaxVideoSize(1280, 720)
+                builder.setMaxVideoBitrate(2_500_000)
+            }
+            2 -> { // Medium (1080p FHD Max)
+                builder.setMaxVideoSize(1920, 1080)
+                builder.setMaxVideoBitrate(5_000_000)
+            }
+            3 -> { // High (No Limit / 4K)
+                builder.clearVideoSizeConstraints()
+                builder.setMaxVideoBitrate(Int.MAX_VALUE)
+            }
+        }
+        player.trackSelectionParameters = builder.build()
+        // Instant quality badge update
+        updateQualityLabel(player.videoSize.height)
+    }
+
+    private fun updateQualityLabel(height: Int) {
+        var label = if (height >= 2160) {
+            "4K"
+        } else if (height >= 1440) {
+            "2K"
+        } else if (height >= 1080) {
+            "FHD"
+        } else if (height >= 720) {
+            "HD"
+        } else if (height > 0) {
+            "SD"
+        } else {
+            ""
+        }
+
+        // Force 'SD' label if Data Saver is active to reflect user choice
+        if (SP.bitrateMode == 0 && label.isNotEmpty() && label != "SD") {
+            label = "SD"
+        }
+        
+        tvModel?.setVideoQuality(label)
     }
 }
