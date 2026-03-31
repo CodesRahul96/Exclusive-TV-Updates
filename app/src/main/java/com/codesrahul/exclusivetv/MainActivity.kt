@@ -1474,7 +1474,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 trackSelectionFragment.isHidden && epgGridFragment.isHidden && 
                 searchFragment.isHidden && loginFragment.isHidden && 
                 loadingFragment.isHidden && maintenanceFragment.isHidden && 
-                offlineFragment.isHidden) {
+                offlineFragment.isHidden && onboardingFragment.isHidden) {
                 if (event.action == KeyEvent.ACTION_DOWN) {
                     if (event.repeatCount == 0) {
                         isSearchPressed = true
@@ -1516,7 +1516,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         
         if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
             // Handle right arrow for settings menu (3s hold) when all fragments are hidden
-            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
                 if (event.action == KeyEvent.ACTION_DOWN) {
                     if (event.repeatCount == 0) {
                         // Start 3-second timer on first press
@@ -1577,19 +1577,19 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_UP -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
                         channelUp()
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
                         channelDown()
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
                         showFragment(menuFragment)
                         return true
                     }
@@ -1613,7 +1613,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 }
                 // Numeric Entry
                 in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden) {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
                         showChannel((event.keyCode - KeyEvent.KEYCODE_0).toString())
                         return true
                     }
@@ -1697,7 +1697,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
 
     private fun channelUp() {
-        if (menuFragment.isHidden && settingFragment.isHidden) {
+        if (menuFragment.isHidden && settingFragment.isHidden && onboardingFragment.isHidden) {
             if (SP.channelReversal) {
                 prev()
                 return
@@ -1707,7 +1707,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun channelDown() {
-        if (menuFragment.isHidden && settingFragment.isHidden) {
+        if (menuFragment.isHidden && settingFragment.isHidden && onboardingFragment.isHidden) {
             if (SP.channelReversal) {
                 next()
                 return
@@ -1717,6 +1717,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun back() {
+        if (!onboardingFragment.isHidden) {
+            hideOnboarding()
+            return
+        }
         if (!searchFragment.isHidden) {
             hideSearchFragment()
             return

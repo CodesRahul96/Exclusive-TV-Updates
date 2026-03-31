@@ -19,31 +19,59 @@ class OnboardingFragment : Fragment() {
 
     private var currentStep = 0
     private var handAnimator: ObjectAnimator? = null
+    private var tvUiUtils: com.codesrahul.exclusivetv.ui.TvUiUtils? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentOnboardingBinding.inflate(inflater, container, false)
+        tvUiUtils = com.codesrahul.exclusivetv.ui.TvUiUtils(requireContext())
+        tvUiUtils?.initSounds(R.raw.focus, R.raw.click)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupFocusListeners()
+
         binding.btnSkip.setOnClickListener {
+            tvUiUtils?.playClickSound()
             finishOnboarding()
         }
 
         binding.btnNext.setOnClickListener {
+            tvUiUtils?.playClickSound()
             nextStep()
         }
 
         binding.btnPrev.setOnClickListener {
+            tvUiUtils?.playClickSound()
             prevStep()
         }
 
         startTutorial()
+        binding.btnNext.requestFocus()
+    }
+
+    private fun setupFocusListeners() {
+        val focusViews = listOf(
+            binding.btnSkip,
+            binding.btnNext,
+            binding.btnPrev
+        )
+
+        focusViews.forEach { v ->
+            v.setOnFocusChangeListener { view, hasFocus ->
+                if (hasFocus) {
+                    view.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start()
+                    tvUiUtils?.playFocusSound()
+                } else {
+                    view.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+                }
+            }
+        }
     }
 
     private fun startTutorial() {
@@ -80,6 +108,7 @@ class OnboardingFragment : Fragment() {
         // Control button visibility
         binding.btnPrev.visibility = if (currentStep > 0) View.VISIBLE else View.GONE
         binding.btnNext.text = "Next" // Reset default
+        binding.btnNext.requestFocus() // Ensure D-Pad stays active on the main action button
 
         when (currentStep) {
             0 -> {

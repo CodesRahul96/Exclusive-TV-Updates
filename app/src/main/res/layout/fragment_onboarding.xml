@@ -4,7 +4,8 @@
     android:layout_height="match_parent"
     android:background="@color/overlay_background"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:descendantFocusability="afterDescendants">
 
     <!-- Center Content -->
     <LinearLayout
@@ -57,9 +58,12 @@
             android:id="@+id/btn_skip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_glass_button"
             android:text="Skip"
-            android:textColor="@color/text_secondary"
+            android:textColor="@color/selector_onboarding_btn"
+            android:paddingHorizontal="16dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             android:textSize="14sp" />
 
         <Space
@@ -72,10 +76,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_glass_button"
             android:text="Previous"
             android:textAllCaps="false"
-            android:textColor="@color/text_secondary"
+            android:textColor="@color/selector_onboarding_btn"
+            android:paddingHorizontal="16dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
             android:textSize="14sp"
             android:visibility="gone" />
 
@@ -88,7 +95,9 @@
             android:paddingEnd="32dp"
             android:text="Next"
             android:textAllCaps="false"
-            android:textColor="@color/accent_gold" />
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:textColor="@color/selector_onboarding_btn" />
 
     </LinearLayout>
 

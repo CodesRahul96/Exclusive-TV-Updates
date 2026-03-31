@@ -3,10 +3,7 @@
     <!-- Focused State -->
     <item android:state_focused="true">
         <shape>
-            <gradient
-                android:angle="45"
-                android:startColor="#FFD700"
-                android:endColor="#FFA000" />
+            <solid android:color="@color/accent_gold" />
             <corners android:radius="8dp" />
             <stroke android:width="2dp" android:color="#FFFFFF" />
         </shape>
