@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.multidex.MultiDex
 import androidx.multidex.MultiDexApplication
 import com.codesrahul.exclusivetv.models.TVList
+import com.codesrahul.exclusivetv.R
 
 class MyTVApplication : MultiDexApplication() {
 
@@ -128,5 +129,15 @@ class MyTVApplication : MultiDexApplication() {
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
             com.codesrahul.exclusivetv.EPGManager.clear()
         }
+    }
+
+    private var tvUiUtils: com.codesrahul.exclusivetv.ui.TvUiUtils? = null
+    
+    fun getTvUiUtils(): com.codesrahul.exclusivetv.ui.TvUiUtils {
+        if (tvUiUtils == null) {
+            tvUiUtils = com.codesrahul.exclusivetv.ui.TvUiUtils(this)
+            tvUiUtils?.initSounds(R.raw.focus, R.raw.click)
+        }
+        return tvUiUtils!!
     }
 }

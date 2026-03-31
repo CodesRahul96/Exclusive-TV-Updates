@@ -1,4 +1,4 @@
-﻿@file:Suppress("DEPRECATION")
+@file:Suppress("DEPRECATION")
 
 package com.codesrahul.exclusivetv
 
@@ -85,4 +85,28 @@ private fun hashSignature(signature: Signature): String {
 
 fun String.showToast(duration: Int = Toast.LENGTH_SHORT) {
     MyTVApplication.getInstance().toast(this, duration)
+}
+
+/**
+ * Apply unified premium focus behavior (Scale + Sound + Shadow) to any View.
+ * Works across both TV (D-Pad) and Mobile (Touch/Tap-Focus).
+ */
+fun android.view.View.applyPremiumFocus(scale: Float = 1.08f, elevationDp: Float = 12f) {
+    val context = this.context
+    val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
+    val isTv = uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+    
+    if (isTv) {
+        // High-Quality TV Focus (Managed by TvUiUtils)
+        MyTVApplication.getInstance().getTvUiUtils().applyTvFocus(this, scale, elevationDp)
+    } else {
+        // Subtle Mobile Focus Feedback
+        this.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
+            } else {
+                v.animate().scaleX(1f).scaleY(1f).setDuration(150).start()
+            }
+        }
+    }
 }

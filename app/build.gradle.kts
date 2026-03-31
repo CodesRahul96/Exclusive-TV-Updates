@@ -202,6 +202,7 @@ configurations.configureEach {
     resolutionStrategy {
         force("com.google.code.gson:gson:2.10.1")
     }
+    exclude(group = "com.google.guava", module = "listenablefuture")
 }
 
 tasks.withType<Test> {

@@ -30,7 +30,7 @@ class SplashActivity : FragmentActivity() {
         setContentView(R.layout.activity_splash)
 
         val logo = findViewById<View>(R.id.logo)
-        val appName = findViewById<View>(R.id.app_name)
+        val appName = findViewById<View>(R.id.splash_app_name)
         val progressBar = findViewById<View>(R.id.progressBar)
         val loadingText = findViewById<View>(R.id.loading_text)
 

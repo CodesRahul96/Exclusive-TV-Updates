@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.codesrahul.exclusivetv.R
 
 object SP {
     // If Change channel with up and down in reversed order or not
@@ -215,7 +216,8 @@ object SP {
         val sensitiveKeys = listOf(
             KEY_USER_ID, KEY_API_HOST, KEY_API_DOWNLOAD_HOST, 
             KEY_API_HOST_FALLBACK, KEY_API_DOWNLOAD_HOST_FALLBACK,
-            KEY_STANDARD_CONFIG, KEY_PREMIUM_CONFIG
+            KEY_STANDARD_CONFIG, KEY_PREMIUM_CONFIG,
+            KEY_PLAYLIST_URLS, KEY_FAVORITE_URLS
         )
         
         val editor = sp.edit()

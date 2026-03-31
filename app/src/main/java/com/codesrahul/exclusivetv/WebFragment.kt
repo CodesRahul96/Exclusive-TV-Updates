@@ -52,6 +52,9 @@ import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import org.json.JSONObject
 import org.json.JSONArray
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy.LoadErrorInfo
 
 
 
@@ -971,6 +974,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext(), extractorsFactory)
         mediaSourceFactory.setDataSourceFactory(httpDataSourceFactory)
+        mediaSourceFactory.setLoadErrorHandlingPolicy(IPTVLoadErrorHandlingPolicy())
 
         // FIX: Configure DRM Provider to use our Cookie-enabled DataSource
         val drmProvider = androidx.media3.exoplayer.drm.DrmSessionManagerProvider { mediaItem: androidx.media3.common.MediaItem ->
@@ -1605,55 +1609,65 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         // Mode 1: Max Stability (Large buffer for slow net)
         // Mode 2: Low Latency (Small buffer for fast net)
 
+        // SIGNIFICANTLY INCREASED FOR IPTV STABILITY
         val minBuffer = when (bufferMode) {
-            1 -> 30000 // 30s
+            1 -> 60000 // 60s
             2 -> 5000  // 5s
-            else -> 15000 // Increased default to 15s to prevent pausing
+            else -> 30000 // 30s default
         }
 
         val maxBuffer = when (bufferMode) {
-            1 -> 50000 // 50s (Reduced from 60s for better memory)
-            2 -> 15000 // 15s
-            else -> 50000 // 50s (Reduced from 60s)
+            1 -> 120000 // 120s
+            2 -> 15000  // 15s
+            else -> 90000 // 90s
         }
 
         val startBuffer = when (bufferMode) {
-            1 -> 2500 // 2.5s start
-            2 -> 1000 // 1s start
-            else -> 1000 // Optimized default: 1s start
+            1 -> 3000 // 3s start
+            2 -> 800  // 0.8s start
+            else -> 1500 // 1.5s start
         }
         
-        // DYNAMIC BUFFER SIZING (Professional Solution)
         val context = context ?: return DefaultLoadControl.Builder().build()
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
         val memoryInfo = android.app.ActivityManager.MemoryInfo()
         activityManager.getMemoryInfo(memoryInfo)
         
         val totalMemGb = memoryInfo.totalMem / (1024 * 1024 * 1024.0)
-        val isHighEnd = totalMemGb > 2.0
+        val isHighEnd = totalMemGb > 3.0 // Raised threshold
         
-        // Target Buffer: Optimized to prevent GC stutter
-        // 64MB for High-End (was 128MB), 32MB for Low-End (was 50MB)
+        // Target Buffer: Optimized for IPTV
         val targetBufferBytes = if (isHighEnd) {
-            64 * 1024 * 1024 
+            128 * 1024 * 1024 
         } else {
-            32 * 1024 * 1024
+            64 * 1024 * 1024
         }
         
-        // Priority: ALWAYS prioritize time for smooth playback
-        val prioritizeTime = true
-
         return DefaultLoadControl.Builder()
             .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                if (isHighEnd) 30000 else minBuffer, // 30s min for High-End
-                if (isHighEnd) 50000 else maxBuffer, // 50s max for High-End
+                if (isHighEnd) 45000 else minBuffer,
+                if (isHighEnd) 120000 else maxBuffer,
                 startBuffer,
                 2500 
             )
             .setTargetBufferBytes(targetBufferBytes)
-            .setPrioritizeTimeOverSizeThresholds(prioritizeTime) 
+            .setPrioritizeTimeOverSizeThresholds(true) 
             .build()
+    }
+
+    private class IPTVLoadErrorHandlingPolicy : DefaultLoadErrorHandlingPolicy() {
+        override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorInfo): Long {
+            // Exponential backoff for IPTV stability
+            val errorCount = loadErrorInfo.errorCount
+            if (errorCount > 5) return C.TIME_UNSET // Fallback to URL rotation after 5 internal retries
+            
+            return Math.min(2000L * Math.pow(2.0, (errorCount - 1).toDouble()).toLong(), 10000L)
+        }
+
+        override fun getMinimumLoadableRetryCount(dataType: Int): Int {
+            return 5
+        }
     }
 
     fun isPlaying(): Boolean {
