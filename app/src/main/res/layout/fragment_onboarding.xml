@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/overlay_background"
@@ -46,12 +47,10 @@
         android:src="@drawable/ic_hand_gesture"
         android:visibility="invisible" />
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:gravity="center"
-        android:orientation="horizontal"
         android:padding="24dp">
 
         <Button
@@ -64,18 +63,16 @@
             android:paddingHorizontal="16dp"
             android:focusable="true"
             android:focusableInTouchMode="true"
-            android:textSize="14sp" />
-
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1" />
+            android:textSize="14sp"
+            app:layout_constraintHorizontal_chainStyle="spread"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/btn_prev"
+            app:layout_constraintStart_toStartOf="parent" />
 
         <Button
             android:id="@+id/btn_prev"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
             android:background="@drawable/bg_glass_button"
             android:text="Previous"
             android:textAllCaps="false"
@@ -84,7 +81,10 @@
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:textSize="14sp"
-            android:visibility="gone" />
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/btn_next"
+            app:layout_constraintStart_toEndOf="@id/btn_skip" />
 
         <Button
             android:id="@+id/btn_next"
@@ -97,8 +97,11 @@
             android:textAllCaps="false"
             android:focusable="true"
             android:focusableInTouchMode="true"
-            android:textColor="@color/selector_onboarding_btn" />
+            android:textColor="@color/selector_onboarding_btn"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/btn_prev" />
 
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </FrameLayout>
