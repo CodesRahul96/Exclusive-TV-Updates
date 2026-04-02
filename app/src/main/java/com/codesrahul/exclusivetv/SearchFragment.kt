@@ -60,9 +60,17 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
         
         listAdapter.setItemListener(this)
         
-        // [PROFESSIONAL] Keypad-First for Mobile
-        binding.numPadContainer.visibility = View.VISIBLE
-        binding.searchEditText.clearFocus() 
+        // [PROFESSIONAL] Context-Aware Focus (TV vs Mobile)
+        val hasTouch = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)
+        if (!hasTouch) {
+            // TV Mode: Prioritize Search Bar for Remote/Voice input
+            binding.numPadContainer.visibility = View.GONE
+            binding.searchEditText.requestFocus()
+        } else {
+            // Mobile/Touch: Keypad-First
+            binding.numPadContainer.visibility = View.VISIBLE
+            binding.searchEditText.clearFocus()
+        }
         
         updateHistoryChips()
         showSuggestions()
@@ -190,6 +198,21 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
                 layoutParams = params
                 isClickable = true
                 isFocusable = true
+                nextFocusUpId = binding.searchEditText.id
+                nextFocusDownId = binding.searchResults.id
+                
+                setOnFocusChangeListener { v, hasFocus ->
+                    if (hasFocus) {
+                        v.scaleX = 1.1f
+                        v.scaleY = 1.1f
+                        v.setBackgroundResource(R.drawable.tv_button_bg)
+                    } else {
+                        v.scaleX = 1.0f
+                        v.scaleY = 1.0f
+                        v.setBackgroundResource(R.drawable.bg_badge)
+                    }
+                }
+
                 setOnClickListener {
                     binding.searchEditText.setText(query)
                     binding.searchEditText.setSelection(query.length)

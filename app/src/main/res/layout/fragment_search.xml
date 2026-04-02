@@ -44,7 +44,11 @@
             android:imeOptions="actionSearch"
             android:inputType="text|number"
             android:focusable="true"
-            android:singleLine="true" />
+            android:singleLine="true"
+            android:nextFocusDown="@+id/history_chips_scroll"
+            android:nextFocusRight="@+id/btn_voice">
+            <requestFocus />
+        </EditText>
 
         <ImageView
             android:id="@+id/btn_voice"
@@ -54,6 +58,9 @@
             android:src="@android:drawable/ic_btn_speak_now"
             android:clickable="true"
             android:focusable="true"
+            android:nextFocusLeft="@+id/search_edit_text"
+            android:nextFocusRight="@+id/btn_keypad"
+            android:nextFocusDown="@+id/history_chips_scroll"
             app:tint="@color/white" />
 
         <ImageView
@@ -64,6 +71,9 @@
             android:src="@android:drawable/ic_dialog_dialer"
             android:clickable="true"
             android:focusable="true"
+            android:nextFocusLeft="@+id/btn_voice"
+            android:nextFocusRight="@+id/btn_clear"
+            android:nextFocusDown="@+id/history_chips_scroll"
             app:tint="@color/white" />
 
         <ImageView
@@ -74,6 +84,8 @@
             android:visibility="gone"
             android:clickable="true"
             android:focusable="true"
+            android:nextFocusLeft="@+id/btn_keypad"
+            android:nextFocusDown="@+id/history_chips_scroll"
             app:tint="@color/white" />
     </LinearLayout>
 
@@ -84,6 +96,9 @@
         android:layout_marginTop="8dp"
         android:layout_marginHorizontal="64dp"
         android:scrollbars="none"
+        android:focusable="true"
+        android:nextFocusUp="@+id/search_edit_text"
+        android:nextFocusDown="@+id/search_results"
         app:layout_constraintTop_toBottomOf="@id/search_container"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -104,6 +119,8 @@
         android:layout_marginBottom="16dp"
         android:clickable="true"
         android:focusable="true"
+        android:nextFocusUp="@+id/history_chips_scroll"
+        android:nextFocusDown="@+id/btn1"
         app:layout_constraintTop_toBottomOf="@id/history_chips_scroll"
         app:layout_constraintBottom_toTopOf="@id/num_pad_container"
         app:layout_constraintStart_toStartOf="parent"
