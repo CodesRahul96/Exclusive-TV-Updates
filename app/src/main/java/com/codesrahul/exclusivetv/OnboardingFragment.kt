@@ -22,6 +22,8 @@ class OnboardingFragment : Fragment() {
     private var handAnimator: ObjectAnimator? = null
     private var highlighterAnimator: ObjectAnimator? = null
     private var usageAnimator: ObjectAnimator? = null
+    private var arrowUpAnimator: ObjectAnimator? = null
+    private var arrowDownAnimator: ObjectAnimator? = null
     private var tvUiUtils: com.codesrahul.exclusivetv.ui.TvUiUtils? = null
 
     // Check if device is a TV
@@ -115,15 +117,21 @@ class OnboardingFragment : Fragment() {
         handAnimator?.cancel()
         highlighterAnimator?.cancel()
         usageAnimator?.cancel()
+        arrowUpAnimator?.cancel()
+        arrowDownAnimator?.cancel()
         
         // Safety check for TV layout views which might be missing in Mobile layout
         val viewHighlight = view?.findViewById<View>(R.id.view_highlight)
         val ivHand = view?.findViewById<View>(R.id.iv_hand)
+        val ivArrowUp = view?.findViewById<View>(R.id.iv_arrow_up)
+        val ivArrowDown = view?.findViewById<View>(R.id.iv_arrow_down)
         val usageContainer = view?.findViewById<View>(R.id.usage_callout_container)
         val ivUsageIcon = view?.findViewById<ImageView>(R.id.iv_usage_icon)
         
         viewHighlight?.visibility = View.INVISIBLE
         ivHand?.visibility = View.INVISIBLE
+        ivArrowUp?.visibility = View.INVISIBLE
+        ivArrowDown?.visibility = View.INVISIBLE
         usageContainer?.visibility = View.INVISIBLE
 
         // Control button visibility
@@ -217,7 +225,7 @@ class OnboardingFragment : Fragment() {
             2 -> {
                 binding.tvInstruction.text = "Browse Fast"
                 binding.tvSubInstruction.text = "Swipe up or down in the center of the screen to change channels."
-                animateHandSwipeVertical(0.5f, 0.3f, 0.7f)
+                animateHandSwipeVerticalWithArrows(0.5f, 0.35f, 0.65f)
             }
             3 -> {
                 binding.tvInstruction.text = "Volume & Brightness"
@@ -236,8 +244,8 @@ class OnboardingFragment : Fragment() {
             }
             6 -> {
                 binding.tvInstruction.text = "Audio & Language"
-                binding.tvSubInstruction.text = "Hold for 3 seconds on the right side to quickly change the Audio Track."
-                animateHandLongPress(0.88f, 0.4f)
+                binding.tvSubInstruction.text = "To change Audio Track or language, go to Settings → Audio Track."
+                animateHandTap(0.88f, 0.5f, isDoubleTap = true)
             }
             7 -> {
                 binding.tvInstruction.text = "Picture-in-Picture"
@@ -329,6 +337,72 @@ class OnboardingFragment : Fragment() {
             duration = 2000
             repeatCount = ObjectAnimator.INFINITE
             interpolator = AccelerateDecelerateInterpolator()
+            start()
+        }
+    }
+
+    private fun animateHandSwipeVerticalWithArrows(relX: Float, relYStart: Float, relYEnd: Float) {
+        val ivHand = view?.findViewById<View>(R.id.iv_hand) ?: return
+        val ivArrowUp = view?.findViewById<View>(R.id.iv_arrow_up) ?: return
+        val ivArrowDown = view?.findViewById<View>(R.id.iv_arrow_down) ?: return
+        
+        val rootWidth = binding.root.width.toFloat()
+        val rootHeight = binding.root.height.toFloat()
+        if (rootWidth == 0f || rootHeight == 0f) {
+             binding.root.post { animateHandSwipeVerticalWithArrows(relX, relYStart, relYEnd) }
+             return
+        }
+
+        val centerX = rootWidth * relX 
+        ivHand.x = centerX - ivHand.width/2
+        ivHand.visibility = View.VISIBLE
+        ivHand.alpha = 1f
+        
+        ivArrowUp.x = centerX - ivArrowUp.width/2
+        ivArrowUp.y = rootHeight * relYStart - ivArrowUp.height - 20
+        ivArrowUp.visibility = View.VISIBLE
+        ivArrowUp.alpha = 0f
+        
+        ivArrowDown.x = centerX - ivArrowDown.width/2
+        ivArrowDown.y = rootHeight * relYEnd + 20
+        ivArrowDown.visibility = View.VISIBLE
+        ivArrowDown.alpha = 0f
+        
+        val startY = rootHeight * relYStart
+        val endY = rootHeight * relYEnd
+
+        // Hand movement
+        handAnimator = ObjectAnimator.ofFloat(ivHand, "y", startY, endY).apply {
+            duration = 2000
+            repeatCount = ObjectAnimator.INFINITE
+            repeatMode = ObjectAnimator.REVERSE
+            interpolator = AccelerateDecelerateInterpolator()
+            start()
+        }
+        
+        // Arrow Animations
+        arrowUpAnimator = ObjectAnimator.ofFloat(ivArrowUp, View.ALPHA, 0f, 1f, 0f).apply {
+            duration = 2000
+            repeatCount = ObjectAnimator.INFINITE
+            start()
+        }
+        
+        arrowDownAnimator = ObjectAnimator.ofFloat(ivArrowDown, View.ALPHA, 0f, 1f, 0f).apply {
+            duration = 2000
+            repeatCount = ObjectAnimator.INFINITE
+            start()
+        }
+        
+        // Sliding effect for arrows
+        val slideUp = ObjectAnimator.ofFloat(ivArrowUp, View.TRANSLATION_Y, 0f, -30f, 0f).apply {
+            duration = 2000
+            repeatCount = ObjectAnimator.INFINITE
+            start()
+        }
+        
+        val slideDown = ObjectAnimator.ofFloat(ivArrowDown, View.TRANSLATION_Y, 0f, 30f, 0f).apply {
+            duration = 2000
+            repeatCount = ObjectAnimator.INFINITE
             start()
         }
     }

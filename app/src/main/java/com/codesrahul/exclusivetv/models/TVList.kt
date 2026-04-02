@@ -62,6 +62,10 @@ object TVList {
         } catch (e: Exception) {
         }
     }
+    fun updatePlaybackModel(model: TVModel?) {
+        _currentPlayingModel.postValue(model)
+    }
+
     private const val TAG = "TVList"
     const val FILE_NAME = "channels.txt"
     private const val UPDATE_COOLDOWN_MS = 15 * 60 * 1000L // 15 minutes TTL
@@ -84,6 +88,10 @@ object TVList {
 
     private val _likeChangedEvent = MutableLiveData<Pair<TVModel, Boolean>>()
     val likeChangedEvent: LiveData<Pair<TVModel, Boolean>> get() = _likeChangedEvent
+
+    private val _currentPlayingModel = MutableLiveData<TVModel?>()
+    val currentPlayingModel: LiveData<TVModel?> get() = _currentPlayingModel
+
 
     fun notifyLikeChanged(model: TVModel, liked: Boolean) {
         _likeChangedEvent.postValue(Pair(model, liked))

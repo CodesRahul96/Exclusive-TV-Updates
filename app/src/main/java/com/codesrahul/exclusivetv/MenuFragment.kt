@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.os.Bundle
 import android.util.Log
@@ -242,26 +242,27 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
         if (!hidden) {
             if (binding.list.isVisible) {
 
-                val currentTvModel = TVList.getTVModel()
+                val currentTvModel = TVList.currentPlayingModel.value ?: TVList.getTVModel()
+                
                 if (currentTvModel != null) {
                     val groupIndex = currentTvModel.groupIndex
                     val currentGroupPosition = TVList.groupModel.position.value ?: 0
+                    
                     if (groupIndex == currentGroupPosition) {
-                        if (listAdapter.tvListModel.getIndex() != currentTvModel.groupIndex) {
+                        if (listAdapter.tvListModel.getIndex() != groupIndex) {
                             // Update list AND THEN scroll
                             updateList(groupIndex) {
                                 listAdapter.toPosition(currentTvModel.listIndex)
                             }
                         } else {
-                             // List already loaded, just scroll
+                             // List already loaded, just scroll to playing channel
                             view?.post {
                                 listAdapter.toPosition(currentTvModel.listIndex)
                             }
                         }
                     } else {
                         // User is in a different group than the one playing.
-                        // Fix for Disappearing Channels: Ensure adapter is showing the current selected group
-                        // If adapter index is stale (e.g., cleared or pointing to old group), force update
+                        // Force update if adapter is stale
                         if (listAdapter.tvListModel.getIndex() != currentGroupPosition) { 
                              updateList(currentGroupPosition)
                         }

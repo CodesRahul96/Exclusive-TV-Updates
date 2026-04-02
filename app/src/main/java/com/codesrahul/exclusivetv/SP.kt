@@ -76,6 +76,10 @@ object SP {
     private const val KEY_SEARCH_HISTORY = "search_history"
     private const val KEY_RECENTLY_WATCHED = "recently_watched"
 
+    // --- Remote Config Flags (in-memory only, refreshed on every app start) ---
+    // Safe default is TRUE so new users are never blocked if Firebase fetch fails
+    var registrationEnabled: Boolean = true
+
     private lateinit var sp: SharedPreferences
     private lateinit var esp: SharedPreferences
     private var initialized = false

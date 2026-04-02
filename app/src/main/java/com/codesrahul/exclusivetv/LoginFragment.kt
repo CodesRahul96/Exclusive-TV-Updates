@@ -153,6 +153,20 @@ class LoginFragment : Fragment() {
             return
         }
 
+        // --- REMOTE CONFIG PRE-CHECK (fast UI feedback) ---
+        // SP.registrationEnabled comes from Firebase Remote Config, fetched on app start.
+        // This is NOT the security gate — it's an early UX hint to avoid unnecessary Firestore reads.
+        // The real bypass-proof enforcement happens server-side in verifyPhoneNumberWithCode().
+        if (!SP.registrationEnabled) {
+            binding.tvStatus.text = "Registrations are currently closed"
+            Toast.makeText(
+                requireContext(),
+                "New registrations are currently closed. Please contact support.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
         lastPhoneNumber = phoneNumber
         
         // Skip Firebase entirely. Just show OTP input screen immediately.
@@ -211,15 +225,47 @@ class LoginFragment : Fragment() {
                     }
                 } else {
                     // Document doesn't exist -> New user trying to log in.
-                    // Only allow access with the default OTP "123321".
-                    if (code == "123321") {
-                        signInWithPhoneAuthCredential(phoneNumber)
-                    } else {
-                        Log.w(TAG, "New user attempted login with invalid OTP: $code")
-                        showLoading(false)
-                        binding.tvStatus.text = "Invalid OTP"
-                        Toast.makeText(requireContext(), "Incorrect Default OTP", Toast.LENGTH_SHORT).show()
-                    }
+
+                    // --- SERVER-SIDE REGISTRATION GATE ---
+                    // Read app_config/settings from Firestore. This check cannot be bypassed
+                    // by patching the APK — the decision comes from the server.
+                    db.collection("app_config").document("settings").get()
+                        .addOnSuccessListener { configDoc ->
+                            // Default to true (open) if the field doesn't exist yet
+                            val registrationOpen = configDoc.getBoolean("registration_enabled") ?: true
+
+                            if (!registrationOpen) {
+                                Log.w(TAG, "New user registration blocked by server config.")
+                                showLoading(false)
+                                binding.tvStatus.text = "Registrations are currently closed"
+                                Toast.makeText(
+                                    requireContext(),
+                                    "New registrations are currently closed. Please contact support.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                // Registration is open — verify with default OTP
+                                if (code == "123321") {
+                                    signInWithPhoneAuthCredential(phoneNumber)
+                                } else {
+                                    Log.w(TAG, "New user attempted login with invalid OTP: $code")
+                                    showLoading(false)
+                                    binding.tvStatus.text = "Invalid OTP"
+                                    Toast.makeText(requireContext(), "Incorrect Default OTP", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            // Firestore unreachable — fail-close (block) to prevent bypass via offline mode
+                            Log.e(TAG, "Could not reach server to verify registration status", e)
+                            showLoading(false)
+                            binding.tvStatus.text = "Could not verify registration status"
+                            Toast.makeText(
+                                requireContext(),
+                                "Server unreachable. Please check your connection and try again.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                 }
             }
             .addOnFailureListener { e ->

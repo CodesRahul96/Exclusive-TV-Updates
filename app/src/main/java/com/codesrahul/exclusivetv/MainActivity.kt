@@ -156,6 +156,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private lateinit var seekTime: TextView
     private lateinit var seekProgress: ProgressBar
     private lateinit var hudSpeed: TextView
+    private lateinit var hudChannelChange: View
+    private lateinit var channelChangeArrow: TextView
+    private lateinit var channelChangeLabel: TextView
 
     // Gesture State
     private var isScrolling = false
@@ -285,6 +288,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         seekTime = findViewById(R.id.seek_time)
         seekProgress = findViewById(R.id.seek_progress)
         hudSpeed = findViewById(R.id.hud_speed)
+        hudChannelChange = findViewById(R.id.hud_channel_change)
+        channelChangeArrow = findViewById(R.id.channel_change_arrow)
+        channelChangeLabel = findViewById(R.id.channel_change_label)
 
         if (savedInstanceState != null) {
             // Restore fragment references from FragmentManager after recreation
@@ -730,7 +736,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         val defaults = mapOf(
             "standard_api_url" to "", // Will be gracefully handled by TVList
             "premium_api_url" to SecretManager.getPremiumApiUrl(),
-            SecretManager.getMaintenanceModeKey() to false
+            SecretManager.getMaintenanceModeKey() to false,
+            "registration_enabled" to true  // Controls new user sign-up (ON by default)
         )
         remoteConfig.setDefaultsAsync(defaults)
 
@@ -807,7 +814,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         SecureHttpClient.refresh()
                     }
                 }
-                
+
+                // Apply registration gate from Remote Config
+                SP.registrationEnabled = remoteConfig.getBoolean("registration_enabled")
+                Log.d(TAG, "Remote Config: registration_enabled = ${SP.registrationEnabled}")
+
                 // CRITICAL: Call the callback to advance the bootstrap
                 onComplete()
             }
@@ -853,6 +864,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     fun playChannel(tvModel: TVModel) {
         if (isMaintenanceMode) return
         if (!loginFragment.isHidden) return // Prevent playback behind login screen
+        
+        // --- NOW PLAYING TRACKING ---
+        TVList.updatePlaybackModel(tvModel)
         
         // Hide error and show loader
         hideErrorFragment()
@@ -1101,12 +1115,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 if (velocityY > 2000) { 
                      if (menuFragment.isHidden && settingFragment.isHidden) {
                         prev()
+                        showChannelChangeHud(true) 
                         return true
                     }
                 }
                 if (velocityY < -2000) { 
                     if (menuFragment.isHidden && settingFragment.isHidden) {
                         next()
+                        showChannelChangeHud(false) 
                         return true
                     }
                 }
@@ -1290,6 +1306,18 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         hudVolume.visibility = View.GONE
         hudSeek.visibility = View.GONE
         hudSpeed.visibility = View.GONE
+        hudChannelChange.visibility = View.GONE
+    }
+
+    private fun showChannelChangeHud(isUp: Boolean) {
+        val tvModel = TVList.getTVModel() ?: return
+        gestureHudRoot.visibility = View.VISIBLE
+        hideAllHud()
+        hudChannelChange.visibility = View.VISIBLE
+        channelChangeArrow.text = if (isUp) "▲" else "▼"
+        channelChangeLabel.text = tvModel.tv.name
+        
+        gestureListener.resetHudTimeout()
     }
 
     fun onPlayEnd() {

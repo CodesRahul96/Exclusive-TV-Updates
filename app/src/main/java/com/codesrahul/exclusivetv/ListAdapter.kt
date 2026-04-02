@@ -35,6 +35,8 @@ import androidx.recyclerview.widget.DiffUtil
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.text.Spannable
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.Observer
 
 
 class ListAdapter(
@@ -56,6 +58,37 @@ class ListAdapter(
     val application = context.applicationContext as MyTVApplication
     private var movingPosition = -1
     private var searchQuery: String = ""
+    private var lastPlayingModel: TVModel? = null
+
+    init {
+        // Observe global 'Now Playing' state to update the UI in real-time
+        (context as? LifecycleOwner)?.let { lifecycleOwner ->
+            com.codesrahul.exclusivetv.models.TVList.currentPlayingModel.observe(lifecycleOwner, Observer { newPlayingModel ->
+                updatePlayingState(newPlayingModel)
+            })
+        }
+    }
+
+    private fun updatePlayingState(newModel: TVModel?) {
+        val oldModel = lastPlayingModel
+        lastPlayingModel = newModel
+
+        // 1. Un-highlight old model
+        if (oldModel != null) {
+            val oldPos = internalList.indexOfFirst { it.tv.id == oldModel.tv.id }
+            if (oldPos != -1) {
+                notifyItemChanged(oldPos, "playing_state")
+            }
+        }
+
+        // 2. Highlight new model
+        if (newModel != null) {
+            val newPos = internalList.indexOfFirst { it.tv.id == newModel.tv.id }
+            if (newPos != -1) {
+                notifyItemChanged(newPos, "playing_state")
+            }
+        }
+    }
 
     fun setSearchQuery(query: String) {
         this.searchQuery = query
@@ -169,6 +202,10 @@ class ListAdapter(
         val tvModel = internalList.getOrNull(position) ?: return
         
         viewHolder.bind(tvModel, movingPosition, position, searchQuery)
+
+        // Show/Hide Now Playing indicator
+        val currentPlaying = com.codesrahul.exclusivetv.models.TVList.currentPlayingModel.value
+        viewHolder.showPlayingIndicator(tvModel.tv.id == currentPlaying?.tv?.id)
 
         // Reset selected state to prevent sticky yellow borders from recycled views
         viewHolder.itemView.isSelected = false
@@ -313,7 +350,7 @@ class ListAdapter(
         viewHolder.bindImage(tvModel.tv.logo, tvModel.tv.title)
 
         viewHolder.setArrows(movingPosition == position)
-        
+
         viewHolder.binding.arrowDown.setOnClickListener {
             val pos = viewHolder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) {
@@ -341,6 +378,16 @@ class ListAdapter(
     }
 
     override fun getItemCount() = internalList.size
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.contains("playing_state")) {
+            val tvModel = internalList.getOrNull(position) ?: return
+            val currentPlaying = com.codesrahul.exclusivetv.models.TVList.currentPlayingModel.value
+            holder.showPlayingIndicator(tvModel.tv.id == currentPlaying?.tv?.id)
+        } else {
+            super.onBindViewHolder(holder, position, payloads)
+        }
+    }
 
     class ViewHolder(private val context: Context, val binding: ListItemBinding) :
         RecyclerView.ViewHolder(binding.root) {
@@ -450,7 +497,15 @@ class ListAdapter(
             val colorWhite = ContextCompat.getColor(context, R.color.white)
             val colorTitleBlur = ContextCompat.getColor(context, R.color.title_blur)
             val colorDescriptionBlur = ContextCompat.getColor(context, R.color.description_blur)
-            binding.title.setTextColor(if (hasFocus) colorWhite else colorTitleBlur)
+            val colorGold = ContextCompat.getColor(context, R.color.accent_gold)
+
+            val isPlaying = binding.playingIndicator.visibility == View.VISIBLE
+
+            binding.title.setTextColor(
+                if (hasFocus) colorWhite 
+                else if (isPlaying) colorGold 
+                else colorTitleBlur
+            )
             binding.description.setTextColor(if (hasFocus) colorWhite else colorDescriptionBlur)
 
             // Apply background immediately to avoid flicker
@@ -499,6 +554,21 @@ class ListAdapter(
                 binding.description.visibility = View.VISIBLE
             }
             constraintSet.applyTo(binding.root)
+        }
+
+        fun showPlayingIndicator(show: Boolean) {
+            binding.playingIndicator.visibility = if (show) View.VISIBLE else View.GONE
+            
+            // Premium Touch: Change text color of playing channel to Gold if not focused
+            if (show) {
+                if (!binding.root.hasFocus()) {
+                    binding.title.setTextColor(ContextCompat.getColor(context, R.color.accent_gold))
+                }
+            } else {
+                if (!binding.root.hasFocus()) {
+                    binding.title.setTextColor(ContextCompat.getColor(context, R.color.title_blur))
+                }
+            }
         }
     }
 

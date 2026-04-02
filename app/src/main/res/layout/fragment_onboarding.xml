@@ -47,6 +47,22 @@
         android:src="@drawable/ic_hand_gesture"
         android:visibility="invisible" />
 
+    <ImageView
+        android:id="@+id/iv_arrow_up"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_usage_arrow"
+        android:visibility="invisible"
+        android:rotation="0" />
+
+    <ImageView
+        android:id="@+id/iv_arrow_down"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_usage_arrow"
+        android:visibility="invisible"
+        android:rotation="180" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

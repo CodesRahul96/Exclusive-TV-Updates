@@ -67,6 +67,20 @@
         android:letterSpacing="0.01"/>
 
     <ImageView
+        android:id="@+id/playing_indicator"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:src="@drawable/ic_playing_bars"
+        android:visibility="gone"
+        app:layout_constraintEnd_toStartOf="@+id/heart"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginEnd="8dp"
+        app:tint="@color/accent_gold"
+        tools:visibility="visible"
+        android:contentDescription="Now Playing" />
+
+    <ImageView
         android:id="@+id/heart"
         android:layout_width="28dp"
         android:layout_height="28dp"
