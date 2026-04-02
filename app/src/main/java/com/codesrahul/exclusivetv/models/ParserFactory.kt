@@ -19,29 +19,23 @@ object ParserFactory {
         return when {
             trimmed.startsWith("#EXTM3U") -> {
                 if (trimmed.contains("#KODIPROP")) {
-                    Log.d(TAG, "Format detected: Kodi/M3U")
                     KodiParser.parse(trimmed)
                 } else {
-                    Log.d(TAG, "Format detected: M3U")
                     M3UParser.parse(trimmed)
                 }
             }
             trimmed.startsWith("{") || trimmed.startsWith("[") -> {
-                Log.d(TAG, "Format detected: JSON")
                 GenericJsonParser.parse(trimmed)
             }
             trimmed.contains("#EXTINF") -> {
                 if (trimmed.contains("#KODIPROP")) {
-                    Log.d(TAG, "Format detected: Kodi/M3U (No Header)")
                     KodiParser.parse(trimmed)
                 } else {
-                    Log.d(TAG, "Format detected: M3U (No Header)")
                     M3UParser.parse(trimmed)
                 }
             }
             else -> {
                 // FALLBACK: Could be a plain list of URLs or unknown JSON
-                Log.d(TAG, "Unknown format. Attempting best-effort parsing.")
                 val m3uResult = M3UParser.parse(trimmed)
                 if (m3uResult.isNotEmpty()) m3uResult
                 else GenericJsonParser.parse(trimmed)

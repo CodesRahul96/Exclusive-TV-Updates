@@ -147,7 +147,6 @@ object SecureHttpClient {
             val arr = JSONArray(json)
             (0 until arr.length()).map { arr.getString(it) }.filter { it.startsWith("sha256/") }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse remote ssl pins: ${e.message}")
             emptyList()
         }
     }

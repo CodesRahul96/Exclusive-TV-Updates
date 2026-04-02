@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.content.Context
 import android.util.Log
@@ -107,7 +107,6 @@ object EPGManager {
                             fetchAndParseSingleSource(context, url, force, localData, localDataById)
                             Pair(localData, localDataById)
                         } catch (e: Exception) {
-                            Log.e(TAG, "Source $url failed: ${e.message}")
                             null
                         }
                     }
@@ -150,7 +149,6 @@ object EPGManager {
 
             val totalChannels = synchronized(this) { epgDataById.size }
             epgStatus = "Loaded $successCount/${urls.size} hubs ($totalChannels channels)"
-            Log.i(TAG, "EPG Refresh Complete: $epgStatus")
             
             cleanupOldCaches(context, urls)
         }
@@ -180,7 +178,6 @@ object EPGManager {
         val client = SecureHttpClient.client
         
         if (force || !file.exists() || (now - file.lastModified() > 12 * 3600_000L)) {
-            Log.d(TAG, "Downloading: $url")
             val request = Request.Builder().url(url).build()
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {

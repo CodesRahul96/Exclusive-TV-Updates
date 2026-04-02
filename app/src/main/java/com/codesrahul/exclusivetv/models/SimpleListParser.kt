@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv.models
+package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import java.io.BufferedReader

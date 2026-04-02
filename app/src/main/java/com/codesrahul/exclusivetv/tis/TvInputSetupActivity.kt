@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv.tis
+package com.codesrahul.exclusivetv.tis
 
 import android.app.Activity
 import android.content.ComponentName

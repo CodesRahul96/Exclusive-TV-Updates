@@ -1317,7 +1317,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 val state = exoPlayer?.playbackState ?: Player.STATE_IDLE
                 if (state == Player.STATE_BUFFERING || state == Player.STATE_READY) {
                     // If we reach READY but no frame was rendered (Black Screen), or stuck in BUFFERING
-                    Log.w(TAG, "Playback Watchdog Triggered: Potential Black Screen or Stall. Rotating UA.")
                     if (uaFallbackIndex < 3) {
                         uaFallbackIndex++
                         retryCount++
@@ -1830,7 +1829,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 Toast.makeText(requireContext(), "Audio Language: ${locale.displayLanguage}", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to update audio track: ${e.message}")
         }
     }
 

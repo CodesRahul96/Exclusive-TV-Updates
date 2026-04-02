@@ -90,13 +90,10 @@ object SyncManager {
                     .document(userId)
                     .set(data, SetOptions.merge())
                     .addOnSuccessListener {
-                        Log.i(TAG, "Cloud Sync Up successful.")
                     }
                     .addOnFailureListener { e ->
-                        Log.e(TAG, "Cloud Sync Up failed: ${e.message}")
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "syncUp exception: ${e.message}")
                 }
             }
         }
@@ -146,9 +143,7 @@ object SyncManager {
                                             }
                                         }
                                         if (result.isNotEmpty()) SP.setAllAudioTracks(result)
-                                        Log.i(TAG, "Audio tracks restored: ${result.size} tracks")
                                     } catch (e: Exception) {
-                                        Log.e(TAG, "Failed to parse audio_tracks_json: ${e.message}")
                                     }
                                 }
 
@@ -176,18 +171,15 @@ object SyncManager {
                                 (s["resizeMode"] as? Long)?.let { SP.resizeMode = it.toInt() }
                             }
 
-                            Log.i(TAG, "Cloud Sync Down successful.")
                         }
                         isRestoring = false
                         onComplete?.invoke()
                     }
                     .addOnFailureListener { e ->
-                        Log.e(TAG, "Cloud Sync Down failed: ${e.message}")
                         isRestoring = false
                         onComplete?.invoke()
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "syncDown exception: ${e.message}")
                     isRestoring = false
                     onComplete?.invoke()
                 }

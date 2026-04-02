@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv.requests
+package com.codesrahul.exclusivetv.requests
 
 import android.util.Log
 import com.google.gson.Gson
@@ -31,7 +31,6 @@ class ReleaseRequest {
             "$baseUrl/version.json"
         }
         
-        Log.d(TAG, "Fetching update from $sourceName: $url")
         
         val request = Request.Builder()
             .url(url)
@@ -43,12 +42,10 @@ class ReleaseRequest {
                     val bodyString = response.body!!.string()
                     gson.fromJson(bodyString, ReleaseResponse::class.java)
                 } else {
-                    Log.e(TAG, "$sourceName update fetch failed with code: ${response.code}")
                     null
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Exception fetching from $sourceName: ${e.message}")
             null
         }
     }

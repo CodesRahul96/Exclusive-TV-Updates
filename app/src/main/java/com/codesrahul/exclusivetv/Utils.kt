@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.content.res.Resources
 import android.os.Build
@@ -156,8 +156,8 @@ object Utils {
     }
 
     /**
-     * ä»ŽæœåŠ¡å™¨èŽ·å–æ—¶é—´æˆ³
-     * @return Long æ—¶é—´æˆ³
+     * 从服务器获取时间戳
+     * @return Long 时间戳
      */
     private suspend fun getTimestampFromServer(): Long {
         return withContext(Dispatchers.IO) {

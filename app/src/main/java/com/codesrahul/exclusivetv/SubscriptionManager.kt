@@ -76,7 +76,6 @@ object SubscriptionManager {
 
                     if (isMatched) {
                         // Scenario A: Device Matched - Update metadata
-                        android.util.Log.d("SubscriptionManager", "Device match confirmed. Updating metadata.")
                         db.collection(COLLECTION_USERS).document(phoneNumber)
                             .update(deviceMetadata as Map<String, Any>)
                     } else {
@@ -89,7 +88,6 @@ object SubscriptionManager {
                         }
 
                         if (bindField != null) {
-                            android.util.Log.i("SubscriptionManager", "Binding new device slot ($bindField) for account $phoneNumber")
                             val updateData = deviceMetadata.toMutableMap()
                             updateData[bindField] = currentDeviceId
                             db.collection(COLLECTION_USERS).document(phoneNumber)
@@ -97,7 +95,6 @@ object SubscriptionManager {
                         } else {
                             // Scenario C: Device limit reached
                             val limitMsg = if (maxDevices > 1) "2 devices" else "1 device"
-                            android.util.Log.w("SubscriptionManager", "ACCESS DENIED: Device limit ($maxDevices) reached for $phoneNumber.")
                             SP.userId = null // Sign out locally
                             onError("Security: This account is restricted to $limitMsg only.")
                             return@addOnSuccessListener
@@ -135,7 +132,6 @@ object SubscriptionManager {
                                     } catch (e: Exception) {}
                                 }
                             } catch (e: Exception) {
-                                android.util.Log.e("SubscriptionManager", "Failed to parse expiry string: $expiryStr")
                             }
                         }
                     }
@@ -145,7 +141,6 @@ object SubscriptionManager {
                     // DETECT PLAN CHANGE
                     val oldPlan = SP.planName
                     if (!plan.equals(oldPlan, ignoreCase = true)) {
-                        android.util.Log.i("SubscriptionManager", "Plan switched from $oldPlan to $plan. Clearing data.")
                         com.codesrahul.exclusivetv.models.TVList.clear(com.codesrahul.exclusivetv.MyTVApplication.getInstance())
                     }
                     this.planName = plan
@@ -156,7 +151,6 @@ object SubscriptionManager {
                     // --- SHADOW BAN CHECK ---
                     val status = (document.getString("status") ?: "active").lowercase()
                     if (status == "banned") {
-                        android.util.Log.e("SubscriptionManager", "ACCESS DENIED: User $phoneNumber is shadow-banned.")
                         // We simulate a successful "Standard" response so the user doesn't immediately 
                         // know they are banned, but we restrict their experience.
                         SubscriptionManager.planName = "Standard"
@@ -169,7 +163,6 @@ object SubscriptionManager {
                     if ("Premium".equals(plan, ignoreCase = true)) {
                         val currentExpiry = SubscriptionManager.expiryDate
                         if (currentExpiry != null && currentExpiry.after(java.util.Date())) {
-                            android.util.Log.d("SubscriptionManager", "Premium Validated. Expires: $currentExpiry")
                             
                             // Calculate remaining days for Trial Countdown
                             val diff = currentExpiry.time - System.currentTimeMillis()
@@ -180,7 +173,6 @@ object SubscriptionManager {
                             
                             fetchPlaylistUrls(phoneNumber, { onSuccess() })
                         } else {
-                            android.util.Log.w("SubscriptionManager", "Premium Expired. Checking Master Status for Downgrade...")
                             
                             // Check master_bypass before downgrading
                             db.collection(COLLECTION_MASTER_BYPASS).document(phoneNumber).get()
@@ -188,19 +180,15 @@ object SubscriptionManager {
                                     val isMaster = task.isSuccessful && task.result?.exists() == true
                                     
                                     if (isMaster) {
-                                        android.util.Log.i("SubscriptionManager", "User $phoneNumber is a Master User. Expiry ignored.")
                                         fetchPlaylistUrls(phoneNumber) { onSuccess() }
                                     } else {
-                                        android.util.Log.w("SubscriptionManager", "User $phoneNumber is NOT a Master User. Downgrading to Standard.")
                                         
                                         // 1. Update Firestore
                                         db.collection(COLLECTION_USERS).document(phoneNumber)
                                             .update("plan", "Standard", FIELD_EXPIRY_DATE, null)
                                             .addOnSuccessListener {
-                                                android.util.Log.i("SubscriptionManager", "Firestore Downgrade Successful")
                                             }
                                             .addOnFailureListener { e ->
-                                                android.util.Log.e("SubscriptionManager", "Firestore Downgrade Failed: ${e.message}")
                                             }
                                         
                                         // 2. Update Local State
@@ -222,7 +210,6 @@ object SubscriptionManager {
                         }
                     } else {
                         // Standard users don't need expiry validation
-                        android.util.Log.d("SubscriptionManager", "Standard User Validated")
                         fetchPlaylistUrls(phoneNumber) { onSuccess() }
                     }
                 } else {
@@ -252,7 +239,6 @@ object SubscriptionManager {
                                     val resData = result.data as? Map<*, *>
                                     val plan = resData?.get("plan") as? String ?: "Standard"
                                     
-                                    android.util.Log.i("SubscriptionManager", "Server Registration Success: $plan")
                                     this@SubscriptionManager.planName = plan
                                     
                                     val expiryStr = resData?.get("expiry_date") as? String
@@ -268,9 +254,7 @@ object SubscriptionManager {
                                     }
                                 }
                                 .addOnFailureListener { e ->
-                                    android.util.Log.e("SubscriptionManager", "Cloud Function 'registerUser' failed: ${e.message}")
                                     if (e is FirebaseFunctionsException) {
-                                        android.util.Log.e("SubscriptionManager", "Code: ${e.code}, Details: ${e.details}")
                                         // Server rejected on purpose - DO NOT FALLBACK!
                                         if (e.code == FirebaseFunctionsException.Code.ALREADY_EXISTS || e.code == FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED) {
                                             onError(e.message ?: "Registration blocked by server.")
@@ -280,7 +264,6 @@ object SubscriptionManager {
                                     performLegacyRegistration(db, phoneNumber, currentDeviceId, robustFingerprint, onSuccess, onError)
                                 }
                         } catch (e: Exception) {
-                            android.util.Log.e("SubscriptionManager", "Registration error: ${e.message}")
                             performLegacyRegistration(db, phoneNumber, currentDeviceId, robustFingerprint, onSuccess, onError)
                         }
                     }
@@ -299,7 +282,6 @@ object SubscriptionManager {
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        android.util.Log.w("SubscriptionManager", "Falling back to legacy client-side registration for $phoneNumber")
         
         // --- ROBUST BYPASS CHECK ---
         // If we can't check the master_bypass collection (e.g. Permission Denied), 
@@ -309,7 +291,6 @@ object SubscriptionManager {
                 val isMasterUser = if (task.isSuccessful) {
                     task.result?.exists() == true
                 } else {
-                    android.util.Log.w("SubscriptionManager", "Bypass check failed (might be expected): ${task.exception?.message}")
                     false // Proceed as non-master user
                 }
 
@@ -321,7 +302,6 @@ object SubscriptionManager {
                         val hasHadTrial = if (trialTask.isSuccessful) {
                             trialTask.result?.exists() == true
                         } else {
-                            android.util.Log.w("SubscriptionManager", "Trial check failed (might be expected): ${trialTask.exception?.message}")
                             false // Proceed as if no previous trial (generous)
                         }
 
@@ -339,7 +319,6 @@ object SubscriptionManager {
                                 val isBlocked = results.any { !it.isEmpty }
                                 
                                 if (isBlocked) {
-                                    android.util.Log.w("SubscriptionManager", "BLOCKING REGISTRATION: Device $robustFingerprint already has another account.")
                                     onError("This device is already registered with another account. Please use your original login.")
                                     return@addOnSuccessListener
                                 }
@@ -373,11 +352,9 @@ object SubscriptionManager {
                                             // Soft record trial - if this fails, it's not critical for this session
                                             db.collection(COLLECTION_TRIALS).document(robustFingerprint).set(trialData)
                                                 .addOnFailureListener { e ->
-                                                    android.util.Log.w("SubscriptionManager", "Failed to record trial: ${e.message}")
                                                 }
                                         }
                                         
-                                        android.util.Log.i("SubscriptionManager", "Legacy Registration Successful for $phoneNumber (Plan: ${this.planName})")
                                         
                                         // Ensure channel list is cleared so Premium channels load immediately
                                         com.codesrahul.exclusivetv.models.TVList.clear(com.codesrahul.exclusivetv.MyTVApplication.getInstance())
@@ -387,12 +364,10 @@ object SubscriptionManager {
                                         }
                                     }
                                     .addOnFailureListener { e -> 
-                                        android.util.Log.e("SubscriptionManager", "User document creation failed", e)
                                         onError("Registration failed: ${e.message}") 
                                     }
                             }
                             .addOnFailureListener { e ->
-                                android.util.Log.e("SubscriptionManager", "Fingerprint check failed: ${e.message}")
                                 onError("Registration security check failed. Please try again later.")
                             }
                     }
@@ -422,12 +397,10 @@ object SubscriptionManager {
                     } else {
                         SP.standardConfig = url
                     }
-                    android.util.Log.i("SubscriptionManager", "Authorized $plan playlist URL updated from server.")
                 }
                 onComplete()
             }
             .addOnFailureListener { e ->
-                android.util.Log.w("SubscriptionManager", "Failed to fetch playlist URL from server: ${e.message}")
                 // Fallback to local logic (already in TVList)
                 onComplete()
             }

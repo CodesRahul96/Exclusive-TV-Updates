@@ -38,7 +38,6 @@ class LoginFragment : Fragment() {
     private val watchdogHandler = Handler(Looper.getMainLooper())
     private val watchdogRunnable = Runnable {
         if (isAdded && binding.progressBar.visibility == View.VISIBLE) {
-            Log.w(TAG, "Watchdog timeout triggered - no response from Firebase after 45s")
             showLoading(false)
             binding.tvStatus.text = "Verification taking too long. Please check your internet and try again."
         }
@@ -218,7 +217,6 @@ class LoginFragment : Fragment() {
                     if (isValid) {
                         signInWithPhoneAuthCredential(phoneNumber)
                     } else {
-                        Log.w(TAG, "Invalid Custom OTP entered.")
                         showLoading(false)
                         binding.tvStatus.text = "Invalid OTP"
                         Toast.makeText(requireContext(), "Incorrect OTP or PIN", Toast.LENGTH_SHORT).show()
@@ -235,7 +233,6 @@ class LoginFragment : Fragment() {
                             val registrationOpen = configDoc.getBoolean("registration_enabled") ?: true
 
                             if (!registrationOpen) {
-                                Log.w(TAG, "New user registration blocked by server config.")
                                 showLoading(false)
                                 binding.tvStatus.text = "Registrations are currently closed"
                                 Toast.makeText(
@@ -248,7 +245,6 @@ class LoginFragment : Fragment() {
                                 if (code == "123321") {
                                     signInWithPhoneAuthCredential(phoneNumber)
                                 } else {
-                                    Log.w(TAG, "New user attempted login with invalid OTP: $code")
                                     showLoading(false)
                                     binding.tvStatus.text = "Invalid OTP"
                                     Toast.makeText(requireContext(), "Incorrect Default OTP", Toast.LENGTH_SHORT).show()
@@ -257,7 +253,6 @@ class LoginFragment : Fragment() {
                         }
                         .addOnFailureListener { e ->
                             // Firestore unreachable — fail-close (block) to prevent bypass via offline mode
-                            Log.e(TAG, "Could not reach server to verify registration status", e)
                             showLoading(false)
                             binding.tvStatus.text = "Could not verify registration status"
                             Toast.makeText(
@@ -269,7 +264,6 @@ class LoginFragment : Fragment() {
                 }
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Firestore verification failed", e)
                 showLoading(false)
                 binding.tvStatus.text = "Verification Failed"
                 Toast.makeText(requireContext(), "Network Error. Please try again later.", Toast.LENGTH_SHORT).show()

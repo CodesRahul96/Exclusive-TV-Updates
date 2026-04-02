@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.app.DownloadManager
 import android.app.DownloadManager.Request
@@ -88,22 +88,18 @@ class UpdateManager(
                 if (release?.version_code != null) {
                     // Update only if remote version code is STRICTLY GREATER than current
                     if (release?.version_code!! > versionCode) {
-                        Log.i(TAG, "Update detected: Remote(${release?.version_name}) > Local($versionCode)")
                         text = "New version available: ${release?.version_name}"
                         update = true
                         SecurityUtil.isAppOutdated = true
                         SecurityUtil.remoteRelease = release
                     } else {
-                        Log.d(TAG, "App is up to date. Version: $versionCode")
                         text = "You are using the latest version."
                     }
                 } else if (release == null) {
-                    Log.w(TAG, "Update check returned NULL release info.")
                     text = "Could not connect to update server."
                     error = true
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Update check failed with exception: ${e.message}", e)
                 text = "Connection Error: ${e.localizedMessage}"
                 error = true
                 if (isManualCheck) {
@@ -197,7 +193,7 @@ class UpdateManager(
         request.setAllowedOverRoaming(false)
         request.setMimeType("application/vnd.android.package-archive")
 
-        // èŽ·å –ä¸‹è½½ä»»åŠ¡çš„å¼•ç”¨
+        // 获� �下载任务的引用
         val downloadReference = downloadManager.enqueue(request)
         isDownloading = true
 
@@ -236,9 +232,7 @@ class UpdateManager(
             }
             progressDialog?.progress = 0
             progressDialog?.show()
-            Log.d(TAG, "Update Progress Dialog shown.")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to show progress dialog: ${e.message}")
         }
     }
 
@@ -378,11 +372,9 @@ class UpdateManager(
                     }
                     context.startActivity(installIntent)
                 } else {
-                    Log.e(TAG, "Installation failed: APK Uri is NULL")
                     Toast.makeText(context, "Install failed: File not found", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Critical Installation Error: ${e.message}", e)
                 Toast.makeText(context, "Install Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }

@@ -712,7 +712,6 @@ class SettingFragment : Fragment() {
                                 performFullReset(justRestart = true)
                             }
                             .addOnFailureListener { e ->
-                                Log.e(TAG, "Failed to update OTP", e)
                                 Toast.makeText(requireContext(), "Failed to update OTP", Toast.LENGTH_SHORT).show()
                                 btnUpdate.text = "Update"
                                 btnUpdate.isEnabled = true
@@ -729,7 +728,6 @@ class SettingFragment : Fragment() {
                     btnUpdate.isEnabled = true
                 }
             }.addOnFailureListener { e ->
-                Log.e(TAG, "Failed to fetch user data for OTP change", e)
                 Toast.makeText(requireContext(), "Network error", Toast.LENGTH_SHORT).show()
                 btnUpdate.text = "Update"
                 btnUpdate.isEnabled = true

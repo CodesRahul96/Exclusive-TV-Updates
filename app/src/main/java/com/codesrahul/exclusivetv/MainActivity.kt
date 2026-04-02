@@ -181,7 +181,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private val bootstrapWatchdogHandler = Handler(Looper.getMainLooper())
     private val bootstrapWatchdogRunnable = Runnable {
         if (!isFinishing && isAddedToContext() && loadingFragment.isAdded && loadingFragment.isVisible) {
-            Log.w(TAG, "Bootstrap safety watchdog triggered! Startup taking too long (45s).")
             Toast.makeText(this, "Network is slow. Attempting to load cached content...", Toast.LENGTH_LONG).show()
             
             // Emergency Recovery: Try to hide loader and show fragments if possible
@@ -268,7 +267,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         try {
             hideSystemUI()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to hide system UI", e)
         }
 
         // Initialize Gestures
@@ -468,7 +466,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 onComplete()
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Play Integrity check failed: ${e.message}")
                 if (!BuildConfig.DEBUG) {
                     // In production, you might want to block access if integrity fails
                     // showFragment(errorFragment.apply { setMessage("Security check failed. Please ensure you are using the official version.") })
@@ -817,7 +814,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
                 // Apply registration gate from Remote Config
                 SP.registrationEnabled = remoteConfig.getBoolean("registration_enabled")
-                Log.d(TAG, "Remote Config: registration_enabled = ${SP.registrationEnabled}")
 
                 // CRITICAL: Call the callback to advance the bootstrap
                 onComplete()
@@ -2077,7 +2073,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             hideFragment(loginFragment)
             hideFragment(loadingFragment)
             
-            Log.w(TAG, "System under maintenance. UI locked.")
             Toast.makeText(this, "System under maintenance", Toast.LENGTH_LONG).show()
         }
     }

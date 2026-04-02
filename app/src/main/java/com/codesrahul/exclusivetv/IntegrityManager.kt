@@ -33,7 +33,6 @@ object IntegrityManager {
             
             integrityTokenResponse.token()
         } catch (e: Exception) {
-            Log.e(TAG, "Integrity token request failed: ${e.message}")
             null
         }
     }

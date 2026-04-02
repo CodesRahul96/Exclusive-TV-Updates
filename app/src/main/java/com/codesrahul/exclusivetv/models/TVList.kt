@@ -143,7 +143,6 @@ object TVList {
                     // which might be left over from a previous Premium session/leak
                     // INCREASED LIMIT: 50 KB was too small for M3U, increased to 500 KB (safe for ~2000 channels)
                     if (!isPremium && file.length() > 500 * 1024) { 
-                         Log.w(TAG, "Standard user skipping large cache file (${file.length()} bytes)")
                          file.delete()
                     }
 
@@ -155,7 +154,6 @@ object TVList {
                              if (header.contains("JioStar", ignoreCase = true) || 
                                  header.contains("iptv", ignoreCase = true) ||
                                  header.contains("scraper", ignoreCase = true)) {
-                                 Log.w(TAG, "Purging polluted cache file containing JioStar/IPTV data.")
                                  file.delete()
                              }
                          } catch (e: Exception) {}
@@ -401,7 +399,6 @@ object TVList {
                                             if (channels.isEmpty()) {
                                                 try {
                                                      val preview = tempFile.readText().take(250)
-                                                     Log.e("TVList", "Source $index parsed EMPTY. Preview: $preview")
                                                 } catch (e: Exception) {}
                                             }
 
@@ -409,7 +406,6 @@ object TVList {
                                            if (channels.isEmpty() && tempFile.length() < 5000) {
                                                val sample = tempFile.readText(Charsets.UTF_8).take(200).lowercase()
                                                if (sample.contains("<!doctype html") || sample.contains("<html")) {
-                                                   android.util.Log.e("TVList", "Source ${index + 1} ($url) returned HTML instead of a playlist.")
                                                    withContext(Dispatchers.Main) {
                                                        if (showUi) Toast.makeText(ctx, "Source ${index + 1} contains HTML. Check API.", Toast.LENGTH_SHORT).show()
                                                    }
@@ -426,7 +422,6 @@ object TVList {
                                            return@async channels
                                            
                                         } catch (e: Exception) {
-                                            android.util.Log.e("TVList", "Error parsing $url: ${e.message}")
                                             e.printStackTrace()
                                             return@async sourceCache[url] ?: emptyList<TV>()
                                         } finally {
@@ -436,7 +431,6 @@ object TVList {
                                        return@async sourceCache[url] ?: emptyList<TV>()
                                    }
                                } else {
-                                   android.util.Log.e("TVList", "Failed to fetch source ${index + 1} ($url): Code ${response.code} Message: ${response.message}")
                                    withContext(Dispatchers.Main) {
                                        if (showUi) Toast.makeText(ctx, "Failed to connect to Source ${index + 1} (Error ${response.code})", Toast.LENGTH_SHORT).show()
                                    }
@@ -444,7 +438,6 @@ object TVList {
                                }
                            }
                         } catch (e: Exception) {
-                           android.util.Log.e("TVList", "Network Exception for $url: ${e.message}")
                            e.printStackTrace()
                            return@async sourceCache[url] ?: emptyList<TV>()
                         } finally {
@@ -540,10 +533,8 @@ object TVList {
                           if (tempFile.renameTo(finalFile)) {
                               // Cache saved successfully
                           } else {
-                              Log.e("TVList", "Failed to rename temp cache file")
                           }
                       } catch (e: Exception) {
-                          Log.e("TVList", "Error writing atomic cache", e)
                       } finally {
                           if (tempFile.exists()) tempFile.delete() // Cleanup if rename failed
                       }
@@ -580,7 +571,6 @@ object TVList {
                                               listModel.forEach { it.updateEPG() }
                                           }
                                       } catch (e: Exception) {
-                                          Log.e("TVList", "EPG Fetch Error: ${e.message}")
                                       } finally {
                                           withContext(Dispatchers.Main) {
                                               // Fix: Clear status so loading spinner doesn't get stuck
@@ -780,7 +770,6 @@ object TVList {
                  val result = GenericJsonParser.parse(string)
                  if (result.isNotEmpty()) return result
              } catch (e: Exception) {
-                 Log.e("TVList", "Ultimate JSON bypass parse failed: ${e.message}")
              }
         }
 
@@ -1102,7 +1091,6 @@ object TVList {
         
         // HARD SECURITY FILTER: Ensure Standard users never see a Premium-sized list
         if (!isPremium && list.size > 300) {
-             Log.w(TAG, "Standard user detected with large list (${list.size}). Truncating for security.")
              list = list.take(280) // Truncate to a safe standard size
         }
 
@@ -1256,7 +1244,6 @@ object TVList {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Refresh failed", e)
         }
     }
 

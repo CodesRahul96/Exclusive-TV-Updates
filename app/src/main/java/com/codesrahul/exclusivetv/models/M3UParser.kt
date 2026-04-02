@@ -89,7 +89,6 @@ object M3UParser {
             while (peekLine?.isEmpty() == true) peekLine = reader.readLine()?.trim()
             
             if (peekLine?.startsWith("{") == true || peekLine?.startsWith("[") == true) {
-                Log.d(TAG, "JSON content detected. Delegating to GenericJsonParser.")
                 reader.reset()
                 return GenericJsonParser.parse(reader)
             }
