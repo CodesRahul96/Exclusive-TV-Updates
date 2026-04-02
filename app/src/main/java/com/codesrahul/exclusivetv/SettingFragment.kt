@@ -161,6 +161,7 @@ class SettingFragment : Fragment() {
           binding.statusWatermark.text = if (SP.watermarkEnabled) "ON" else "OFF"
           binding.statusPipMode.text = if (SP.pipMode) "ON" else "OFF"
           binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
+          binding.statusVoiceSearch.text = if (SP.voiceSearch) "ON" else "OFF"
 
 
         // Set text colors based on state
@@ -174,7 +175,7 @@ class SettingFragment : Fragment() {
             binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, 
-            binding.statusAudioStabilizer, binding.statusEpgShift
+            binding.statusAudioStabilizer, binding.statusEpgShift, binding.statusVoiceSearch
         )
 
         statusViews.forEach { v ->
@@ -215,6 +216,7 @@ class SettingFragment : Fragment() {
             binding.cardBufferMode,
             binding.cardAudioLanguage,
             binding.cardAudioStabilizer,
+            binding.cardVoiceSearch,
             binding.managePlaylists,
             binding.manageCategories,
             binding.clear,
@@ -264,6 +266,7 @@ class SettingFragment : Fragment() {
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
         binding.cardAudioLanguage.setOnClickListener { setupAudioLanguageDialog() }
         binding.cardAudioStabilizer.setOnClickListener { toggleSetting("audioStabilizer") }
+        binding.cardVoiceSearch.setOnClickListener { toggleSetting("voiceSearch") }
         
         binding.portfolioCompactCard.setOnClickListener {
             tvUiUtils?.playClickSound()
@@ -476,6 +479,9 @@ class SettingFragment : Fragment() {
             "audioStabilizer" -> {
                 SP.audioStabilizer = !SP.audioStabilizer
                 binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
+            }
+            "voiceSearch" -> {
+                SP.voiceSearch = !SP.voiceSearch
             }
 
         }

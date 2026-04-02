@@ -441,6 +441,18 @@
                     <View style="@style/SettingsDivider"/>
 
                     <LinearLayout
+                        android:id="@+id/card_voice_search"
+                        style="@style/SettingsToggleItem">
+                        <ImageView style="@style/SettingsIcon" android:src="@android:drawable/ic_menu_search"/>
+                        <LinearLayout style="@style/SettingsTextContainer">
+                            <TextView style="@style/SettingsTitle" android:text="Internal Voice Search"/>
+                            <TextView style="@style/SettingsSubtitle" android:text="Enable/Disable AI Voice input functionality"/>
+                        </LinearLayout>
+                        <TextView android:id="@+id/status_voice_search" style="@style/SettingsStatusText" android:text="ON"/>
+                    </LinearLayout>
+                    <View style="@style/SettingsDivider"/>
+
+                    <LinearLayout
                          android:id="@+id/card_config_auto_load"
                          style="@style/SettingsToggleItem">
                         <ImageView style="@style/SettingsIcon" android:src="@drawable/ic_update"/>

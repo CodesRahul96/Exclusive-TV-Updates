@@ -25,6 +25,10 @@ import android.widget.TextView
 import android.widget.LinearLayout
 import java.util.*
 import kotlin.comparisons.compareByDescending
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 
 class SearchFragment : Fragment(), ListAdapter.ItemListener {
     private var _binding: FragmentSearchBinding? = null
@@ -40,7 +44,21 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
                 binding.searchEditText.setText(spokenText)
                 binding.searchEditText.setSelection(spokenText.length)
                 filter(spokenText)
+                
+                // Professional: If exact match found, auto-select it
+                val results = searchResultsModel.getTVModelList()
+                if (results.size == 1) {
+                    onItemClicked(results[0])
+                }
             }
+        }
+    }
+
+    private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            performVoiceSearch()
+        } else {
+            Toast.makeText(requireContext(), "Permission denied: Voice search requires microphone access.", Toast.LENGTH_LONG).show()
         }
     }
     
@@ -97,6 +115,7 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
             binding.searchEditText.setText("")
         }
 
+        binding.btnVoice.visibility = if (SP.voiceSearch) View.VISIBLE else View.GONE
         binding.btnVoice.setOnClickListener {
             startVoiceSearch()
         }
@@ -343,14 +362,31 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
     }
 
     private fun startVoiceSearch() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            performVoiceSearch()
+        } else {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun performVoiceSearch() {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak channel name...")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak channel name or category...")
         }
+        
         try {
+            Toast.makeText(requireContext(), "Listening...", Toast.LENGTH_SHORT).show()
             voiceSearchLauncher.launch(intent)
         } catch (e: Exception) {
-            // Voice search not supported
+            Toast.makeText(requireContext(), "Voice search not supported on this device.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun triggerVoiceSearch() {
+        if (SP.voiceSearch) {
+            startVoiceSearch()
         }
     }
 

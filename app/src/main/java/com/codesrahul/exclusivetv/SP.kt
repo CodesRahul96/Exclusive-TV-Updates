@@ -75,6 +75,7 @@ object SP {
     private const val KEY_SSL_PINS_VERCEL = "ssl_pins_vercel" // [NEW]
     private const val KEY_SEARCH_HISTORY = "search_history"
     private const val KEY_RECENTLY_WATCHED = "recently_watched"
+    private const val KEY_VOICE_SEARCH = "voice_search"
 
     // --- Remote Config Flags (in-memory only, refreshed on every app start) ---
     // Safe default is TRUE so new users are never blocked if Firebase fetch fails
@@ -626,6 +627,15 @@ object SP {
     var hasCompletedOnboarding: Boolean
         get() = sp.getBoolean(KEY_HAS_COMPLETED_ONBOARDING, false)
         set(value) = sp.edit().putBoolean(KEY_HAS_COMPLETED_ONBOARDING, value).apply()
+
+    var voiceSearch: Boolean
+        get() = sp.getBoolean(KEY_VOICE_SEARCH, true) // Default: Enabled
+        set(value) {
+            if (value != this.voiceSearch) {
+                sp.edit().putBoolean(KEY_VOICE_SEARCH, value).apply()
+                notifyListeners(KEY_VOICE_SEARCH)
+            }
+        }
 
     fun reset() {
         sp.edit().clear().apply()

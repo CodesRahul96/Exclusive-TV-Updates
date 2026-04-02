@@ -1641,6 +1641,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     cycleAspectRatio()
                     return true
                 }
+                KeyEvent.KEYCODE_SEARCH, 231 -> { // 231 is KEYCODE_VOICE_SEARCH
+                    if (SP.voiceSearch) {
+                        if (searchFragment.isHidden) {
+                            showSearchFragment()
+                        } else {
+                            searchFragment.triggerVoiceSearch()
+                        }
+                        return true
+                    }
+                }
                 // Numeric Entry
                 in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
                     if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
@@ -2082,9 +2092,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         SP.resizeMode = nextMode
     }
 
-    companion object {
-        private const val TAG = "MainActivity"
-    }
     private fun showDowngradeDialog(message: String) {
         val dialog = android.app.AlertDialog.Builder(this)
             .setTitle("Premium Trial Ended")
@@ -2093,5 +2100,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
             .create()
         dialog.show()
+    }
+
+    companion object {
+        private const val TAG = "MainActivity"
     }
 }
