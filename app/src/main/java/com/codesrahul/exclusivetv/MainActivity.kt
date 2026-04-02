@@ -248,6 +248,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // Phase 2: Start Professional Bootstrap (Async but Synchronized)
         updateManager = UpdateManager(this, com.codesrahul.exclusivetv.BuildConfig.VERSION_CODE)
         bootstrap()
+
+        if (!isTvDevice()) {
+            infoFragment.setOnChannelClickListener {
+                channelFragment.showKeypad()
+            }
+        }
     }
 
     private fun initBasicSetup(savedInstanceState: Bundle?) {
@@ -1307,7 +1313,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 menuFragment.updateList(currentGroup)
             }
         } else {
-            Toast.makeText(this, "Channel does not exist", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Channel ${position + 1} does not exist", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1627,7 +1633,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     fun showSearchFragment() {
         if (!searchFragment.isHidden) return
         showFragment(searchFragment)
-        searchFragment.showKeyboard()
+        if (isTvDevice()) {
+            searchFragment.showKeyboard()
+        } else {
+            searchFragment.hideKeyboard()
+        }
     }
 
     fun hideSearchFragment() {

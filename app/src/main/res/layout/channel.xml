@@ -52,6 +52,96 @@
                 android:fontFamily="sans-serif-medium"
                 android:alpha="0.9"
                 tools:text="12:34" />
+
+            <!-- [NEW] Real-time Channel Preview -->
+            <LinearLayout
+                android:id="@+id/preview_container"
+                android:layout_width="200dp"
+                android:layout_height="60dp"
+                android:layout_below="@id/time"
+                android:layout_alignEnd="@id/content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_transparent_glass"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="8dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <ImageView
+                    android:id="@+id/preview_logo"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:scaleType="fitCenter"
+                    android:background="@drawable/bg_channel_icon"
+                    android:padding="6dp"
+                    tools:src="@drawable/ic_launcher_foreground" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/preview_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="marquee"
+                        android:fontFamily="sans-serif-black"
+                        android:singleLine="true"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        tools:text="HBO HD" />
+
+                    <TextView
+                        android:id="@+id/preview_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/accent_gold"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:text="MATCH FOUND" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- [MOBILE] Numeric Keypad -->
+            <GridLayout
+                android:id="@+id/num_pad"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/preview_container"
+                android:layout_alignEnd="@id/content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_transparent_glass"
+                android:padding="8dp"
+                android:columnCount="3"
+                android:rowCount="4"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <!-- Row 1 -->
+                <Button android:id="@+id/btn1" style="@style/NumPadButton" android:text="1" />
+                <Button android:id="@+id/btn2" style="@style/NumPadButton" android:text="2" />
+                <Button android:id="@+id/btn3" style="@style/NumPadButton" android:text="3" />
+
+                <!-- Row 2 -->
+                <Button android:id="@+id/btn4" style="@style/NumPadButton" android:text="4" />
+                <Button android:id="@+id/btn5" style="@style/NumPadButton" android:text="5" />
+                <Button android:id="@+id/btn6" style="@style/NumPadButton" android:text="6" />
+
+                <!-- Row 3 -->
+                <Button android:id="@+id/btn7" style="@style/NumPadButton" android:text="7" />
+                <Button android:id="@+id/btn8" style="@style/NumPadButton" android:text="8" />
+                <Button android:id="@+id/btn9" style="@style/NumPadButton" android:text="9" />
+
+                <!-- Row 4 -->
+                <Button android:id="@+id/btn_del" style="@style/NumPadButton" android:text="DEL" android:textColor="@color/accent_gold" />
+                <Button android:id="@+id/btn0" style="@style/NumPadButton" android:text="0" />
+                <Button android:id="@+id/btn_ok" style="@style/NumPadButton" android:text="OK" android:textColor="#00E676" />
+
+            </GridLayout>
         </RelativeLayout>
     </FrameLayout>
 </LinearLayout>

@@ -55,6 +55,10 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
         
         listAdapter.setItemListener(this)
         
+        // [PROFESSIONAL] Keypad-First for Mobile
+        binding.numPadContainer.visibility = View.VISIBLE
+        binding.searchEditText.clearFocus() 
+        
         showSuggestions()
         
         binding.searchEditText.addTextChangedListener(object : TextWatcher {
@@ -90,9 +94,72 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
         binding.root.setOnClickListener {
             (activity as? MainActivity)?.hideSearchFragment()
         }
-        
+
+        setupKeypad()
+
         return binding.root
     }
+
+    private fun setupKeypad() {
+        binding.btnKeypad.setOnClickListener {
+            if (binding.numPadContainer.visibility == View.VISIBLE) {
+                binding.numPadContainer.visibility = View.GONE
+                showKeyboard()
+            } else {
+                binding.numPadContainer.visibility = View.VISIBLE
+                hideKeyboard()
+            }
+        }
+
+        val buttons = listOf(
+            binding.btn0, binding.btn1, binding.btn2, binding.btn3,
+            binding.btn4, binding.btn5, binding.btn6, binding.btn7,
+            binding.btn8, binding.btn9
+        )
+
+        buttons.forEachIndexed { index, button ->
+            button.setOnClickListener {
+                appendSearchDigit(index.toString())
+            }
+        }
+
+        binding.btnDel.setOnClickListener {
+            val s = binding.searchEditText.text.toString()
+            if (s.isNotEmpty()) {
+                binding.searchEditText.setText(s.substring(0, s.length - 1))
+                binding.searchEditText.setSelection(binding.searchEditText.text.length)
+            }
+        }
+
+        binding.btnOk.setOnClickListener {
+            val results = searchResultsModel.getTVModelList()
+            if (results.isNotEmpty()) {
+                onItemClicked(results[0])
+            }
+        }
+    }
+
+    private fun appendSearchDigit(digit: String) {
+        val current = binding.searchEditText.text.toString()
+        if (current.length >= 4) return // Max 4 digits for zap
+        
+        val newVal = current + digit
+        binding.searchEditText.setText(newVal)
+        binding.searchEditText.setSelection(newVal.length)
+        
+        // Smart Zap: If it's a 4-digit number and we have a match, play instantly
+        if (newVal.length == 4) {
+            filter(newVal)
+            val results = searchResultsModel.getTVModelList()
+            if (results.size == 1) {
+                // Check if it's an exact numeric match
+                if ((results[0].tv.id + 1).toString() == newVal) {
+                    onItemClicked(results[0])
+                }
+            }
+        }
+    }
+
 
     private fun filter(query: String) {
         if (query.isEmpty()) {
@@ -128,6 +195,13 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
         binding.searchEditText.requestFocus()
         val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
         imm?.showSoftInput(binding.searchEditText, InputMethodManager.SHOW_IMPLICIT)
+        binding.numPadContainer.visibility = View.GONE
+    }
+
+    fun hideKeyboard() {
+        binding.searchEditText.clearFocus()
+        val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        imm?.hideSoftInputFromWindow(binding.searchEditText.windowToken, 0)
     }
 
     override fun onItemFocusChange(tvModel: TVModel, hasFocus: Boolean) {}

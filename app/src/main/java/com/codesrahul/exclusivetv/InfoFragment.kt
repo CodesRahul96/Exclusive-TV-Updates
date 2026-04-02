@@ -31,8 +31,14 @@ class InfoFragment : Fragment() {
     private val binding get() = _binding!!
     private var tvUiUtils: TvUiUtils? = null
 
+    private var onChannelClickListener: (() -> Unit)? = null
+
     private val handler = Handler()
     private val delay: Long = 5000
+
+    fun setOnChannelClickListener(listener: () -> Unit) {
+        this.onChannelClickListener = listener
+    }
 
     fun isShowing(): Boolean {
         return view?.visibility == View.VISIBLE
@@ -186,7 +192,7 @@ class InfoFragment : Fragment() {
 
     fun show(tvViewModel: TVModel) {
         val b = _binding ?: return
-        b.channelNumber.text = String.format("%03d", tvViewModel.tv.id + 1)
+        b.channelNumber.text = String.format("%04d", tvViewModel.tv.id + 1)
         b.title.text = tvViewModel.tv.title
 
         LogoUtil.loadLogo(requireContext(), b.logo, tvViewModel.tv.logo, tvViewModel.tv.title)

@@ -57,6 +57,16 @@
             app:tint="@color/white" />
 
         <ImageView
+            android:id="@+id/btn_keypad"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="8dp"
+            android:src="@android:drawable/ic_dialog_dialer"
+            android:clickable="true"
+            android:focusable="true"
+            app:tint="@color/white" />
+
+        <ImageView
             android:id="@+id/btn_clear"
             android:layout_width="24dp"
             android:layout_height="24dp"
@@ -77,10 +87,51 @@
         android:clickable="true"
         android:focusable="true"
         app:layout_constraintTop_toBottomOf="@id/search_container"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/num_pad_container"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/list_item" />
+
+    <!-- [MOBILE] Professional Numeric Keypad -->
+    <FrameLayout
+        android:id="@+id/num_pad_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <GridLayout
+            android:id="@+id/num_pad"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_transparent_glass"
+            android:padding="8dp"
+            android:columnCount="3"
+            android:rowCount="4">
+
+            <!-- Row 1 -->
+            <Button android:id="@+id/btn1" style="@style/NumPadButton" android:text="1" />
+            <Button android:id="@+id/btn2" style="@style/NumPadButton" android:text="2" />
+            <Button android:id="@+id/btn3" style="@style/NumPadButton" android:text="3" />
+
+            <!-- Row 2 -->
+            <Button android:id="@+id/btn4" style="@style/NumPadButton" android:text="4" />
+            <Button android:id="@+id/btn5" style="@style/NumPadButton" android:text="5" />
+            <Button android:id="@+id/btn6" style="@style/NumPadButton" android:text="6" />
+
+            <!-- Row 3 -->
+            <Button android:id="@+id/btn7" style="@style/NumPadButton" android:text="7" />
+            <Button android:id="@+id/btn8" style="@style/NumPadButton" android:text="8" />
+            <Button android:id="@+id/btn9" style="@style/NumPadButton" android:text="9" />
+
+            <!-- Row 4 -->
+            <Button android:id="@+id/btn_del" style="@style/NumPadButton" android:text="DEL" android:textColor="@color/accent_gold" />
+            <Button android:id="@+id/btn0" style="@style/NumPadButton" android:text="0" />
+            <Button android:id="@+id/btn_ok" style="@style/NumPadButton" android:text="OK" android:textColor="#00E676" />
+        </GridLayout>
+    </FrameLayout>
 
     <TextView
         android:id="@+id/no_results"
