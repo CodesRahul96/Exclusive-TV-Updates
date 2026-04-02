@@ -218,6 +218,7 @@ class SettingFragment : Fragment() {
             binding.managePlaylists,
             binding.manageCategories,
             binding.clear,
+            binding.btnResetDevices,
             binding.btnUserManual,
             binding.checkVersion,
             binding.copyrightInfo,
@@ -291,10 +292,30 @@ class SettingFragment : Fragment() {
                 .show()
         }
 
-        // [NEW] Change OTP Dialog Trigger
         binding.btnChangeOtpDialog.setOnClickListener {
             tvUiUtils?.playClickSound()
             showChangeOtpDialog()
+        }
+
+        binding.btnResetDevices.setOnClickListener {
+            tvUiUtils?.playClickSound()
+            android.app.AlertDialog.Builder(requireContext(), android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Reset Bound Devices?")
+                .setMessage("This will clear all bound device slots for your account (one reset allowed every 30 days). Continue?")
+                .setPositiveButton("Reset") { _, _ ->
+                    SubscriptionManager.resetBoundDevices(
+                        onSuccess = { message ->
+                            requireActivity().getSharedPreferences("SP", android.content.Context.MODE_PRIVATE).edit().putString("userId", SP.userId).apply() // Keep session alive
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                            setupUI() // Refresh Account status text
+                        },
+                        onError = { error ->
+                            Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show()
+                        }
+                    )
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
 
         binding.confirmConfig.setOnClickListener {

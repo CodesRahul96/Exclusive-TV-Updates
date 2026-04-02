@@ -167,6 +167,14 @@
                     <View style="@style/SettingsDivider"/>
 
                     <TextView
+                        android:id="@+id/btn_reset_devices"
+                        style="@style/SettingsActionItem"
+                        android:text="Reset Bound Devices"
+                        android:textColor="@color/accent_gold"/>
+
+                    <View style="@style/SettingsDivider"/>
+
+                    <TextView
                         android:id="@+id/btn_logout"
                         style="@style/SettingsActionItem"
                         android:text="Logout"

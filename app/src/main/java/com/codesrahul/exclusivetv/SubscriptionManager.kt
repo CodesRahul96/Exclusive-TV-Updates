@@ -19,6 +19,7 @@ object SubscriptionManager {
     private const val COLLECTION_TRIALS = "trials"
     private const val COLLECTION_MASTER_BYPASS = "master_bypass"
     private const val FIELD_EXPIRY_DATE = "expiry_date"
+    private const val FIELD_LAST_DEVICE_RESET = "last_device_reset"
     
     var expiryDate: Date? = null
     var planName: String?
@@ -403,6 +404,52 @@ object SubscriptionManager {
             .addOnFailureListener { e ->
                 // Fallback to local logic (already in TVList)
                 onComplete()
+            }
+    }
+
+    fun resetBoundDevices(onSuccess: (String) -> Unit, onError: (String) -> Unit) {
+        val phoneNumber = SP.userId ?: return onError("User not logged in")
+        val db = FirebaseFirestore.getInstance()
+        
+        db.collection(COLLECTION_USERS).document(phoneNumber).get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val lastReset = document.getTimestamp(FIELD_LAST_DEVICE_RESET)?.toDate()
+                    val now = java.util.Date()
+                    
+                    if (lastReset != null) {
+                        val diff = now.time - lastReset.time
+                        val daysSinceReset = diff / (1000 * 60 * 60 * 24)
+                        
+                        if (daysSinceReset < 30) {
+                            val daysRemaining = 30 - daysSinceReset
+                            onError("Security: Device reset is restricted to once every 30 days. Please try again in $daysRemaining day(s).")
+                            return@addOnSuccessListener
+                        }
+                    }
+                    
+                    // Proceed with reset
+                    val updates = hashMapOf<String, Any?>(
+                        "device_id" to null,
+                        "device_id_2" to null,
+                        FIELD_LAST_DEVICE_RESET to FieldValue.serverTimestamp()
+                    )
+                    
+                    db.collection(COLLECTION_USERS).document(phoneNumber).update(updates)
+                        .addOnSuccessListener {
+                            val plan = document.getString("plan") ?: "Standard"
+                            val slots = if ("Premium".equals(plan, ignoreCase = true)) "2 slots" else "1 slot"
+                            onSuccess("Success: Bound devices cleared. $slots are now available for this account.")
+                        }
+                        .addOnFailureListener { e ->
+                            onError("Reset failed: ${e.message}")
+                        }
+                } else {
+                    onError("User data not found.")
+                }
+            }
+            .addOnFailureListener { e ->
+                onError("Verification failed: ${e.message}")
             }
     }
 
