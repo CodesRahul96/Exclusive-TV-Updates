@@ -56,7 +56,38 @@ jobs:
         run: |
           mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/ExclusiveTV-v1.2.0-signed.apk
 
-      - name: Create and Upload GitHub Release
+      - name: Create version.json for Updates
+        id: create_version_json
+        run: |
+          VERSION_NAME=${{ github.ref_name }}
+          # Handle branch names for manual dispatch (defaulting to v1.2.0 if not a tag)
+          if [[ ! "$VERSION_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION_NAME="v1.2.0"
+          fi
+          
+          V_PLAIN=${VERSION_NAME#v}
+          IFS='.' read -r V1 V2 V3 <<< "$V_PLAIN"
+          V_CODE=$(( (V1 * 16777216) + (V2 * 65536) + (V3 * 256) ))
+          echo "{\"version_code\": $V_CODE, \"version_name\": \"$VERSION_NAME\"}" > version.json
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=$V_CODE" >> $GITHUB_OUTPUT
+
+      - name: Sync to Updates Repository
+        run: |
+          # Checkout the updates repository
+          git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/CodesRahul96/Exclusive-TV-Updates.git updates_repo
+          cp version.json updates_repo/
+          if [ -f "RELEASE_NOTES.md" ]; then
+            cp RELEASE_NOTES.md updates_repo/
+          fi
+          cd updates_repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json RELEASE_NOTES.md
+          git commit -m "Update version to ${{ steps.create_version_json.outputs.VERSION_NAME }} (Build #${{ github.run_number }})" || echo "No changes to commit"
+          git push origin main
+
+      - name: Create and Upload GitHub Release (Main Repo)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -68,6 +99,19 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and Upload GitHub Release (Updates Repo)
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: CodesRahul96/Exclusive-TV-Updates
+          token: ${{ secrets.GH_PAT }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body_path: history.md
+          files: app/build/outputs/apk/release/ExclusiveTV-v1.2.0-signed.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: true
 
       - name: Gitee Create Release
         run: |
