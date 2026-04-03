@@ -1,7 +1,9 @@
 package com.codesrahul.exclusivetv
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.media.AudioManager
 import android.net.ConnectivityManager
@@ -127,8 +129,26 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var isSearchPressed = false
     private val searchHoldRunnable = Runnable {
         if (isSearchPressed) {
-            showSearchFragment()
             isSearchPressed = false
+            showSearchFragment()
+            if (SP.voiceSearch) {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (!searchFragment.isHidden) {
+                        Log.d("EXCL_VOICE", "Triggering voice search via Select Hold")
+                        searchFragment.triggerVoiceSearch()
+                    }
+                }, 400)
+            }
+        }
+    }
+
+    // Left arrow key hold tracking for Channel Search (TV Only - 2s)
+    private val leftArrowHandler = Handler(Looper.getMainLooper())
+    private var isLeftArrowPressed = false
+    private val leftArrowHoldRunnable = Runnable {
+        if (isLeftArrowPressed && isTvDevice()) {
+            isLeftArrowPressed = false
+            showSearchFragment()
         }
     }
 
@@ -245,6 +265,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
         hideSystemUI()
+        
         initBasicSetup(savedInstanceState)
         
         // Phase 2: Start Professional Bootstrap (Async but Synchronized)
@@ -351,6 +372,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         CoroutineScope(Dispatchers.IO).launch { Utils.init() }
     }
 
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
@@ -406,6 +428,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private fun onBootstrapComplete() {
         bootstrapWatchdogHandler.removeCallbacks(bootstrapWatchdogRunnable)
         if (!loadingFragment.isVisible && !loginFragment.isVisible) return // Already handled or done
+
+        // Transition to Landscape upon successful login/bootstrap on mobile
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
         hideFragment(loginFragment)
         com.codesrahul.exclusivetv.models.TVList.update(this, silent = true)
@@ -1485,6 +1510,28 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     @android.annotation.SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // [CRITICAL] Alexa/Search Button Integration: Block Alexa only if we have a native engine
+        if (event.keyCode == KeyEvent.KEYCODE_SEARCH || 
+            event.keyCode == 219 || // KEYCODE_ASSIST (Alexa)
+            event.keyCode == 231) { // KEYCODE_VOICE_SEARCH
+            
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                Log.d("EXCL_KEYS", "Alexa/Voice Button Pressed - Intercepting for App-Exclusive Search")
+                
+                showSearchFragment()
+                
+                // If native recognition is available, use it internally.
+                // Otherwise, the fragment will handle the system dialog fallback.
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (!searchFragment.isHidden) {
+                        searchFragment.triggerVoiceSearch()
+                    }
+                }, 300)
+            }
+            return true // [CRITICAL] Block FireTV system search results screen
+        }
+
+        Log.d("EXCL_KEYS", "Key: ${event.keyCode}, Action: ${event.action}")
         if (isMaintenanceMode) return true // Block all keys
 
         // If login screen is shown, let it handle keys (numeric entry, navigation, etc.)
@@ -1575,6 +1622,32 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         }
 
+        if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+            // Handle left arrow for Voice Search (3s hold) when all fragments are hidden
+            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden && searchFragment.isHidden) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    if (event.repeatCount == 0) {
+                        // Start 2-second timer on first press (TV Only)
+                        isLeftArrowPressed = true
+                        if (isTvDevice()) {
+                            leftArrowHandler.postDelayed(leftArrowHoldRunnable, 2000)
+                        }
+                    }
+                    return true
+                } else if (event.action == KeyEvent.ACTION_UP) {
+                    // Cancel timer on release
+                    if (isLeftArrowPressed) {
+                        isLeftArrowPressed = false
+                        leftArrowHandler.removeCallbacks(leftArrowHoldRunnable)
+                        
+                        // Short Press: Show Side Menu
+                        showFragment(menuFragment)
+                    }
+                    return true
+                }
+            }
+        }
+
         // Media Keys Handling
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
@@ -1603,6 +1676,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         }
 
+
         // DPAD & Navigation Logic
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
@@ -1619,10 +1693,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden && searchFragment.isHidden) {
-                        showFragment(menuFragment)
-                        return true
-                    }
+                    // Short press handled above to allow long-press
                 }
                 KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
                     back()
@@ -1641,15 +1712,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     cycleAspectRatio()
                     return true
                 }
-                KeyEvent.KEYCODE_SEARCH, 231 -> { // 231 is KEYCODE_VOICE_SEARCH
-                    if (SP.voiceSearch) {
-                        if (searchFragment.isHidden) {
-                            showSearchFragment()
-                        } else {
-                            searchFragment.triggerVoiceSearch()
-                        }
-                        return true
-                    }
+                // (Already handled above)
+                KeyEvent.KEYCODE_SEARCH, 219, 231 -> {
+                    return true
                 }
                 // Numeric Entry
                 in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
@@ -1910,18 +1975,23 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             .commitAllowingStateLoss()
     }
 
-    override fun onNewIntent(intent: android.content.Intent) {
-        super.onNewIntent(intent)
-        if (android.content.Intent.ACTION_SEARCH == intent.action) {
-            val query = intent.getStringExtra(android.app.SearchManager.QUERY)
-            if (!query.isNullOrEmpty()) {
-                handleVoiceSearch(query)
-            }
-        }
-    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        
+        // [ALEXA BRIDGE] Handle results from system speech dialog
+        if (requestCode == 1001 && resultCode == RESULT_OK && data != null) {
+            val results = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+            val spokenText = results?.getOrNull(0)
+            if (!spokenText.isNullOrEmpty()) {
+                Log.d("EXCL_VOICE", "System Dialog Result: $spokenText")
+                if (searchFragment.isAdded) {
+                    searchFragment.applyExternalQuery(spokenText)
+                }
+            }
+            return
+        }
+
         if (requestCode == 123) {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 if (packageManager.canRequestPackageInstalls()) {
@@ -2100,6 +2170,48 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
             .create()
         dialog.show()
+    }
+
+    protected override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        
+        val action = intent?.action
+        Log.d("EXCL_VOICE", "onNewIntent received with action: $action")
+        
+        // [ALEXA BRIDGE] Catch search queries from system Alexa UI or Amazon-specific searches
+        if (Intent.ACTION_SEARCH == action || 
+            action == "com.amazon.tv.leanbacklauncher.recs.QUERY" ||
+            action == "com.amazon.tv.launcher.SEARCH") {
+            
+            val query = intent.getStringExtra(android.app.SearchManager.QUERY) 
+                ?: intent.getStringExtra("query")
+                
+            if (!query.isNullOrEmpty()) {
+                Log.d("EXCL_VOICE", "Captured Alexa Query: $query")
+                Toast.makeText(this, "Searching for: $query", Toast.LENGTH_SHORT).show()
+                
+                // Try to bring the app to the front over the system results
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                
+                if (searchFragment.isAdded) {
+                    showSearchFragment()
+                    searchFragment.applyExternalQuery(query)
+                }
+            }
+        }
+    }
+
+    override fun onSearchRequested(): Boolean {
+        // [PROFESSIONAL] Block system-wide Alexa search and show internal Voice Search instead
+        if (SP.voiceSearch) {
+            showSearchFragment()
+            if (!searchFragment.isHidden) {
+                searchFragment.triggerVoiceSearch()
+            }
+            return true // Consume to prevent Alexa from appearing
+        }
+        return false // Let system handle if voice search is disabled in settings
     }
 
     companion object {

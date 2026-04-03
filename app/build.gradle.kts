@@ -13,7 +13,7 @@ plugins {
 android {
     namespace = "com.codesrahul.exclusivetv"
     compileSdk = 34
-    ndkVersion = "27.1.12297006"
+    ndkVersion = "25.1.8937393"
     
     externalNativeBuild {
         cmake {

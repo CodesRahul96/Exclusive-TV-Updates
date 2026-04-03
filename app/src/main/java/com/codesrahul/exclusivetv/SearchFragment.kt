@@ -1,5 +1,6 @@
 package com.codesrahul.exclusivetv
 
+import android.util.Log
 import android.content.Context
 import android.os.Bundle
 import android.text.Editable
@@ -9,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import androidx.fragment.app.Fragment
+import android.view.KeyEvent
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.codesrahul.exclusivetv.databinding.FragmentSearchBinding
 import com.codesrahul.exclusivetv.models.TVList
@@ -29,6 +31,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import android.speech.SpeechRecognizer
+import android.speech.RecognitionListener
 
 class SearchFragment : Fragment(), ListAdapter.ItemListener {
     private var _binding: FragmentSearchBinding? = null
@@ -64,6 +68,9 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
     
     private val searchHandler = Handler(Looper.getMainLooper())
     private var searchRunnable: Runnable? = null
+    
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var isListening = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -77,6 +84,12 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
         binding.searchResults.layoutManager = LinearLayoutManager(context)
         
         listAdapter.setItemListener(this)
+        
+        // Initialize Native Speech Recognizer
+        if (SpeechRecognizer.isRecognitionAvailable(requireContext())) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(requireContext())
+            setupSpeechListener()
+        }
         
         // [PROFESSIONAL] Optimized Focus for TV vs Mobile
         val hasTouch = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)
@@ -110,6 +123,43 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
             }
             override fun afterTextChanged(s: Editable?) {}
         })
+
+        // [PROFESSIONAL] Manual Focus Navigation for TV Remote
+        binding.searchEditText.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                // Move focus to first visible button on the right
+                when {
+                    binding.btnVoice.visibility == View.VISIBLE -> binding.btnVoice.requestFocus()
+                    binding.btnKeypad.visibility == View.VISIBLE -> binding.btnKeypad.requestFocus()
+                    binding.btnClear.visibility == View.VISIBLE -> binding.btnClear.requestFocus()
+                }
+                true
+            } else false
+        }
+
+        binding.btnVoice.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                binding.searchEditText.requestFocus()
+                true
+            } else false
+        }
+
+        binding.btnKeypad.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                if (binding.btnVoice.visibility == View.VISIBLE) binding.btnVoice.requestFocus()
+                else binding.searchEditText.requestFocus()
+                true
+            } else false
+        }
+
+        binding.btnClear.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                if (binding.btnKeypad.visibility == View.VISIBLE) binding.btnKeypad.requestFocus()
+                else if (binding.btnVoice.visibility == View.VISIBLE) binding.btnVoice.requestFocus()
+                else binding.searchEditText.requestFocus()
+                true
+            } else false
+        }
         
         binding.btnClear.setOnClickListener {
             binding.searchEditText.setText("")
@@ -362,31 +412,139 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
     }
 
     private fun startVoiceSearch() {
+        Log.d("EXCL_VOICE", "startVoiceSearch() called")
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             performVoiceSearch()
         } else {
+            Log.d("EXCL_VOICE", "Requesting Microphone Permission...")
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
-    private fun performVoiceSearch() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak channel name or category...")
-        }
-        
-        try {
-            Toast.makeText(requireContext(), "Listening...", Toast.LENGTH_SHORT).show()
-            voiceSearchLauncher.launch(intent)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Voice search not supported on this device.", Toast.LENGTH_SHORT).show()
+    fun triggerVoiceSearch() {
+        Log.d("EXCL_VOICE", "triggerVoiceSearch() called")
+        if (SP.voiceSearch) {
+            if (speechRecognizer != null && android.speech.SpeechRecognizer.isRecognitionAvailable(requireContext())) {
+                startVoiceSearch()
+            } else {
+                Log.d("EXCL_VOICE", "Native Speech unavailable - Launching System Speech Dialog")
+                try {
+                    val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak channel name...")
+                    }
+                    requireActivity().startActivityForResult(intent, 1001)
+                } catch (e: Exception) {
+                    Log.e("EXCL_VOICE", "Failed to launch system speech dialog", e)
+                    Toast.makeText(requireContext(), "Voice search not supported on this device", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            Log.d("EXCL_VOICE", "Voice Search is DISABLED in settings")
         }
     }
 
-    fun triggerVoiceSearch() {
-        if (SP.voiceSearch) {
-            startVoiceSearch()
+    fun applyExternalQuery(query: String) {
+        if (!isAdded) return
+        binding.searchEditText.setText(query)
+        binding.searchEditText.setSelection(query.length)
+        filter(query)
+    }
+
+    private fun setupSpeechListener() {
+        speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                Log.d("EXCL_VOICE", "onReadyForSpeech")
+                isListening = true
+                binding.btnVoice.setColorFilter(android.graphics.Color.YELLOW)
+                Toast.makeText(requireContext(), "Listening...", Toast.LENGTH_SHORT).show()
+            }
+
+            override fun onBeginningOfSpeech() {
+                Log.d("EXCL_VOICE", "onBeginningOfSpeech")
+            }
+
+            override fun onRmsChanged(rmsdB: Float) {
+                // Potential: Animate mic based on volume levels for premium feel
+            }
+
+            override fun onBufferReceived(buffer: ByteArray?) {}
+
+            override fun onEndOfSpeech() {
+                Log.d("EXCL_VOICE", "onEndOfSpeech")
+                isListening = false
+                binding.btnVoice.clearColorFilter()
+            }
+
+            override fun onError(error: Int) {
+                val message = when (error) {
+                    SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+                    SpeechRecognizer.ERROR_CLIENT -> "Client side error"
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
+                    SpeechRecognizer.ERROR_NETWORK -> "Network error"
+                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                    SpeechRecognizer.ERROR_NO_MATCH -> "No match found"
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
+                    SpeechRecognizer.ERROR_SERVER -> "Server error"
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
+                    else -> "Voice Search failed: $error"
+                }
+                Log.e("EXCL_VOICE", "Speech Error: $message ($error)")
+                isListening = false
+                binding.btnVoice.clearColorFilter()
+                if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onResults(results: Bundle?) {
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val spokenText = matches?.getOrNull(0)
+                if (!spokenText.isNullOrEmpty()) {
+                    Log.d("EXCL_VOICE", "Voice Result: $spokenText")
+                    binding.searchEditText.setText(spokenText)
+                    binding.searchEditText.setSelection(spokenText.length)
+                    filter(spokenText)
+                }
+            }
+
+            override fun onPartialResults(partialResults: Bundle?) {}
+
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        speechRecognizer?.destroy()
+        _binding = null
+    }
+
+    private fun performVoiceSearch() {
+        Log.d("EXCL_VOICE", "performVoiceSearch() - Starting Native Listener")
+        
+        if (speechRecognizer == null) {
+            Log.d("EXCL_VOICE", "SpeechRecognizer is NULL - Prompting for System Alexa")
+            Toast.makeText(requireContext(), "Voice ready - Press your remote's Alexa button to speak!", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        if (isListening) {
+            speechRecognizer?.stopListening()
+            return
+        }
+
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+
+        try {
+            speechRecognizer?.startListening(intent)
+        } catch (e: Exception) {
+            Log.e("EXCL_VOICE", "Exception in startListening: ${e.message}", e)
+            Toast.makeText(requireContext(), "Voice search failed to start", Toast.LENGTH_SHORT).show()
         }
     }
 
