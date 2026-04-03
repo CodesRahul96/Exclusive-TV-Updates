@@ -52,27 +52,18 @@ jobs:
             git log -n 5 --oneline > history.md
           fi
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and Upload GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body_path: history.md
+          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
           draft: false
           prerelease: false
-          body_path: history.md
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.sign_app.outputs.signedReleaseFile }}
-          asset_name: my-tv-1-${{ github.ref_name }}.apk
-          asset_content_type: application/vnd.android.package-archive
 
       - name: Gitee Create Release
         run: |
