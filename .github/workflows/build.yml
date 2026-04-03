@@ -52,13 +52,17 @@ jobs:
             git log -n 5 --oneline > history.md
           fi
 
+      - name: Rename APK for Release
+        run: |
+          mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/ExclusiveTV-v1.2.0-signed.apk
+
       - name: Create and Upload GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body_path: history.md
-          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          files: app/build/outputs/apk/release/ExclusiveTV-v1.2.0-signed.apk
           draft: false
           prerelease: false
           generate_release_notes: true
