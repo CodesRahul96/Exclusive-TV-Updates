@@ -78,12 +78,12 @@ class SearchFragment : Fragment(), ListAdapter.ItemListener {
         
         listAdapter.setItemListener(this)
         
-        // [PROFESSIONAL] Context-Aware Focus (TV vs Mobile)
+        // [PROFESSIONAL] Optimized Focus for TV vs Mobile
         val hasTouch = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)
         if (!hasTouch) {
-            // TV Mode: Prioritize Search Bar for Remote/Voice input
-            binding.numPadContainer.visibility = View.GONE
+            // TV Mode: Just request focus, don't force hide elements that might be toggled
             binding.searchEditText.requestFocus()
+            // Optimized for FireTV: focus state handled by XML selector (addStatesFromChildren)
         } else {
             // Mobile/Touch: Keypad-First
             binding.numPadContainer.visibility = View.VISIBLE

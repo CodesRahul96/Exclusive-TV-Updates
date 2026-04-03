@@ -1546,7 +1546,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         
         if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
             // Handle right arrow for settings menu (3s hold) when all fragments are hidden
-            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
+            if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden && searchFragment.isHidden) {
                 if (event.action == KeyEvent.ACTION_DOWN) {
                     if (event.repeatCount == 0) {
                         // Start 3-second timer on first press
@@ -1607,19 +1607,19 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_CHANNEL_UP -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden && searchFragment.isHidden) {
                         channelUp()
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden && searchFragment.isHidden) {
                         channelDown()
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden && searchFragment.isHidden) {
                         showFragment(menuFragment)
                         return true
                     }
@@ -1653,7 +1653,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 }
                 // Numeric Entry
                 in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
-                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden) {
+                    if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden && searchFragment.isHidden) {
                         showChannel((event.keyCode - KeyEvent.KEYCODE_0).toString())
                         return true
                     }

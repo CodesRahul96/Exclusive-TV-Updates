@@ -11,80 +11,82 @@
     <LinearLayout
         android:id="@+id/search_container"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
+        android:layout_height="64dp"
+        android:layout_marginTop="32dp"
         android:layout_marginHorizontal="64dp"
-        android:background="@drawable/bg_dialog_btn"
+        android:background="@drawable/bg_search_selector"
+        android:addStatesFromChildren="true"
         android:orientation="horizontal"
-        android:padding="12dp"
+        android:paddingHorizontal="20dp"
         android:gravity="center_vertical"
-        android:clickable="true"
-        android:focusable="true"
+        android:clickable="false"
+        android:focusable="false"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
         <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:src="@android:drawable/ic_menu_search"
             app:tint="@color/white" />
 
         <EditText
             android:id="@+id/search_edit_text"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="16dp"
             android:background="@null"
-            android:hint="Search Channels..."
-            android:textColorHint="#80FFFFFF"
+            android:hint="Search Channels by Name or Number..."
+            android:textColorHint="#99FFFFFF"
             android:textColor="@color/white"
-            android:textSize="18sp"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-medium"
             android:imeOptions="actionSearch"
-            android:inputType="text|number"
+            android:inputType="text"
             android:focusable="true"
             android:singleLine="true"
-            android:nextFocusDown="@+id/history_chips_scroll"
-            android:nextFocusRight="@+id/btn_voice">
+            android:nextFocusDown="@+id/history_chips_scroll">
             <requestFocus />
         </EditText>
 
         <ImageView
             android:id="@+id/btn_voice"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginEnd="8dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="4dp"
+            android:padding="8dp"
+            android:background="@drawable/bg_icon_btn_selector"
             android:src="@android:drawable/ic_btn_speak_now"
             android:clickable="true"
             android:focusable="true"
-            android:nextFocusLeft="@+id/search_edit_text"
-            android:nextFocusRight="@+id/btn_keypad"
             android:nextFocusDown="@+id/history_chips_scroll"
             app:tint="@color/white" />
 
         <ImageView
             android:id="@+id/btn_keypad"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginEnd="8dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="4dp"
+            android:padding="8dp"
+            android:background="@drawable/bg_icon_btn_selector"
             android:src="@android:drawable/ic_dialog_dialer"
             android:clickable="true"
             android:focusable="true"
-            android:nextFocusLeft="@+id/btn_voice"
-            android:nextFocusRight="@+id/btn_clear"
             android:nextFocusDown="@+id/history_chips_scroll"
             app:tint="@color/white" />
 
         <ImageView
             android:id="@+id/btn_clear"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="8dp"
+            android:background="@drawable/bg_icon_btn_selector"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
             android:visibility="gone"
             android:clickable="true"
             android:focusable="true"
-            android:nextFocusLeft="@+id/btn_keypad"
             android:nextFocusDown="@+id/history_chips_scroll"
             app:tint="@color/white" />
     </LinearLayout>
