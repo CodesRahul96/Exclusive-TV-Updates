@@ -24,6 +24,10 @@ service cloud.firestore {
       allow read, write: if false; 
     }
     
+    match /app_config/{document=**} {
+      allow read: if true;
+    }
+
     // Protect everything else (default deny)
     match /{document=**} {
       allow read, write: if false;

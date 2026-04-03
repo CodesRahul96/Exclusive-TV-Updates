@@ -27,6 +27,9 @@ jobs:
       - name: Run build with Gradle wrapper
         run: ./gradlew assembleRelease
 
+      - name: List Output APKs (Diagnostics)
+        run: ls -R app/build/outputs/apk/release
+
       - name: Sign app APK
         id: sign_app
         uses: r0adkll/sign-android-release@v1
@@ -40,12 +43,14 @@ jobs:
           # override default build-tools version (29.0.3) -- optional
           BUILD_TOOLS_VERSION: "34.0.0"
 
-      - name: Get History
+      - name: Prepare Release Notes
         id: get_history
         run: |
-          chmod +x history.sh
-          output=$(./history.sh)
-          echo "$output" > history.md
+          if [ -f "RELEASE_NOTES.md" ]; then
+            cat RELEASE_NOTES.md > history.md
+          else
+            git log -n 5 --oneline > history.md
+          fi
 
       - name: Create Release
         id: create_release

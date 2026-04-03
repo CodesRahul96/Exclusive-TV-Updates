@@ -257,7 +257,7 @@ class LoginFragment : Fragment() {
                             binding.tvStatus.text = "Could not verify registration status"
                             Toast.makeText(
                                 requireContext(),
-                                "Server unreachable. Please check your connection and try again.",
+                                "Server unreachable: ${e.localizedMessage}. Please check your connection and try again.",
                                 Toast.LENGTH_LONG
                             ).show()
                         }
