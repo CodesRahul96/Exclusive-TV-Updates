@@ -219,12 +219,13 @@ class SettingFragment : Fragment() {
             binding.cardVoiceSearch,
             binding.managePlaylists,
             binding.manageCategories,
+            binding.cardTelegram,
+            binding.appWebsite,
+            binding.checkVersion,
+            binding.btnUserManual,
+            binding.copyrightInfo,
             binding.clear,
             binding.btnResetDevices,
-            binding.btnUserManual,
-            binding.checkVersion,
-            binding.copyrightInfo,
-            binding.appWebsite,
             binding.portfolioWebsite,
             binding.portfolioLinkedin,
             binding.portfolioGithub,
@@ -268,6 +269,10 @@ class SettingFragment : Fragment() {
         binding.cardAudioStabilizer.setOnClickListener { toggleSetting("audioStabilizer") }
         binding.cardVoiceSearch.setOnClickListener { toggleSetting("voiceSearch") }
         
+        binding.cardTelegram.setOnClickListener {
+            openUrl("https://t.me/officialexclusivetv")
+        }
+        
         binding.portfolioCompactCard.setOnClickListener {
             tvUiUtils?.playClickSound()
             devClickCount++
@@ -289,7 +294,7 @@ class SettingFragment : Fragment() {
                 .setMessage("Are you sure you want to logout? This will clear all app data.")
                 .setPositiveButton("Logout") { _, _ ->
                     // Restart app to go back to login (logic inside performFullReset)
-                    performFullReset(justRestart = true) 
+                    performFullReset() 
                 }
                 .setNegativeButton("Cancel", null)
                 .show()

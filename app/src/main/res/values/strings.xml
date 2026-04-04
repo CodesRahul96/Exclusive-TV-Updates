@@ -16,4 +16,7 @@
     <string name="title_channel_check">Remove dead channels</string>
     <string name="title_watch_last">Play last channel on startup</string>
     <string name="title_force_high_quality">Force High Video Quality</string>
+    <string name="settings_community_header">Community &amp; Support</string>
+    <string name="settings_telegram_title">Official Telegram Group</string>
+    <string name="settings_telegram_subtitle">Join for updates, group support, and feature news</string>
 </resources>

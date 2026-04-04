@@ -638,6 +638,7 @@ object SP {
         }
 
     fun reset() {
-        sp.edit().clear().apply()
+        sp.edit().clear().commit()
+        esp.edit().clear().commit()
     }
 }

@@ -502,6 +502,33 @@
 
                 </LinearLayout>
 
+                <!-- Section: Community -->
+                <TextView
+                    style="@style/SettingsSectionHeader"
+                    android:text="@string/settings_community_header"
+                    android:layout_marginTop="28dp"/>
+
+                <LinearLayout style="@style/SettingsCardContainer">
+                    <LinearLayout
+                        android:id="@+id/card_telegram"
+                        style="@style/SettingsToggleItem">
+                        <ImageView style="@style/SettingsIcon" android:src="@drawable/ic_telegram"/>
+                        <LinearLayout style="@style/SettingsTextContainer">
+                            <TextView style="@style/SettingsTitle" android:text="@string/settings_telegram_title"/>
+                            <TextView style="@style/SettingsSubtitle" android:text="@string/settings_telegram_subtitle"/>
+                        </LinearLayout>
+                        <ImageView style="@style/SettingsChevron"/>
+                    </LinearLayout>
+
+                    <View style="@style/SettingsDivider"/>
+
+                    <TextView
+                        android:id="@+id/app_website"
+                        style="@style/SettingsActionItem"
+                        android:text="Official App Website"
+                        android:drawableStart="@drawable/ic_website" />
+                </LinearLayout>
+
                 <!-- Actions -->
                 <TextView
                     style="@style/SettingsSectionHeader"
@@ -531,15 +558,7 @@
                         android:text="About &amp; Legal"
                         android:drawableStart="@drawable/ic_info_outline" />
                     
-                    <View style="@style/SettingsDivider"/>
-
-                    <TextView
-                        android:id="@+id/app_website"
-                        style="@style/SettingsActionItem"
-                        android:text="Official App Website"
-                        android:drawableStart="@drawable/ic_website" />
-                    
-                    <View style="@style/SettingsDivider"/>
+                     <View style="@style/SettingsDivider"/>
                     <TextView
                         android:id="@+id/clear"
                         style="@style/SettingsActionItem"
