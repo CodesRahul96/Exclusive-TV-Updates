@@ -1,16 +1,21 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [1.2.0] - 2026-04-03
+## [1.2.1] - 2026-04-04
 ### Added
-- **AI Voice Search**: Integrated user toggle in Settings with persistent storage and microphone UI support.
-- **Improved Registration**: Resolved Firestore "Permission Denied" errors and optimized registration flow for all devices.
 - **Settings UI & Community**:
     - Added **Official Telegram Group** link for group support and updates.
     - Relocated "Official App Website" to the new "Community & Support" section.
+- **Improved Registration**: Resolved Firestore "Permission Denied" errors and optimized registration flow for all devices.
+
+### Fixed
 - **Session & Security**:
     - Fixed **Logout** and **Factory Reset** logic.
     - Ensured full data erasure (including encrypted preferences) before app restart.
+
+## [1.2.0] - 2026-04-03
+### Added
+- **AI Voice Search**: Integrated user toggle in Settings with persistent storage and microphone UI support.
 - **FireTV Optimization**: Enhanced D-Pad navigation and display support for MediaTek-based TV hardware.
 
 ### Fixed

@@ -54,15 +54,15 @@ jobs:
 
       - name: Rename APK for Release
         run: |
-          mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/ExclusiveTV-v1.2.0-signed.apk
+          mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/ExclusiveTV-${{ steps.create_version_json.outputs.VERSION_NAME }}-signed.apk
 
       - name: Create version.json for Updates
         id: create_version_json
         run: |
           VERSION_NAME=${{ github.ref_name }}
-          # Handle branch names for manual dispatch (defaulting to v1.2.0 if not a tag)
+          # Handle branch names for manual dispatch (defaulting to v1.2.1 if not a tag)
           if [[ ! "$VERSION_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            VERSION_NAME="v1.2.0"
+            VERSION_NAME="v1.2.1"
           fi
           
           V_PLAIN=${VERSION_NAME#v}
@@ -85,7 +85,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add version.json RELEASE_NOTES.md
           git commit -m "Update version to ${{ steps.create_version_json.outputs.VERSION_NAME }} (Build #${{ github.run_number }})" || echo "No changes to commit"
-          git push origin main
+          git push origin refs/heads/main:refs/heads/main
 
       - name: Create and Upload GitHub Release (Main Repo)
         uses: softprops/action-gh-release@v2
