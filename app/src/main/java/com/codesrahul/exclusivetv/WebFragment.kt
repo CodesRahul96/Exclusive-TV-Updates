@@ -78,7 +78,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private var isWebMode = false
     private var uaFallbackIndex = 0
     private var playbackWatchdog: Runnable? = null
-
+    private var lastPlaybackPosition: Long = -1
+    private var bufferingStartTime: Long = -1
+    private var lastCheckTime: Long = -1
+    private var seamlessRetryCount = 0
     data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
     private var _binding: PlayerBinding? = null
@@ -162,6 +165,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         // Initialize WakeLock & Keep Screen On
         try {
             playerView.keepScreenOn = true
+            playerView.setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
             activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -785,13 +789,35 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     }
 
     fun refreshPlayback() {
-        val currentTv = tvModel ?: return
-        // Cancel any pending retries first
+        val currentTv = tvModel?.tv ?: return
+        // HARD RESET: Release player and create new one
+        retryCount = 0
+        uaFallbackIndex = 0
+        lastPlaybackPosition = -1L
+        bufferingStartTime = -1L
+
         playbackHandler.removeCallbacksAndMessages(null)
-        // Use a short delay to ensure network stacks are fully ready
         playbackHandler.postDelayed({
-            play(currentTv)
+            tvModel?.let { play(it) }
         }, 1000)
+    }
+
+    fun seamlessRefresh() {
+        if (exoPlayer == null || currentVideoUrl.isEmpty()) {
+            refreshPlayback()
+            return
+        }
+        
+        seamlessRetryCount++
+        if (seamlessRetryCount > 2) {
+            // ESCALATION: Fast re-connect failed twice. Force a Hard Reset.
+            tvModel?.setErrInfo("Hard Resetting Stream...")
+            refreshPlayback()
+            return
+        }
+        
+        // SILENT AUTO-RECOVERY: Keep player surface, just re-connect
+        doInitializePlayer(currentVideoUrl, seamless = true)
     }
 
     private fun initializePlayer(url: String) {
@@ -806,16 +832,18 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
 
         try {
-            doInitializePlayer(url)
+            doInitializePlayer(url, seamless = false)
         } catch (e: Exception) {
             tvModel?.setErrInfo("Playback Error")
             releasePlayer()
         }
     }
 
-    private fun doInitializePlayer(url: String) {
-        // Always release the previous player to ensure we can configure DRM correctly for the new content
-        releasePlayer()
+    private fun doInitializePlayer(url: String, seamless: Boolean = false) {
+        // Only release the previous player if we're not doing a seamless re-connect
+        if (!seamless) {
+            releasePlayer()
+        }
 
         // Acquire WakeLock
         if (wakeLock?.isHeld == false) {
@@ -864,6 +892,12 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             }
         }
 
+        // HARDCODED OPTIMIZATION: Portal/TS Stream Persistence
+        if (url.contains("mac=", ignoreCase = true) || url.contains("extension=ts", ignoreCase = true) || url.contains(".ts", ignoreCase = true)) {
+            requestHeaders["Connection"] = "keep-alive"
+            requestHeaders["Keep-Alive"] = "timeout=60, max=100"
+        }
+        
         // HARDCODED OPTIMIZATION: SunNxt Proactive Header Injection
         if (url.contains("sunnxt.com")) {
             requestHeaders["Origin"] = "https://www.sunnxt.com"
@@ -908,7 +942,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
 
         // OPTIMIZED BUFFER SETTINGS
-        val loadControl = getLoadControl()
+        val loadControl = getLoadControl(url)
         
         // HARDCODED OPTIMIZATION: SonyLiv Performance Fix
         val nameLower = tvModel?.tv?.name?.lowercase() ?: ""
@@ -1032,10 +1066,20 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
         
         mediaSourceFactory.setDrmSessionManagerProvider(drmProvider)
-
-        builder.setMediaSourceFactory(mediaSourceFactory)
         
-        exoPlayer = builder.build()
+        if (seamless && exoPlayer != null) {
+            // RE-USE EXISTING PLAYER (GAPLESS)
+            // We do NOT call stop() or clearMediaItems() here to keep the last frame visible
+        } else {
+            // BUILD NEW PLAYER
+            builder.setMediaSourceFactory(mediaSourceFactory)
+            exoPlayer = builder.build()
+        }
+        
+        // Re-apply common player settings 
+        exoPlayer?.repeatMode = Player.REPEAT_MODE_OFF // Ended detection handles re-connect smarter
+        // Removed REPEAT_MODE_ONE as it repeats the cached content.
+        // We now use STATE_ENDED listener to trigger a fresh URL request.
 
         // Logic Correction: "Force High Quality" should ENABLE High Quality (No Limit), not restrict to SD.
         // If the toggle is ON, we want MAX resolution.
@@ -1090,6 +1134,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                             if (retryCount % 2 == 0 && uaFallbackIndex < 3) {
                                 uaFallbackIndex++
                             }
+                            // Last-Resort Global Fix: Use MAG Identity if any channel fails 4+ times
+                            if (retryCount >= 4 && uaFallbackIndex < 4) {
+                                uaFallbackIndex = 4 
+                            }
                             initializePlayer(currentVideoUrl) // Re-initialize the same URL
                         }
                     }, delay)
@@ -1136,11 +1184,14 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
-                 if (playbackState == Player.STATE_READY) {
-                        // Success Signal: Explicitly mark as ready for MainActivity to hide loader
+                  if (playbackState == Player.STATE_READY) {
                         tvModel?.setErrInfo("success") 
-                        retryCount = 0 // Reset retry count on success
-                 }
+                        retryCount = 0 
+                  } else if (playbackState == Player.STATE_ENDED) {
+                        // End of stream detected (common in short-lived PHP IPTV links).
+                        // Silent Seamless refresh without UI flashing 'Refreshing...'
+                        seamlessRefresh()
+                  }
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -1153,6 +1204,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             override fun onRenderedFirstFrame() {
                 super.onRenderedFirstFrame()
                 tvModel?.setErrInfo("success")
+                seamlessRetryCount = 0 // SUCCESS: Reset recovery escalation
                 // Success: Cancel Watchdog
                 playbackWatchdog?.let { playbackHandler.removeCallbacks(it) }
                 playbackWatchdog = null
@@ -1226,8 +1278,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         playerView.player = exoPlayer
         
         val uri = Uri.parse(videoUrl)
-        val isHls = videoUrl.contains(".m3u8", ignoreCase = true) || 
-                   (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))
+        val isHls = (videoUrl.contains(".m3u8", ignoreCase = true) || 
+                   (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))) &&
+                   !videoUrl.contains("extension=ts", ignoreCase = true) &&
+                   !videoUrl.contains(".ts", ignoreCase = true)
 
         val isDash = videoUrl.contains(".mpd", ignoreCase = true) || 
                     (videoUrl.contains("/mpd/", ignoreCase = true)) || 
@@ -1282,15 +1336,15 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 .setAllowChunklessPreparation(false) // Strict Sync to extract undeclared tracks
                 .setDrmSessionManagerProvider(drmProvider)
             
-            exoPlayer?.setMediaSource(hlsMediaSource.createMediaSource(mediaItem))
+            exoPlayer?.setMediaSource(hlsMediaSource.createMediaSource(mediaItem), !seamless)
         } else if (isDash) {
             // DASH ROBUSTNESS: Explicit DashMediaSource for complex DRM manifests
             val dashMediaSource = androidx.media3.exoplayer.dash.DashMediaSource.Factory(httpDataSourceFactory)
                 .setDrmSessionManagerProvider(drmProvider)
             
-            exoPlayer?.setMediaSource(dashMediaSource.createMediaSource(mediaItem))
+            exoPlayer?.setMediaSource(dashMediaSource.createMediaSource(mediaItem), !seamless)
         } else {
-            exoPlayer?.setMediaItem(mediaItem)
+            exoPlayer?.setMediaItem(mediaItem, !seamless)
         }
         
         exoPlayer?.prepare()
@@ -1310,22 +1364,51 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         
         exoPlayer?.play()
 
-        // PLAYBACK WATCHDOG: Detect "Black Screen" or "Infinite Buffering"
+        // PLAYBACK WATCHDOG: Continuous robust check for stalling/infinite buffering
         playbackWatchdog?.let { playbackHandler.removeCallbacks(it) }
-        playbackWatchdog = Runnable {
-            if (isAdded && exoPlayer != null) {
-                val state = exoPlayer?.playbackState ?: Player.STATE_IDLE
-                if (state == Player.STATE_BUFFERING || state == Player.STATE_READY) {
-                    // If we reach READY but no frame was rendered (Black Screen), or stuck in BUFFERING
-                    if (uaFallbackIndex < 3) {
-                        uaFallbackIndex++
-                        retryCount++
-                        initializePlayer(currentVideoUrl)
+        playbackWatchdog = object : Runnable {
+            override fun run() {
+                if (isAdded && exoPlayer != null) {
+                    val state = exoPlayer?.playbackState ?: Player.STATE_IDLE
+                    val isPlaying = exoPlayer?.playWhenReady == true
+                    val currentPos = exoPlayer?.currentPosition ?: -1L
+                    val now = System.currentTimeMillis()
+                    
+                    if (isPlaying && state == Player.STATE_READY) {
+                        bufferingStartTime = -1L // Reset buffering clock
+                        if (currentPos != -1L && currentPos == lastPlaybackPosition) {
+                            // STALL DETECTED: Position frozen for 5s (responsive check)
+                            playbackHandler.post { seamlessRefresh() }
+                            return 
+                        }
+                        lastPlaybackPosition = currentPos
+                    } else if (isPlaying && state == Player.STATE_BUFFERING) {
+                        if (bufferingStartTime == -1L) bufferingStartTime = now
+                        if (now - bufferingStartTime > 10000) {
+                            // BUFFERING TIMEOUT: Stuck for 10s
+                            playbackHandler.post { seamlessRefresh() }
+                            return
+                        }
+                    } else if (state == Player.STATE_IDLE) {
+                         // Silent startup hang
+                        if (retryCount < maxRetries && lastPlaybackPosition == -1L) {
+                            if (uaFallbackIndex < 3) { uaFallbackIndex++ }
+                            retryCount++
+                            initializePlayer(currentVideoUrl)
+                            return
+                        }
+                    } else {
+                         bufferingStartTime = -1L
                     }
+                    
+                    // Aggressive periodic check every 3 seconds
+                    playbackHandler.postDelayed(this, 3000)
                 }
             }
         }
-        playbackHandler.postDelayed(playbackWatchdog!!, 8000) // 8 second grace period
+        lastPlaybackPosition = -1L
+        bufferingStartTime = -1L
+        playbackHandler.postDelayed(playbackWatchdog!!, 8000) // 8s grace before first check
     }
 
 
@@ -1335,6 +1418,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             1 -> "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
             2 -> "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
             3 -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+            4 -> "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200/2.0.4 Safari/533.3"
             else -> {
                 // Tier 0: Smart Logic based on Domain
                 when {
@@ -1344,7 +1428,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                       && (url.contains("drm", ignoreCase = true) || url.contains("license", ignoreCase = true) || tvModel?.tv?.drmScheme != null) ->
                         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
 
-                    // IPTV Providers blocking standard browsers
+                    // IPTV Portals / Global Last Resort (Requires MAG200/MAG250 Identity)
+                    uaFallbackIndex == 4 || url.contains("mac=", ignoreCase = true) || url.contains("portal", ignoreCase = true) -> 
+                        "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200/2.0.4 Safari/533.3"
+                    
                     url.contains("drmlive.net") || url.contains("servertvhub.site") || url.contains("workers.dev") -> 
                         "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
                     
@@ -1601,31 +1688,38 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         return currentVideoUrl
     }
 
-    private fun getLoadControl(): androidx.media3.exoplayer.LoadControl {
+    private fun getLoadControl(url: String? = null): androidx.media3.exoplayer.LoadControl {
         val bufferMode = SP.bufferMode
+        val isPortalOrTs = url?.let { it.contains("mac=", ignoreCase = true) || it.contains("extension=ts", ignoreCase = true) || it.contains(".ts", ignoreCase = true) } ?: false
         
         // Mode 0: Default (Balanced)
         // Mode 1: Max Stability (Large buffer for slow net)
         // Mode 2: Low Latency (Small buffer for fast net)
 
         // SIGNIFICANTLY INCREASED FOR IPTV STABILITY
-        val minBuffer = when (bufferMode) {
+        var minBuffer = when (bufferMode) {
             1 -> 60000 // 60s
-            2 -> 5000  // 5s
-            else -> 30000 // 30s default
+            2 -> 15000 // 15s
+            else -> 45000 // 45s (Aggressive Default)
         }
+        // Force minimum 45s for all streams (Global Stability)
+        minBuffer = Math.max(minBuffer, 45000)
 
-        val maxBuffer = when (bufferMode) {
+        var maxBuffer = when (bufferMode) {
             1 -> 120000 // 120s
-            2 -> 15000  // 15s
+            2 -> 30000  // 30s
             else -> 90000 // 90s
         }
+        // Force minimum 120s for Global Stability
+        maxBuffer = Math.max(maxBuffer, 120000)
 
-        val startBuffer = when (bufferMode) {
+        var startBuffer = when (bufferMode) {
             1 -> 3000 // 3s start
-            2 -> 800  // 0.8s start
-            else -> 1500 // 1.5s start
+            2 -> 1500 // 1.5s start
+            else -> 2500 // 2.5s start (Safe Minimum)
         }
+        // Force minimum 2500 for Global TS/HLS Stability
+        startBuffer = Math.max(startBuffer, 2500)
         
         val context = context ?: return DefaultLoadControl.Builder().build()
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
