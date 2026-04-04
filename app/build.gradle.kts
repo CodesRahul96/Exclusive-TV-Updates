@@ -89,10 +89,8 @@ fun getVersionCode(): Int {
     return try {
         val versionFile = File(rootProject.projectDir, "version.json")
         val versionJson = versionFile.readText()
-        val versionCode = versionJson.substringAfter("\"version_code\": ")
-            .substringBefore(",")
-            .trim()
-            .toInt()
+        val match = "\"version_code\"\\s*:\\s*(\\d+)".toRegex().find(versionJson)
+        val versionCode = match?.groupValues?.get(1)?.toInt() ?: throw Exception("version_code not found")
         println("Version Code from version.json: $versionCode")
         versionCode
     } catch (e: Exception) {
@@ -117,9 +115,8 @@ fun getVersionName(): String {
     return try {
         val versionFile = File(rootProject.projectDir, "version.json")
         val versionJson = versionFile.readText()
-        val versionName = versionJson.substringAfter("\"version_name\": \"")
-            .substringBefore("\"")
-            .trim()
+        val match = "\"version_name\"\\s*:\\s*\"([^\"]+)\"".toRegex().find(versionJson)
+        val versionName = match?.groupValues?.get(1) ?: throw Exception("version_name not found")
         println("Version Name from version.json: $versionName")
         versionName
     } catch (e: Exception) {

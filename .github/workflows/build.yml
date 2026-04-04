@@ -52,25 +52,34 @@ jobs:
             git log -n 5 --oneline > history.md
           fi
 
-      - name: Create version.json for Updates
-        id: create_version_json
+      - name: Parse Version from version.json
+        id: parse_version
         run: |
-          VERSION_NAME=${{ github.ref_name }}
-          # Handle branch names for manual dispatch (defaulting to v1.2.1 if not a tag)
-          if [[ ! "$VERSION_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            VERSION_NAME="v1.2.1"
+          if [ ! -f "version.json" ]; then
+            echo "Error: version.json not found!"
+            exit 1
           fi
           
-          V_PLAIN=${VERSION_NAME#v}
-          IFS='.' read -r V1 V2 V3 <<< "$V_PLAIN"
-          V_CODE=$(( (V1 * 16777216) + (V2 * 65536) + (V3 * 256) ))
-          echo "{\"version_code\": $V_CODE, \"version_name\": \"$VERSION_NAME\"}" > version.json
+          VERSION_NAME=$(jq -r '.version_name' version.json)
+          VERSION_CODE=$(jq -r '.version_code' version.json)
+          
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "VERSION_CODE=$V_CODE" >> $GITHUB_OUTPUT
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
+          
+          # Validation: If this is a tag-triggered build, ensure the tag matches version.json
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG_NAME="${{ github.ref_name }}"
+            if [[ "$TAG_NAME" != "$VERSION_NAME" ]]; then
+              echo "::error::Tag name ($TAG_NAME) does not match version.json ($VERSION_NAME)!"
+              exit 1
+            fi
+          fi
+          
+          echo "Building version $VERSION_NAME ($VERSION_CODE)"
 
       - name: Rename APK for Release
         run: |
-          mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/ExclusiveTV-${{ steps.create_version_json.outputs.VERSION_NAME }}.apk
+          mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/ExclusiveTV-${{ steps.parse_version.outputs.VERSION_NAME }}.apk
 
       - name: Sync to Updates Repository
         run: |
@@ -84,7 +93,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add version.json RELEASE_NOTES.md
-          git commit -m "Update version to ${{ steps.create_version_json.outputs.VERSION_NAME }} (Build #${{ github.run_number }})" || echo "No changes to commit"
+          git commit -m "Update version to ${{ steps.parse_version.outputs.VERSION_NAME }} (Build #${{ github.run_number }})" || echo "No changes to commit"
           git push origin refs/heads/main:refs/heads/main
 
       - name: Create and Upload GitHub Release (Main Repo)
@@ -93,7 +102,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body_path: history.md
-          files: app/build/outputs/apk/release/ExclusiveTV-${{ steps.create_version_json.outputs.VERSION_NAME }}.apk
+          files: app/build/outputs/apk/release/ExclusiveTV-${{ steps.parse_version.outputs.VERSION_NAME }}.apk
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -108,7 +117,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body_path: history.md
-          files: app/build/outputs/apk/release/ExclusiveTV-${{ steps.create_version_json.outputs.VERSION_NAME }}.apk
+          files: app/build/outputs/apk/release/ExclusiveTV-${{ steps.parse_version.outputs.VERSION_NAME }}.apk
           draft: false
           prerelease: false
           generate_release_notes: true
