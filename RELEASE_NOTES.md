@@ -1,16 +1,16 @@
-# Exclusive TV v1.2.0
+# Exclusive TV v1.2.1
 
-This update brings major stability improvements and new features to enhance your viewing experience.
+This update ensures complete session security and introduces new community support features.
 
 ## ✨ What's New
-- **AI Voice Search**: You can now enable Voice Search in Settings and find content using your remote's microphone.
-- **Improved Registration**: Resolved issues preventing new users from registering on certain devices.
-- **FireTV Optimization**: Better display and navigation support for FireTV sticks.
+- **Telegram Support**: Access the **Official Telegram Group** directly from Settings for support and community updates.
+- **Community section**: "Official App Website" has been moved to the new **"Community & Support"** section for easier navigation.
+- **Improved Registration**: Resolved Firestore "Permission Denied" errors and optimized registration flow for all devices.
 
 ## 🚀 Improvements & Fixes
-- **Stability**: Fixed random crashes during long viewing sessions.
-- **Connectivity**: Faster stream loading and better fallback handling.
-- **Security Check**: Updated security protocols for a safer experience.
+- **Logout & Factory Reset**: Fully repaired the logout and factory reset mechanisms. Session data (including encrypted preferences) is now wiped completely before application restart.
+- **Security Check**: Switched to synchronous preference commits for guaranteed stability on all TV hardware.
+- **UI Cleanup**: Optimized the Settings menu layout by removing redundant dividers.
 
 ## ⚠️ Mandatory Update
-This is a required update. Please install the latest version to continue accessing premium channels.
+This is a required update. Please install the latest version to ensure your account remains secure and authenticated.
