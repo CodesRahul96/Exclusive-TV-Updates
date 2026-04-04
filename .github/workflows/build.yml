@@ -93,7 +93,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body_path: history.md
-          files: app/build/outputs/apk/release/ExclusiveTV-v1.2.0-signed.apk
+          files: app/build/outputs/apk/release/ExclusiveTV-${{ steps.create_version_json.outputs.VERSION_NAME }}-signed.apk
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -108,7 +108,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body_path: history.md
-          files: app/build/outputs/apk/release/ExclusiveTV-v1.2.0-signed.apk
+          files: app/build/outputs/apk/release/ExclusiveTV-${{ steps.create_version_json.outputs.VERSION_NAME }}-signed.apk
           draft: false
           prerelease: false
           generate_release_notes: true
