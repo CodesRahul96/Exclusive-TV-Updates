@@ -52,10 +52,6 @@ jobs:
             git log -n 5 --oneline > history.md
           fi
 
-      - name: Rename APK for Release
-        run: |
-          mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/ExclusiveTV-${{ steps.create_version_json.outputs.VERSION_NAME }}-signed.apk
-
       - name: Create version.json for Updates
         id: create_version_json
         run: |
@@ -71,6 +67,10 @@ jobs:
           echo "{\"version_code\": $V_CODE, \"version_name\": \"$VERSION_NAME\"}" > version.json
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "VERSION_CODE=$V_CODE" >> $GITHUB_OUTPUT
+
+      - name: Rename APK for Release
+        run: |
+          mv ${{ steps.sign_app.outputs.signedReleaseFile }} app/build/outputs/apk/release/ExclusiveTV-${{ steps.create_version_json.outputs.VERSION_NAME }}-signed.apk
 
       - name: Sync to Updates Repository
         run: |
