@@ -1,19 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [1.1.9] - 2026-03-30
+## [1.2.0] - 2026-04-03
 ### Added
-- **Instant Audio Switching**: Real-time track switching from settings without stream restart.
-- **Improved Watchdog**: Automatic UA rotation on black-screen stalls.
+- **AI Voice Search**: Integrated user toggle in Settings with persistent storage and microphone UI support.
+- **Improved Registration**: Resolved Firestore "Permission Denied" errors and optimized registration flow for all devices.
+- **FireTV Optimization**: Enhanced D-Pad navigation and display support for MediaTek-based TV hardware.
 
 ### Fixed
-- **Quality Adaptation**: Enforced **480p Max** and **1.0 Mbps** bitrate for "Data Saver" mode.
-- **Root False Positive**: Resolved incorrect "Rooted Device" detection on Android TV hardware (MT5862/MT9255L).
-- **SunNxt DRM**: Fixed "BAD_VALUE" errors on Android 14 devices.
-- **Track Selection**: Sync implementation for Aspect Ratio (Resize) and Bitrate logic.
+- **Stability**: Resolved random crashes during long viewing sessions.
+- **Connectivity**: Improved stream loading speed and fallback handling.
+- **Security Protocols**: Updated device integrity checks and security verification.
 
 ### Changed
-- Refined player overlay indicators for quality and language.
+- **Mandatory Update**: Implemented a non-bypassable update mechanism to ensure production stability.
 
 ## [1.1.8] - 2026-03-28
 ### Added

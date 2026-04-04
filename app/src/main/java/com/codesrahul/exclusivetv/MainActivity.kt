@@ -1726,6 +1726,26 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         }
 
+        // MANDATORY UPDATE BLOCK: Ignore all remote keys if app is outdated
+        if (SecurityUtil.isAppOutdated) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                // Allow only the 'Enter' key and 'D-Pad' to interact with the Update Dialog
+                val allowedKeys = listOf(
+                    KeyEvent.KEYCODE_DPAD_CENTER, 
+                    KeyEvent.KEYCODE_ENTER,
+                    KeyEvent.KEYCODE_DPAD_UP,
+                    KeyEvent.KEYCODE_DPAD_DOWN,
+                    KeyEvent.KEYCODE_DPAD_LEFT,
+                    KeyEvent.KEYCODE_DPAD_RIGHT
+                )
+                if (event.keyCode !in allowedKeys) {
+                    Toast.makeText(this, "Update Required", Toast.LENGTH_SHORT).show()
+                    return true
+                }
+            }
+            return super.dispatchKeyEvent(event)
+        }
+
         return super.dispatchKeyEvent(event)
     }
 
@@ -1861,6 +1881,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         if (channelFragment.isShowing()) {
             channelFragment.dismiss()
+            return
+        }
+
+        // MANDATORY UPDATE BLOCK: Prevent exiting via Back button if app is outdated
+        if (SecurityUtil.isAppOutdated) {
+            Toast.makeText(this, "Please update to continue", Toast.LENGTH_LONG).show()
             return
         }
 

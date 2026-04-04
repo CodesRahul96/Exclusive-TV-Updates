@@ -36,16 +36,20 @@ class ReleaseRequest {
             .url(url)
             .build()
             
+        Log.d(TAG, "Fetching update from: $url")
         return try {
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful && response.body != null) {
                     val bodyString = response.body!!.string()
+                    Log.d(TAG, "Successfully fetched version.json")
                     gson.fromJson(bodyString, ReleaseResponse::class.java)
                 } else {
+                    Log.e(TAG, "Failed to fetch version: ${response.code} ${response.message}")
                     null
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Update check exception: ${e.localizedMessage}")
             null
         }
     }
