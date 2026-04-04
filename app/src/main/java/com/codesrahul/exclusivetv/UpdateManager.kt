@@ -1,4 +1,4 @@
-﻿package com.codesrahul.exclusivetv
+package com.codesrahul.exclusivetv
 
 import android.app.DownloadManager
 import android.app.DownloadManager.Request
@@ -114,7 +114,7 @@ class UpdateManager(
                 // Show result via listener if manual check
                 val title = if (update) "Update Available" else if (error) "Error" else "Up to Date"
                 val changelog = release?.changelog ?: ""
-                listener?.onShowResult(title, text, update, changelog, true) // Manual check logic
+                listener?.onShowResult(title, text, update, changelog, false) // Manual check logic
             } else {
                  updateUI(text, update, update, isManualCheck) // Auto check logic
             }
@@ -411,4 +411,3 @@ class UpdateManager(
         }
     }
 }
-
