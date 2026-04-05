@@ -1,20 +1,16 @@
-# ExclusiveTV v1.2.4 - Release Notes
+# Exclusive TV v1.2.1
 
-This update addresses the missing APK assets in the previous release and maintains the highly optimized application size.
+This update ensures complete session security and introduces new community support features.
 
-### 🛠️ Critical Fixes
-- **Release Assets Restored**: Fixed the automation logic that prevented APKs from appearing in the GitHub Release section.
-- **Improved Deployment**: Hardened the renaming script for architecture-specific splits.
+## ✨ What's New
+- **Telegram Support**: Access the **Official Telegram Group** directly from Settings for support and community updates.
+- **Community section**: "Official App Website" has been moved to the new **"Community & Support"** section for easier navigation.
+- **Improved Registration**: Resolved Firestore "Permission Denied" errors and optimized registration flow for all devices.
 
-### ⚡ Size Optimization (v1.2.3)
-- **74% Size Reduction**: App size remains optimized at **~55MB** per device (reduced from 195MB).
-- **ABI Splitting**: Optimized packages for arm64-v8a, armeabi-v7a, and x86.
-- **R8 Minification**: Enhanced code and resource stripping for optimal performance.
+## 🚀 Improvements & Fixes
+- **Logout & Factory Reset**: Fully repaired the logout and factory reset mechanisms. Session data (including encrypted preferences) is now wiped completely before application restart.
+- **Security Check**: Switched to synchronous preference commits for guaranteed stability on all TV hardware.
+- **UI Cleanup**: Optimized the Settings menu layout by removing redundant dividers.
 
-### 🔄 Core Features (v1.2.2)
-- Integrated VLC Player Engine with Auto-Fallback.
-- Advanced Gestures (Tap/Hold on left side).
-- Global 120s buffering stability.
-
----
-**Build #16908547** - v1.2.4
+## ⚠️ Mandatory Update
+This is a required update. Please install the latest version to ensure your account remains secure and authenticated.
