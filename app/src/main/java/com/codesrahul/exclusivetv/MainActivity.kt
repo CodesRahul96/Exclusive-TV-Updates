@@ -1025,6 +1025,13 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
         }
 
+        private val menuHoldRunnable = Runnable {
+            if (isLongPressActive) {
+                showFragment(menuFragment)
+                isLongPressActive = false
+            }
+        }
+
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             val screenWidth = windowManager.defaultDisplay.width
             val screenHeight = windowManager.defaultDisplay.height
@@ -1081,7 +1088,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
             val screenWidth = windowManager.defaultDisplay.width
-            // Double Tap on Right 25% -> Settings
+            // 1. Left Side Double Tap -> Channels
+            if (e.x < screenWidth * 0.25) {
+                showFragment(menuFragment)
+                return true
+            }
+            // 2. Right side Double Tap -> Settings
             if (e.x > screenWidth * 0.75) {
                 showSetting()
                 return true
@@ -1093,12 +1105,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             val screenWidth = windowManager.defaultDisplay.width
             isLongPressActive = true
             
-            if (x > screenWidth * 0.75) {
+            if (x < screenWidth * 0.25) {
+                // Left side -> Channel Management (3s hold)
+                longPressHandler.postDelayed(menuHoldRunnable, 3000)
+            } else if (x > screenWidth * 0.75) {
                 // Right side -> Settings Menu (3s hold)
                 longPressHandler.postDelayed(settingsRunnable, 3000)
             } else if (x > screenWidth * 0.3 && x < screenWidth * 0.7) {
                 // Center -> Search (1.5s)
-
                 longPressHandler.postDelayed(mobileSearchRunnable, 1500)
             }
         }
@@ -1108,7 +1122,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             }
             isLongPressActive = false
             longPressHandler.removeCallbacks(settingsRunnable)
-
+            longPressHandler.removeCallbacks(menuHoldRunnable)
             longPressHandler.removeCallbacks(mobileSearchRunnable)
         }
         // showSeekHud moved below GestureListener
