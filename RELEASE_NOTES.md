@@ -1,16 +1,22 @@
-# Exclusive TV v1.2.1
+# ExclusiveTV v1.2.2 - Release Notes
 
-This update ensures complete session security and introduces new community support features.
+This update introduces major playback enhancements and improved stability for an optimal viewing experience.
 
-## ✨ What's New
-- **Telegram Support**: Access the **Official Telegram Group** directly from Settings for support and community updates.
-- **Community section**: "Official App Website" has been moved to the new **"Community & Support"** section for easier navigation.
-- **Improved Registration**: Resolved Firestore "Permission Denied" errors and optimized registration flow for all devices.
+### 🆕 New Features
+- **Integrated VLC Playback Engine**: 
+    - Full LibVLC support added as a robust secondary player.
+    - **Intelligent Auto-Fallback**: The app will now automatically attempt to recover failed streams using the VLC engine.
+    - Added user-facing settings to toggle VLC Hardware Acceleration and Network Caching.
+- **Advanced Gestures**: 
+    - **Single Tap (Left Side)**: Opens Channel Management.
+    - **Double Tap (Left Side)**: Instantly switches to the next channel.
+    - **Touch & Hold 3s (Left Side)**: Direct access to category management.
 
-## 🚀 Improvements & Fixes
-- **Logout & Factory Reset**: Fully repaired the logout and factory reset mechanisms. Session data (including encrypted preferences) is now wiped completely before application restart.
-- **Security Check**: Switched to synchronous preference commits for guaranteed stability on all TV hardware.
-- **UI Cleanup**: Optimized the Settings menu layout by removing redundant dividers.
+### 🛠️ Improvements & Fixes
+- **Global Stability**: Increased playback buffer to 120s for smoother streaming on high-latency networks.
+- **APK Naming Update**: Aligned naming conventions for seamless automatic updates.
+- **Developer Hardening**: Fixed Unit Test compilation (Robolectric) to ensure consistent build quality.
+- **UI Polish**: Added "Playback Engine" settings section to the main menu.
 
-## ⚠️ Mandatory Update
-This is a required update. Please install the latest version to ensure your account remains secure and authenticated.
+---
+**Build #16908545** - v1.2.2
