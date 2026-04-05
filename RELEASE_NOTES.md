@@ -1,16 +1,20 @@
-# Exclusive TV v1.2.1
+# ExclusiveTV v1.2.3 - Official Release
 
-This update ensures complete session security and introduces new community support features.
+This update introduces major navigation improvements and significantly enhances streaming stability across all TV hardware.
 
-## ✨ What's New
-- **Telegram Support**: Access the **Official Telegram Group** directly from Settings for support and community updates.
-- **Community section**: "Official App Website" has been moved to the new **"Community & Support"** section for easier navigation.
-- **Improved Registration**: Resolved Firestore "Permission Denied" errors and optimized registration flow for all devices.
+### ✨ What's New (Gestures)
+- **Long Press (Left Side)**: Hold for 3 seconds on the left side of the player to quickly access **Channel Management**.
+- **Double Tap (Left Side)**: Instantly switch between **Categories**.
+- **Single Tap (Left Side)**: View/Hide the current channel group.
 
-## 🚀 Improvements & Fixes
-- **Logout & Factory Reset**: Fully repaired the logout and factory reset mechanisms. Session data (including encrypted preferences) is now wiped completely before application restart.
-- **Security Check**: Switched to synchronous preference commits for guaranteed stability on all TV hardware.
-- **UI Cleanup**: Optimized the Settings menu layout by removing redundant dividers.
+### 🛡️ Streaming Stability
+- **120s Global Buffer**: Increased network caching to 120 seconds to prevent buffering on slower connections.
+- **Improved Playback Resilience**: Hardened the player logic to handle stream interruptions more gracefully.
 
-## ⚠️ Mandatory Update
-This is a required update. Please install the latest version to ensure your account remains secure and authenticated.
+### ⚙️ Bug Fixes & Optimization
+- **Lightweight Package**: Maintained the original compact app size (~20MB) while adding premium features.
+- **APK Naming**: Standardized APK filenames to ensure seamless over-the-air (OTA) updates.
+- **Rotation Guard**: Fixed orientation issues on specific Android TV boxes.
+
+---
+**Build #16908546** - v1.2.3
