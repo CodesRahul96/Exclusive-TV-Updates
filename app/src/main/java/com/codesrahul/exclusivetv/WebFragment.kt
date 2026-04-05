@@ -151,6 +151,27 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         return binding.root
     }
 
+    private fun isVODContent(): Boolean {
+        val tv = tvModel?.tv ?: return false
+        val group = tv.group.lowercase()
+        val url = currentVideoUrl.lowercase()
+        
+        // 1. Detection via Group Name
+        if (group.contains("movie") || group.contains("cinema") || group.contains("series") || group.contains("vod")) {
+            return true
+        }
+        
+        // 2. Detection via URL extension (Static files)
+        val vodExtensions = listOf(".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv")
+        if (vodExtensions.any { url.endsWith(it) || url.contains("$it?") }) {
+            // Ensure it's not a known live stream type if it matches extension
+            if (!url.contains("live") && !url.contains("stream")) {
+                return true
+            }
+        }
+        return false
+    }
+
     private var wakeLock: android.os.PowerManager.WakeLock? = null
     private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
     private var retryCount = 0
@@ -734,6 +755,14 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         currentUrlIndex = 0 // Reset URL index
         val url = tvModel.videoUrl.value ?: return
         this.currentVideoUrl = url
+        
+        // PERSISTENT RESUME: Check for previously saved position if it's a Movie/VOD
+        if (isVODContent()) {
+            val savedPos = SP.getVODPosition(url)
+            if (savedPos > 0) {
+                lastPlaybackPosition = savedPos
+            }
+        }
 
         
         // Use the first URI as the canonical key for audio track preference (matches save logic in MainActivity)
@@ -790,10 +819,17 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
     fun refreshPlayback() {
         val currentTv = tvModel?.tv ?: return
+        val isVod = isVODContent()
+        
         // HARD RESET: Release player and create new one
         retryCount = 0
         uaFallbackIndex = 0
-        lastPlaybackPosition = -1L
+        
+        // Logic Correction: Don't reset position if it's a VOD (preserve progress)
+        if (!isVod) {
+            lastPlaybackPosition = -1L
+        }
+        
         bufferingStartTime = -1L
 
         playbackHandler.removeCallbacksAndMessages(null)
@@ -809,15 +845,20 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
         
         seamlessRetryCount++
-        if (seamlessRetryCount > 2) {
-            // ESCALATION: Fast re-connect failed twice. Force a Hard Reset.
+        
+        // SMART ESCALATION: Allow more silent retries for VOD content (Movies) 
+        // to prevent interrupting the viewer with a "Hard Resetting" message.
+        val maxSeamlessRetries = if (isVODContent()) 5 else 2
+        
+        if (seamlessRetryCount > maxSeamlessRetries) {
+            // ESCALATION: Fast re-connect failed multiple times. Force a Hard Reset.
             tvModel?.setErrInfo("Hard Resetting Stream...")
             refreshPlayback()
             return
         }
         
         // SILENT AUTO-RECOVERY: Keep player surface, just re-connect
-        doInitializePlayer(currentVideoUrl, seamless = true)
+        doInitializePlayer(currentVideoUrl, seamless = true, seekPosition = lastPlaybackPosition)
     }
 
     private fun initializePlayer(url: String) {
@@ -832,14 +873,16 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
 
         try {
-            doInitializePlayer(url, seamless = false)
+            // If we have a saved position (from a VOD hard reset escape), apply it
+            val seekPos = if (isVODContent()) lastPlaybackPosition else -1L
+            doInitializePlayer(url, seamless = false, seekPosition = seekPos)
         } catch (e: Exception) {
             tvModel?.setErrInfo("Playback Error")
             releasePlayer()
         }
     }
 
-    private fun doInitializePlayer(url: String, seamless: Boolean = false) {
+    private fun doInitializePlayer(url: String, seamless: Boolean = false, seekPosition: Long = -1L) {
         // Only release the previous player if we're not doing a seamless re-connect
         if (!seamless) {
             releasePlayer()
@@ -1348,6 +1391,12 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
         
         exoPlayer?.prepare()
+        
+        // SMART RESUME: If we have a valid seek position (VOD recovery), seek before playing
+        if (seekPosition > 0) {
+            exoPlayer?.seekTo(seekPosition)
+        }
+        
         exoPlayer?.playWhenReady = true
         // Audio Stabilizer (LoudnessEnhancer)
         if (SP.audioStabilizer) {
@@ -1397,8 +1446,24 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                             initializePlayer(currentVideoUrl)
                             return
                         }
+                    } else if (state == Player.STATE_ENDED) {
+                        // VOD COMPLETION: Clear the saved progress if the movie reached the end
+                        if (isVODContent()) {
+                            SP.setVODPosition(currentVideoUrl, 0)
+                        }
                     } else {
                          bufferingStartTime = -1L
+                    }
+                    
+                    // PERIODIC SAVE: Persist VOD position every 15 seconds during playback
+                    if (isVODContent() && isPlaying && state == Player.STATE_READY) {
+                        if (lastCheckTime == -1L) lastCheckTime = now
+                        if (now - lastCheckTime > 15000) { // 15 Second intervals
+                            if (currentPos > 0) {
+                                SP.setVODPosition(currentVideoUrl, currentPos)
+                            }
+                            lastCheckTime = now
+                        }
                     }
                     
                     // Aggressive periodic check every 3 seconds
@@ -1406,7 +1471,11 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 }
             }
         }
-        lastPlaybackPosition = -1L
+        
+        // Reset state for new stream ONLY if it's not a VOD resume
+        if (!isVODContent()) {
+            lastPlaybackPosition = -1L
+        }
         bufferingStartTime = -1L
         playbackHandler.postDelayed(playbackWatchdog!!, 8000) // 8s grace before first check
     }
@@ -1690,7 +1759,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
     private fun getLoadControl(url: String? = null): androidx.media3.exoplayer.LoadControl {
         val bufferMode = SP.bufferMode
-        val isPortalOrTs = url?.let { it.contains("mac=", ignoreCase = true) || it.contains("extension=ts", ignoreCase = true) || it.contains(".ts", ignoreCase = true) } ?: false
+        val isVod = isVODContent()
         
         // Mode 0: Default (Balanced)
         // Mode 1: Max Stability (Large buffer for slow net)
@@ -1700,26 +1769,24 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         var minBuffer = when (bufferMode) {
             1 -> 60000 // 60s
             2 -> 15000 // 15s
-            else -> 45000 // 45s (Aggressive Default)
+            else -> if (isVod) 50000 else 30000 // 50s for VOD, 30s for Live
         }
-        // Force minimum 45s for all streams (Global Stability)
-        minBuffer = Math.max(minBuffer, 45000)
+        // Force minimums for stability
+        minBuffer = Math.max(minBuffer, if (isVod) 45000 else 15000)
 
         var maxBuffer = when (bufferMode) {
-            1 -> 120000 // 120s
-            2 -> 30000  // 30s
-            else -> 90000 // 90s
+            1 -> 150000 // 150s
+            2 -> 45000  // 45s
+            else -> if (isVod) 120000 else 90000 // 120s for VOD, 90s for Live
         }
-        // Force minimum 120s for Global Stability
-        maxBuffer = Math.max(maxBuffer, 120000)
+        // Force minimum 90s for Global Stability
+        maxBuffer = Math.max(maxBuffer, 90000)
 
         var startBuffer = when (bufferMode) {
-            1 -> 3000 // 3s start
+            1 -> 5000 // 5s start
             2 -> 1500 // 1.5s start
-            else -> 2500 // 2.5s start (Safe Minimum)
+            else -> if (isVod) 5000 else 2500 // 5s for Movies, 2.5s for Live
         }
-        // Force minimum 2500 for Global TS/HLS Stability
-        startBuffer = Math.max(startBuffer, 2500)
         
         val context = context ?: return DefaultLoadControl.Builder().build()
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
@@ -1739,10 +1806,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         return DefaultLoadControl.Builder()
             .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                if (isHighEnd) 45000 else minBuffer,
-                if (isHighEnd) 120000 else maxBuffer,
+                if (isHighEnd && isVod) 60000 else minBuffer,
+                if (isHighEnd && isVod) 150000 else maxBuffer,
                 startBuffer,
-                2500 
+                if (isVod) 10000 else 2500 // Re-buffering threshold
             )
             .setTargetBufferBytes(targetBufferBytes)
             .setPrioritizeTimeOverSizeThresholds(true) 

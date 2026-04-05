@@ -41,6 +41,18 @@ class GroupAdapter(
     val application = context.applicationContext as MyTVApplication
     var visible = false
     private var movingPosition = -1
+    var isFocusLocked = false
+    private var lockTimestamp: Long = 0L
+    private var lastInteractionTime: Long = 0L
+    var isSyncing = false
+
+    fun isCurrentlyLocked(): Boolean {
+        return isFocusLocked || (System.currentTimeMillis() - lockTimestamp < 800)
+    }
+
+    private fun isRecentlyInteracted(): Boolean {
+        return (System.currentTimeMillis() - lastInteractionTime) < 500
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(context)
@@ -73,14 +85,21 @@ class GroupAdapter(
         recyclerView.invalidate()
     }
 
+    fun setDefaultFocus(position: Int) {
+        this.defaultFocus = position
+        this.defaultFocused = false
+    }
+
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
         val tvListModel = internalList.getOrNull(position) ?: return
         val view = viewHolder.itemView
         view.tag = position
 
         if (!defaultFocused && position == defaultFocus) {
-            view.post {
-                view.requestFocus()
+            if (!isCurrentlyLocked()) {
+                view.post {
+                    view.requestFocus()
+                }
             }
             defaultFocused = true
         }
@@ -97,16 +116,16 @@ class GroupAdapter(
                 scrollToCenter(viewHolder.bindingAdapterPosition)
 
                 if (visible) {
-                    // Update model position if needed
+                    // Update model position ONLY if user recently interacted (Touch/Key)
                     val currentPos = viewHolder.bindingAdapterPosition
-                    if (currentPos != RecyclerView.NO_POSITION && currentPos != tvGroupModel.position.value) {
+                    if (!isCurrentlyLocked() && !isSyncing && isRecentlyInteracted() && currentPos != RecyclerView.NO_POSITION && currentPos != tvGroupModel.position.value) {
                         tvGroupModel.setPosition(currentPos)
                     }
                 } else {
                     visible = true
-                    // FIX: Also update position on first focus to ensure initial list loads
+                    // Sync initial position if not locked
                     val currentPos = viewHolder.bindingAdapterPosition
-                    if (currentPos != RecyclerView.NO_POSITION) {
+                    if (!isCurrentlyLocked() && !isSyncing && isRecentlyInteracted() && currentPos != RecyclerView.NO_POSITION) {
                         tvGroupModel.setPosition(currentPos)
                     }
                 }
@@ -117,7 +136,13 @@ class GroupAdapter(
 
         view.onFocusChangeListener = onFocusChangeListener
 
+        view.setOnTouchListener { _, _ ->
+            lastInteractionTime = System.currentTimeMillis()
+            false
+        }
+
         view.setOnClickListener { _ ->
+            lastInteractionTime = System.currentTimeMillis()
             val currentPos = viewHolder.bindingAdapterPosition
             if (currentPos == RecyclerView.NO_POSITION) return@setOnClickListener
 
@@ -139,6 +164,7 @@ class GroupAdapter(
         }
 
         view.setOnKeyListener { _, keyCode, event: KeyEvent? ->
+            lastInteractionTime = System.currentTimeMillis()
             val currentPos = viewHolder.bindingAdapterPosition
             if (currentPos == RecyclerView.NO_POSITION) return@setOnKeyListener false
 
@@ -248,9 +274,13 @@ class GroupAdapter(
         (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, if (offset > 0) offset else 0)
     }
 
-    fun toPosition(position: Int) {
-        if (position < 0 || position >= itemCount) return
+    fun toPosition(position: Int, onComplete: (() -> Unit)? = null) {
+        if (position < 0 || position >= itemCount) {
+            onComplete?.invoke()
+            return
+        }
         
+        isFocusLocked = true
         recyclerView.post {
             scrollToCenter(position)
 
@@ -260,10 +290,16 @@ class GroupAdapter(
                     val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
                     if (viewHolder != null) {
                         viewHolder.itemView.requestFocus()
-                        // Removed viewHolder.itemView.isSelected = true to prevent sticky items
-                    } else if (attempts < 5) {
+                        isFocusLocked = false
+                        lockTimestamp = System.currentTimeMillis()
+                        onComplete?.invoke()
+                    } else if (attempts < 8) {
                         attempts++
-                        recyclerView.postDelayed(this, 30)
+                        recyclerView.postDelayed(this, 50)
+                    } else {
+                        isFocusLocked = false
+                        lockTimestamp = System.currentTimeMillis()
+                        onComplete?.invoke()
                     }
                 }
             }

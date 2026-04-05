@@ -421,6 +421,22 @@ object SP {
         }
     }
 
+    private const val KEY_VOD_POS_PREFIX = "vod_pos_"
+
+    fun getVODPosition(url: String): Long {
+        if (url.isEmpty()) return -1L
+        return sp.getLong(KEY_VOD_POS_PREFIX + url.hashCode(), -1L)
+    }
+
+    fun setVODPosition(url: String, pos: Long) {
+        if (url.isEmpty()) return
+        if (pos <= 0) {
+            sp.edit().remove(KEY_VOD_POS_PREFIX + url.hashCode()).apply()
+        } else {
+            sp.edit().putLong(KEY_VOD_POS_PREFIX + url.hashCode(), pos).apply()
+        }
+    }
+
     var searchHistory: List<String>
         get() = sp.getString(KEY_SEARCH_HISTORY, "")?.split("|")?.filter { it.isNotEmpty() } ?: emptyList()
         set(value) = sp.edit().putString(KEY_SEARCH_HISTORY, value.take(10).joinToString("|")).apply()

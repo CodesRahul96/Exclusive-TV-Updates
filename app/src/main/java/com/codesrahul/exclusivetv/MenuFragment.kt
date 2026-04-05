@@ -23,6 +23,8 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
     private lateinit var groupAdapter: GroupAdapter
     private lateinit var listAdapter: ListAdapter
+    private var isInitializing = false
+    var isSyncing = false
 
      override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
          super.onViewCreated(view, savedInstanceState)
@@ -143,6 +145,7 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
 
 
     override fun onItemFocusChange(tvListModel: TVListModel, hasFocus: Boolean) {
+        if (isInitializing || isSyncing) return
         if (hasFocus) {
             // Toggle empty state immediately for the focused category
             binding.emptyState.visibility = if (tvListModel.size() == 0) View.VISIBLE else View.GONE
@@ -240,46 +243,74 @@ class MenuFragment : Fragment(), GroupAdapter.ItemListener, ListAdapter.ItemList
             return
         }
         if (!hidden) {
-            if (binding.list.isVisible) {
+            // 1. Lock both adapters immediately
+            isInitializing = true
+            isSyncing = true
+            groupAdapter.isSyncing = true
+            listAdapter.isSyncing = true
+            groupAdapter.isFocusLocked = true
+            listAdapter.isFocusLocked = true
 
+            // MOBILE STABILITY: Wait for fragment transition animation to finish
+            view?.postDelayed({
+                if (isHidden) return@postDelayed // Safety check
+                
+                // INTELLIGENT SYNC: Match menu category to currently playing channel
                 val currentTvModel = TVList.currentPlayingModel.value ?: TVList.getTVModel()
                 
                 if (currentTvModel != null) {
-                    val groupIndex = currentTvModel.groupIndex
-                    val currentGroupPosition = TVList.groupModel.position.value ?: 0
+                    val playingGroupIndex = currentTvModel.groupIndex
                     
-                    if (groupIndex == currentGroupPosition) {
-                        if (listAdapter.tvListModel.getIndex() != groupIndex) {
-                            // Update list AND THEN scroll
-                            updateList(groupIndex) {
-                                listAdapter.toPosition(currentTvModel.listIndex)
-                            }
-                        } else {
-                             // List already loaded, just scroll to playing channel
-                            view?.post {
-                                listAdapter.toPosition(currentTvModel.listIndex)
-                            }
-                        }
-                    } else {
-                        // User is in a different group than the one playing.
-                        // Force update if adapter is stale
-                        if (listAdapter.tvListModel.getIndex() != currentGroupPosition) { 
-                             updateList(currentGroupPosition)
-                        }
-                        
+                    // 2. Set default focus indices
+                    groupAdapter.setDefaultFocus(playingGroupIndex)
+                    
+                    // Force update UI model
+                    TVList.groupModel.setPosition(playingGroupIndex)
+                    SP.positionGroup = playingGroupIndex
+                    
+                    updateList(playingGroupIndex) {
+                        listAdapter.setDefaultFocus(currentTvModel.listIndex)
+
+                        // 3. Synchronized scroll chain
                         view?.post {
-                            listAdapter.toPosition(0)
+                            groupAdapter.toPosition(playingGroupIndex) {
+                                listAdapter.toPosition(currentTvModel.listIndex) {
+                                    isSyncing = false
+                                    groupAdapter.isSyncing = false
+                                    listAdapter.isSyncing = false
+                                    isInitializing = false
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Default fallback
+                    val lastPos = TVList.groupModel.position.value ?: 0
+                    groupAdapter.setDefaultFocus(lastPos)
+                    view?.post {
+                        groupAdapter.toPosition(lastPos) {
+                            if (listAdapter.itemCount > 0) {
+                                listAdapter.setDefaultFocus(0)
+                                listAdapter.toPosition(0) {
+                                    isSyncing = false
+                                    groupAdapter.isSyncing = false
+                                    listAdapter.isSyncing = false
+                                    isInitializing = false
+                                }
+                            } else {
+                                listAdapter.isFocusLocked = false
+                                isSyncing = false
+                                groupAdapter.isSyncing = false
+                                listAdapter.isSyncing = false
+                                isInitializing = false
+                            }
                         }
                     }
                 }
-            }
-            if (binding.group.isVisible) {
-                val currentGroupPosition = TVList.groupModel.position.value ?: 0
-                // Also wrap groupAdapter.toPosition in post to be safe
-                view?.post {
-                    groupAdapter.toPosition(currentGroupPosition)
-                }
-            }
+            }, 250) // 250ms quiescence delay for mobile transitions
+            
+            groupAdapter.visible = true
+            listAdapter.visible = true
         } else {
             if (::groupAdapter.isInitialized) groupAdapter.stopMove()
             if (::listAdapter.isInitialized) listAdapter.stopMove()

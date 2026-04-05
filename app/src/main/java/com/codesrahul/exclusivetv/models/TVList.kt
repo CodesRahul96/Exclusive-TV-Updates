@@ -1211,6 +1211,11 @@ object TVList {
 
                     if (tvListModel != null) {
                         tvListModel.setTVListModel(groupChannels)
+                        // ENSURE INDEX SYNC: Sync category index with its actual position in the new list
+                        val targetIndex = groupListNew.size
+                        tvListModel.updateMetadata(group.displayName, targetIndex)
+                        groupChannels.forEach { it.groupIndex = targetIndex }
+                        
                         groupListNew.add(tvListModel)
                     }
                 }

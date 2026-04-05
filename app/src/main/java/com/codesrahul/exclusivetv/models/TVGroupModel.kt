@@ -65,7 +65,7 @@ class TVGroupModel : ViewModel() {
     }
 
     init {
-        _position.value = SP.positionGroup
+        _position.value = 0
     }
 
     fun size(): Int {

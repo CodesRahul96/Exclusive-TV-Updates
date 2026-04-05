@@ -59,6 +59,18 @@ class ListAdapter(
     private var movingPosition = -1
     private var searchQuery: String = ""
     private var lastPlayingModel: TVModel? = null
+    var isFocusLocked = false
+    private var lockTimestamp: Long = 0L
+    private var lastInteractionTime: Long = 0L
+    var isSyncing = false
+
+    fun isCurrentlyLocked(): Boolean {
+        return isFocusLocked || (System.currentTimeMillis() - lockTimestamp < 800)
+    }
+
+    private fun isRecentlyInteracted(): Boolean {
+        return (System.currentTimeMillis() - lastInteractionTime) < 500
+    }
 
     init {
         // Observe global 'Now Playing' state to update the UI in real-time
@@ -198,6 +210,11 @@ class ListAdapter(
         recyclerView.invalidate()
     }
 
+    fun setDefaultFocus(position: Int) {
+        this.defaultFocus = position
+        this.defaultFocused = false
+    }
+
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
         val tvModel = internalList.getOrNull(position) ?: return
         
@@ -230,7 +247,11 @@ class ListAdapter(
         }
 
         if (!defaultFocused && position == defaultFocus) {
-            view.requestFocus()
+            if (!isCurrentlyLocked()) {
+                view.post {
+                    view.requestFocus()
+                }
+            }
             defaultFocused = true
         }
 
@@ -246,11 +267,14 @@ class ListAdapter(
                 scrollToCenter(pos)
                 
                 if (visible) {
-                    if (pos != tvListModel.position.value) {
+                    if (!isCurrentlyLocked() && !isSyncing && isRecentlyInteracted() && pos != tvListModel.position.value) {
                         tvListModel.setPosition(pos)
                     }
                 } else {
                     visible = true
+                    if (!isCurrentlyLocked() && !isSyncing && isRecentlyInteracted()) {
+                        tvListModel.setPosition(pos)
+                    }
                 }
             } else {
                 view.post { viewHolder.focus(false) }
@@ -259,9 +283,16 @@ class ListAdapter(
 
         view.onFocusChangeListener = onFocusChangeListener
 
+        view.setOnTouchListener { _, _ ->
+            lastInteractionTime = System.currentTimeMillis()
+            false
+        }
+
         view.setOnClickListener { _ ->
+            lastInteractionTime = System.currentTimeMillis()
             val pos = viewHolder.bindingAdapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
+
             if (movingPosition == pos) {
                 stopMove()
             } else {
@@ -278,6 +309,7 @@ class ListAdapter(
         }
 
         view.setOnKeyListener { _, keyCode, event: KeyEvent? ->
+            lastInteractionTime = System.currentTimeMillis()
             val pos = viewHolder.bindingAdapterPosition
             if (pos == RecyclerView.NO_POSITION) return@setOnKeyListener false
             
@@ -581,9 +613,13 @@ class ListAdapter(
          (recyclerView.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(position, if (offset > 0) offset else 0)
      }
 
-     fun toPosition(position: Int) {
-         if (position < 0 || position >= itemCount) return
+     fun toPosition(position: Int, onComplete: (() -> Unit)? = null) {
+         if (position < 0 || position >= itemCount) {
+             onComplete?.invoke()
+             return
+         }
 
+         isFocusLocked = true
          recyclerView.post {
              scrollToCenter(position)
  
@@ -594,10 +630,17 @@ class ListAdapter(
                      val viewHolder = recyclerView.findViewHolderForAdapterPosition(position)
                      if (viewHolder != null) {
                          viewHolder.itemView.requestFocus()
+                         isFocusLocked = false
+                         lockTimestamp = System.currentTimeMillis()
+                         onComplete?.invoke()
                          // Removed viewHolder.itemView.isSelected = true to prevent sticky selected items
-                     } else if (attempts < 5) {
+                     } else if (attempts < 8) {
                          attempts++
-                         recyclerView.postDelayed(this, 30) // Retry after short delay
+                         recyclerView.postDelayed(this, 50) // Retry after short delay
+                     } else {
+                         isFocusLocked = false
+                         lockTimestamp = System.currentTimeMillis()
+                         onComplete?.invoke()
                      }
                  }
              }
