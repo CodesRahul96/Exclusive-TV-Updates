@@ -1,22 +1,17 @@
-# ExclusiveTV v1.2.2 - Release Notes
+# ExclusiveTV v1.2.3 - Release Notes
 
-This update introduces major playback enhancements and improved stability for an optimal viewing experience.
+This update drastically reduces the application size while maintaining all the advanced features introduced in v1.2.2.
 
-### 🆕 New Features
-- **Integrated VLC Playback Engine**: 
-    - Full LibVLC support added as a robust secondary player.
-    - **Intelligent Auto-Fallback**: The app will now automatically attempt to recover failed streams using the VLC engine.
-    - Added user-facing settings to toggle VLC Hardware Acceleration and Network Caching.
-- **Advanced Gestures**: 
-    - **Single Tap (Left Side)**: Opens Channel Management.
-    - **Double Tap (Left Side)**: Instantly switches to the next channel.
-    - **Touch & Hold 3s (Left Side)**: Direct access to category management.
+### ⚡ Performance & Size Optimization
+- **Drastic Size Reduction**: App size reduced from ~195MB to **~55MB** per device.
+- **ABI Splitting**: We now generate separate, optimized APKs for different CPU architectures (arm64, armeabi-v7a, x86).
+- **R8 Minification Enabled**: Removed unused code and resources for a faster, leaner application.
+- **Improved Proguard Rules**: Hardened protection for VLC and networking libraries to ensure stability.
 
-### 🛠️ Improvements & Fixes
-- **Global Stability**: Increased playback buffer to 120s for smoother streaming on high-latency networks.
-- **APK Naming Update**: Aligned naming conventions for seamless automatic updates.
-- **Developer Hardening**: Fixed Unit Test compilation (Robolectric) to ensure consistent build quality.
-- **UI Polish**: Added "Playback Engine" settings section to the main menu.
+### 🔄 Previous Features (v1.2.2)
+- Integrated VLC Player Engine with Auto-Fallback.
+- Advanced Gestures (Tap/Hold on left side).
+- Global 120s buffering stability.
 
 ---
-**Build #16908545** - v1.2.2
+**Build #16908546** - v1.2.3
