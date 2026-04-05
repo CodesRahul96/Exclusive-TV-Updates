@@ -172,7 +172,7 @@ dependencies {
     implementation("androidx.media3:media3-datasource-rtmp:$media3Version")
     implementation("androidx.media3:media3-extractor:$media3Version")
 
-    implementation("org.videolan.android:libvlc-all:3.6.0")
+
 
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-analytics")
