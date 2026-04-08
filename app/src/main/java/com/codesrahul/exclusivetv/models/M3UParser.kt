@@ -242,26 +242,29 @@ object M3UParser {
                             }
                         }
                     } else if (trimmedLine.startsWith("#EXTHTTP:") || trimmedLine.startsWith("# EXTHTTP:")) {
-                        // Flush previous if URIs exist (meaning this might belong to a new block, though usually headers precede URI)
-                        if (currentUris.isNotEmpty()) saveAndReset()
-
-                        // Parse JSON headers
+                        // Parse JSON headers (supports new format with multiple header lines before URL)
                         val jsonStr = trimmedLine.substringAfter("HTTP:").trim()
                         try {
                             val jsonObject = org.json.JSONObject(jsonStr)
-                            val keys = jsonObject.keys()
+                            
+                            // Handle nested "headers" object if exists
+                            val headersObj = jsonObject.optJSONObject("headers")
+                            val sourceObj = if (headersObj != null) headersObj else jsonObject
+                            
+                            val keys = sourceObj.keys()
                             while (keys.hasNext()) {
                                 val key = keys.next()
-                                val value = jsonObject.getString(key)
+                                val value = sourceObj.getString(key)
+                                // Normalize and add header
                                 currentHeaders[normalizeHeaderKey(key)] = value
                             }
                         } catch (e: Exception) {
+                            Log.d(TAG, "Failed to parse EXTHTTP JSON: ${e.message}")
                         }
 
                     } else if (trimmedLine.startsWith("#KODIPROP:")) {
-                        // KODIPROP usually precedes the URL
-                        if (currentUris.isNotEmpty()) saveAndReset()
-
+                        // KODIPROP can appear multiple times - accumulate all properties
+                        // Do NOT reset if URIs are present, as headers may precede URLs in new format
                         val parts = trimmedLine.substringAfter("#KODIPROP:").split("=", limit = 2)
                         if (parts.size == 2) {
                             val key = parts[0].trim()
@@ -302,11 +305,16 @@ object M3UParser {
                                         }
                                     }
                                 }
+                                // Pass through other KODIPROP values that might be needed as headers
+                                else -> {
+                                    if (!key.startsWith("inputstream")) {
+                                        currentHeaders[normalizeHeaderKey(key)] = value
+                                    }
+                                }
                             }
                         }
                     } else if (trimmedLine.startsWith("#EXTVLCOPT:")) {
-                        if (currentUris.isNotEmpty()) saveAndReset()
-
+                        // VLC options can appear multiple times - accumulate all
                         val parts = trimmedLine.substringAfter("#EXTVLCOPT:").split("=", limit = 2)
                         if (parts.size == 2) {
                             val key = parts[0].trim().lowercase()
@@ -319,22 +327,25 @@ object M3UParser {
                             }
                         }
                     } else if (!trimmedLine.startsWith("#")) {
-                        // Verify it's a URL or try decrypting it
+                        // Non-comment line could be URL or other data
                         var isUrl = trimmedLine.contains("://")
                         var finalUrl = trimmedLine
                         
                         // DECRYPTION INTERCEPT: If the URL doesn't look like a standard URL, try decrypting it
                         if (!isUrl) {
-                            val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
-                            val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(finalUrl, key)
-                            if (decrypted.contains("://")) {
-                                finalUrl = decrypted
-                                isUrl = true
+                            try {
+                                val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
+                                val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(finalUrl, key)
+                                if (decrypted.contains("://")) {
+                                    finalUrl = decrypted
+                                    isUrl = true
+                                }
+                            } catch (e: Exception) {
+                                // Continue with original URL
                             }
                         }
 
                         if (isUrl) {
-
                              // Handle pipe headers
                              if (finalUrl.contains("|")) {
                                  val urlParts = finalUrl.split("|", limit = 2)
@@ -364,6 +375,7 @@ object M3UParser {
                                      }
                                  }
                              }
+                            
                             currentUris.add(finalUrl)
                             
                             // Keep track of all URLs for fallback simple parser
@@ -373,6 +385,10 @@ object M3UParser {
                                 val extracted = extractNameFromUrl(finalUrl)
                                 if (extracted.isNotEmpty()) currentName = extracted
                             }
+                            
+                            // IMPORTANT: Now that we have a URL, save this channel
+                            // This allows multiple URI sources for same channel to be added before moving to next EXTINF
+                            // If next line is EXTINF, the saveAndReset at top of EXTINF block will save this properly
                         }
                     }
                 } catch (e: Exception) {
