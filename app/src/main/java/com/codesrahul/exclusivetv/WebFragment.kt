@@ -59,6 +59,11 @@ import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy.LoadErrorInfo
 
 
 import androidx.annotation.OptIn
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
+import androidx.media3.common.MimeTypes
+import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
+import android.app.UiModeManager
+import android.content.res.Configuration
 import androidx.media3.common.util.UnstableApi
 
 @OptIn(UnstableApi::class)
@@ -1003,6 +1008,26 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true) // IMPORTANT: Swaps to software decoder if hardware hangs
             .setEnableAudioTrackPlaybackParams(true) 
+            .setEnableAudioFloatOutput(false) // FIRETV FIX: Force 16-bit integer PCM output to prevent floating-point silences
+            .setMediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+                val decoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
+                    mimeType, requiresSecureDecoder, requiresTunnelingDecoder
+                )
+                
+                // FIRETV AUDIO FIX: Prioritize software decoders (Google/Android) for AAC and MPEG audio 
+                // to bypass buggy hardware decoders that often output silence on Firestick devices.
+                val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
+                if (uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION && 
+                    (mimeType == MimeTypes.AUDIO_MPEG || mimeType == MimeTypes.AUDIO_AAC)) {
+                    val softwareDecoders = decoders.filter { 
+                        it.name.startsWith("OMX.google.") || it.name.startsWith("c2.android.") 
+                    }
+                    if (softwareDecoders.isNotEmpty()) {
+                        return@setMediaCodecSelector softwareDecoders
+                    }
+                }
+                decoders
+            }
 
         val builder = ExoPlayer.Builder(requireContext(), renderersFactory)
             .setLoadControl(loadControl)
@@ -1046,7 +1071,9 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val extractorsFactory = DefaultExtractorsFactory()
             .setTsExtractorFlags(
                 DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
-                DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS
+                DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS or
+                DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS or 
+                DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
             )
 
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext(), extractorsFactory)
@@ -1298,13 +1325,14 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                                 else -> ""
                             }
                             
-                            audioLabel = if (codecName.isNotEmpty()) {
-                                if (audioLabel.isNotEmpty()) "$codecName $audioLabel" else codecName
-                            } else {
-                                // Fallback if unknown codec but channels detected
-                                if (audioLabel.isNotEmpty()) audioLabel else "Audio OK"
+                                audioLabel = if (codecName.isNotEmpty()) {
+                                    if (audioLabel.isNotEmpty()) "$codecName $audioLabel" else codecName
+                                } else {
+                                    // Fallback if unknown codec but channels detected
+                                    if (audioLabel.isNotEmpty()) audioLabel else "Audio OK"
+                                }
+                                Log.d("PlayerLog", "Audio format: ${format.sampleMimeType}, ${format.channelCount}ch, ${format.sampleRate}Hz, ID: ${format.id ?: "none"}")
                             }
-                        }
                     }
                 }
                 
@@ -1313,7 +1341,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 } else if (hasAudio && audioLabel.isEmpty() && tracks.groups.any { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }) {
                      audioLabel = "Audio OK" // Fallback label
                 }
-
                 tvModel?.setAudioQuality(audioLabel)
             }
         })
@@ -1371,6 +1398,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             val hlsExtractorFactory = DefaultHlsExtractorFactory(
                 DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
                 DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS or
+                DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS or
                 DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM,
                 true
             )

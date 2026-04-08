@@ -18,9 +18,11 @@ object LogoUtil {
 
     fun loadLogo(context: Context, imageView: ImageView, url: String?, name: String?) {
         val letter = if (!name.isNullOrEmpty()) name.substring(0, 1).uppercase() else "?"
+        val appLogoFallback = ContextCompat.getDrawable(context, R.drawable.logo_exclusive)
         
         if (url.isNullOrBlank()) {
-            imageView.setImageDrawable(getOrCreateFallback(context, letter))
+            // Use app logo if available, otherwise use letter tile
+            imageView.setImageDrawable(appLogoFallback ?: getOrCreateFallback(context, letter))
             return
         }
 
@@ -28,7 +30,7 @@ object LogoUtil {
             .load(url)
             .centerInside()
             .transition(DrawableTransitionOptions.withCrossFade())
-            .error(getOrCreateFallback(context, letter))
+            .error(appLogoFallback ?: getOrCreateFallback(context, letter))
             .into(imageView)
     }
 

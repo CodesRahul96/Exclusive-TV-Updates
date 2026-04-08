@@ -1757,10 +1757,20 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                     return true
                 }
             }
-            return super.dispatchKeyEvent(event)
+            return try {
+                super.dispatchKeyEvent(event)
+            } catch (e: IllegalStateException) {
+                Log.e("EXCL_KEYS", "Focus search failed during key dispatch: ${e.message}")
+                false
+            }
         }
 
-        return super.dispatchKeyEvent(event)
+        return try {
+            super.dispatchKeyEvent(event)
+        } catch (e: IllegalStateException) {
+            Log.e("EXCL_KEYS", "Focus search failed during key dispatch: ${e.message}")
+            false
+        }
     }
 
     fun showSearchFragment() {
