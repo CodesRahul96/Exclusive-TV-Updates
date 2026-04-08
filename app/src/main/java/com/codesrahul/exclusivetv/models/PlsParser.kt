@@ -46,6 +46,18 @@ object PlsParser {
             entries.values.forEachIndexed { i, entry ->
                 if (entry.url.isNotEmpty()) {
                     val type = Type.STREAM
+                    
+                    // Detect audio formats from URL
+                    val audioFormats = AudioFormatDetector.detectFromUrl(entry.url)
+                    val audioFormatNames = audioFormats.map { it.name }.toSet()
+                    
+                    // Determine compatible devices
+                    val compatibleDevices = mutableSetOf("firetv", "androidtv", "mobile", "web")
+                    audioFormats.forEach { format ->
+                        if (format in setOf(AudioFormat.EAC3_JOC)) {
+                            compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
+                        }
+                    }
 
                     list.add(TV(
                         id = i,
@@ -63,7 +75,9 @@ object PlsParser {
                         drmLicenseUrl = null,
                         catchupType = null,
                         catchupDays = null,
-                        catchupSource = null, 
+                        catchupSource = null,
+                        audioFormats = audioFormatNames,
+                        compatibleDevices = compatibleDevices,
                         child = listOf()
                     ))
                 }

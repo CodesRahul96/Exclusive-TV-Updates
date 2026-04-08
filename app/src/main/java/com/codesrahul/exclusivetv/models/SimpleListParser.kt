@@ -15,7 +15,19 @@ object SimpleListParser {
 
         while (line != null) {
             val trimmed = line.trim()
-            if (trimmed.isNotEmpty() && (trimmed.startsWith("http://") || trimmed.startsWith("https://"))) {
+            if (trimmed.isNotEmpty() && (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("ftp://"))) {
+                // Detect audio formats from URL
+                val audioFormats = AudioFormatDetector.detectFromUrl(trimmed)
+                val audioFormatNames = audioFormats.map { it.name }.toSet()
+                
+                // Determine compatible devices
+                val compatibleDevices = mutableSetOf("firetv", "androidtv", "mobile", "web")
+                audioFormats.forEach { format ->
+                    if (format in setOf(AudioFormat.EAC3_JOC)) {
+                        compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
+                    }
+                }
+                
                 list.add(
                     TV(
                         id = count,
@@ -28,13 +40,14 @@ object SimpleListParser {
                         uris = arrayListOf(trimmed),
                         headers = null,
                         group = "",
-                        type = Type.STREAM, // Always default to STREAM
+                        type = Type.STREAM,
                         drmScheme = null,
                         drmLicenseUrl = null,
-                        // Defaults
                         catchupType = null,
                         catchupDays = null,
                         catchupSource = null,
+                        audioFormats = audioFormatNames,
+                        compatibleDevices = compatibleDevices,
                         child = listOf()
                     )
                 )

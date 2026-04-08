@@ -319,6 +319,34 @@ object KodiParser {
         // Force stream type if DRM is present or extension matches, otherwise default to STREAM for M3U entries
         val type = Type.STREAM
         
+        // Auto-detect audio formats from URLs
+        val audioFormats = mutableSetOf<String>()
+        var hasDolbyAtmos = false
+        var hasDolbyDigital = false
+        var hasDolbyTrueHD = false
+        
+        uris.forEach { url ->
+            val detected = AudioFormatDetector.detectFromUrl(url)
+            detected.forEach { format ->
+                audioFormats.add(format.name)
+                when (format) {
+                    AudioFormat.EAC3_JOC -> hasDolbyAtmos = true
+                    AudioFormat.AC3, AudioFormat.EAC3 -> hasDolbyDigital = true
+                    AudioFormat.TRUEHD -> hasDolbyTrueHD = true
+                    else -> {}
+                }
+            }
+        }
+
+        // Detect device compatibility based on audio/video capabilities
+        val compatibleDevices = mutableSetOf("firetv", "androidtv", "mobile", "web")
+        if (hasDolbyAtmos) {
+            compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
+        }
+        if (hasDolbyTrueHD) {
+            compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
+        }
+        
         return TV(
             id = id,
             apiId = apiId,
@@ -333,10 +361,15 @@ object KodiParser {
             type = type,
             drmScheme = drmScheme,
             drmLicenseUrl = drmLicense,
-
             catchupType = catchupType,
             catchupDays = catchupDays,
             catchupSource = catchupSource,
+            // Audio/Video format metadata
+            audioFormats = audioFormats,
+            dolbyDigital = hasDolbyDigital,
+            dolbyAtmos = hasDolbyAtmos,
+            dolbyTrueHD = hasDolbyTrueHD,
+            compatibleDevices = compatibleDevices,
             child = listOf()
         )
     }

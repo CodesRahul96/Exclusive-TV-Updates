@@ -38,6 +38,38 @@ data class TV(
     var catchupDays: String? = null,
     @SerializedName("catchup_source")
     var catchupSource: String? = null,
+    
+    // Audio/Video Format Support (Non-Breaking Addition)
+    @SerializedName("audio_formats")
+    var audioFormats: Set<String> = emptySet(),  // e.g., ["AAC", "AC3", "EAC3-JOC"]
+    @SerializedName("audio_codec")
+    var audioCodec: String? = null,              // Specific codec name
+    @SerializedName("dolby_digital")
+    var dolbyDigital: Boolean = false,           // Has Dolby Digital (AC3/EAC3)
+    @SerializedName("dolby_atmos")
+    var dolbyAtmos: Boolean = false,             // Has Dolby Atmos (EAC3-JOC)
+    @SerializedName("dolby_truehd")
+    var dolbyTrueHD: Boolean = false,            // Has Dolby TrueHD
+    @SerializedName("video_codec")
+    var videoCodec: String? = null,              // e.g., "H.264", "H.265", "AV1"
+    @SerializedName("resolution")
+    var resolution: String? = null,              // e.g., "1080p", "4K", "720p"
+    @SerializedName("bitrate")
+    var bitrate: String? = null,                 // e.g., "5000k", "10Mbps"
+    @SerializedName("frame_rate")
+    var frameRate: String? = null,               // e.g., "29.97", "60"
+    @SerializedName("subtitles")
+    var subtitles: List<SubtitleTrack> = emptyList(),  // Available subtitles
+    @SerializedName("compatible_devices")
+    var compatibleDevices: Set<String> = setOf(
+        "firetv", "androidtv", "mobile", "web"
+    ),  // Default compatible with most devices
+    @SerializedName("hdr_enabled")
+    var hdrEnabled: Boolean = false,             // HDR support
+    @SerializedName("hdr_type")
+    var hdrType: String? = null,                 // "HDR10", "Dolby Vision", "HLG", etc.
+    @SerializedName("frame_packing")
+    var framePacking: String? = null,            // "3D" support info
 ) : Serializable {
 
     override fun toString(): String {

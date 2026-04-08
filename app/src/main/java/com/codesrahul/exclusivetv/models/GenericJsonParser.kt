@@ -303,6 +303,34 @@ object GenericJsonParser {
             else -> com.codesrahul.exclusivetv.models.Type.STREAM
         }
 
+        // Auto-detect audio formats from URLs
+        val audioFormats = mutableSetOf<String>()
+        var hasDolbyAtmos = false
+        var hasDolbyDigital = false
+        var hasDolbyTrueHD = false
+        
+        uris.forEach { url ->
+            val detected = AudioFormatDetector.detectFromUrl(url)
+            detected.forEach { format ->
+                audioFormats.add(format.name)
+                when (format) {
+                    AudioFormat.EAC3_JOC -> hasDolbyAtmos = true
+                    AudioFormat.AC3, AudioFormat.EAC3 -> hasDolbyDigital = true
+                    AudioFormat.TRUEHD -> hasDolbyTrueHD = true
+                    else -> {}
+                }
+            }
+        }
+
+        // Determine compatible devices
+        val compatibleDevices = mutableSetOf("firetv", "androidtv", "mobile", "web")
+        if (hasDolbyAtmos) {
+            compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
+        }
+        if (hasDolbyTrueHD) {
+            compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
+        }
+
         return TV(
             id = finalId,
             apiId = apiId,
@@ -320,6 +348,11 @@ object GenericJsonParser {
             catchupType = catchupType,
             catchupDays = catchupDays,
             catchupSource = catchupSource,
+            audioFormats = audioFormats,
+            dolbyDigital = hasDolbyDigital,
+            dolbyAtmos = hasDolbyAtmos,
+            dolbyTrueHD = hasDolbyTrueHD,
+            compatibleDevices = compatibleDevices,
             child = listOf()
         )
     }
