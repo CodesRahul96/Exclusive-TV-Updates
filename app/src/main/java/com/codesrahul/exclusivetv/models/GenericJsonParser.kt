@@ -331,6 +331,23 @@ object GenericJsonParser {
             compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
         }
 
+        // IMPORTANT FIX: For inputstream.adaptive addon, create stream_headers from all accumulated headers
+        // This ensures that User-Agent, Referer, Cookie, etc. are properly passed to DASH/HLS requests
+        val finalHeaders = headers?.toMutableMap() ?: mutableMapOf()
+        if (finalHeaders.isNotEmpty() && (drmScheme != null || primaryUrl.contains(".mpd"))) {
+            // Build stream_headers format: key|value|key2|value2|... for inputstream
+            val streamHeadersBuilder = StringBuilder()
+            finalHeaders.forEach { (key, value) ->
+                if (streamHeadersBuilder.isNotEmpty()) {
+                    streamHeadersBuilder.append("|")
+                }
+                streamHeadersBuilder.append(key).append("|").append(value)
+            }
+            if (streamHeadersBuilder.isNotEmpty()) {
+                finalHeaders["inputstream.adaptive.stream_headers"] = streamHeadersBuilder.toString()
+            }
+        }
+
         return TV(
             id = finalId,
             apiId = apiId,
@@ -340,7 +357,7 @@ object GenericJsonParser {
             logo = logo ?: "",
             image = "",
             uris = uris,
-            headers = headers,
+            headers = if (finalHeaders.isNotEmpty()) finalHeaders else null,
             group = finalGroup,
             type = finalType,
             drmScheme = drmScheme,

@@ -32,6 +32,23 @@ object KodiParser {
         // Helper to save current channel
         fun saveAndReset() {
             if (currentUris.isNotEmpty()) {
+                // IMPORTANT FIX: For inputstream.adaptive addon, create stream_headers from all accumulated headers
+                // This ensures that User-Agent, Referer, Cookie, etc. are properly passed to DASH manifest requests
+                val enrichedHeaders = currentHeaders.toMutableMap()
+                if (enrichedHeaders.isNotEmpty() && (currentDrmScheme != null || currentUris.any { it.contains(".mpd") })) {
+                    // Build stream_headers format: key|value|key2|value2|... for inputstream
+                    val streamHeadersBuilder = StringBuilder()
+                    enrichedHeaders.forEach { (key, value) ->
+                        if (streamHeadersBuilder.isNotEmpty()) {
+                            streamHeadersBuilder.append("|")
+                        }
+                        streamHeadersBuilder.append(key).append("|").append(value)
+                    }
+                    if (streamHeadersBuilder.isNotEmpty()) {
+                        enrichedHeaders["inputstream.adaptive.stream_headers"] = streamHeadersBuilder.toString()
+                    }
+                }
+
                 channels.add(
                     createTV(
                         channelCount++,
@@ -40,7 +57,7 @@ object KodiParser {
                         currentLogo,
                         currentGroup,
                         currentUris,
-                        currentHeaders,
+                        enrichedHeaders,
                         currentDrmScheme,
                         currentDrmLicense,
                         currentCatchupType,
