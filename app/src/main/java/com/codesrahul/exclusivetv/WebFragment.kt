@@ -1014,6 +1014,18 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     mimeType, requiresSecureDecoder, requiresTunnelingDecoder
                 )
                 
+                // AUDIO CODEC FIX: Force software decoders for audio to bypass encrypted stream decryption failures
+                // Hardware decoders often fail with "decrypt failed: -2001" errors on protected streams
+                if (mimeType == MimeTypes.AUDIO_AAC || mimeType == MimeTypes.AUDIO_MPEG || mimeType == MimeTypes.AUDIO_AC3) {
+                    val softwareDecoders = decoders.filter { 
+                        it.name.startsWith("OMX.google.") || it.name.startsWith("c2.android.") 
+                    }
+                    if (softwareDecoders.isNotEmpty()) {
+                        android.util.Log.d("CodecSelector", "Using software decoder for $mimeType")
+                        return@setMediaCodecSelector softwareDecoders
+                    }
+                }
+                
                 // FIRETV AUDIO FIX: Prioritize software decoders (Google/Android) for AAC and MPEG audio 
                 // to bypass buggy hardware decoders that often output silence on Firestick devices.
                 val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
@@ -1184,6 +1196,30 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
+                
+                // ENHANCED ERROR LOGGING
+                android.util.Log.e("PlayerError", "Error Code: ${error.errorCode}, Message: ${error.message}", error.cause)
+                
+                // CODEC/DECRYPT FAILURE RECOVERY - Check for codec-related errors
+                val errorCause = error.cause?.toString() ?: ""
+                val isCodecError = errorCause.contains("decrypt") || 
+                                   errorCause.contains("MediaCodec") || 
+                                   errorCause.contains("Codec") ||
+                                   errorCause.contains("decoder")
+                
+                if (isCodecError && retryCount < 2) {
+                    // FIRST ATTEMPT: Codec error likely due to encrypted stream or hardware decoder failure
+                    // Log and retry with fresh player (may trigger software decoder fallback)
+                    android.util.Log.w("PlayerError", "Codec/Decrypt error detected, forcing retry: ${error.cause}")
+                    retryCount++
+                    tvModel?.setErrInfo("") // Silent retry for codec issues
+                    playbackHandler.postDelayed({
+                        if (currentVideoUrl.isNotEmpty()) {
+                            initializePlayer(currentVideoUrl) 
+                        }
+                    }, 2000L)
+                    return
+                }
                 
                 // AUTO RETRY & MULTI-URL FALLBACK LOGIC
                 if (retryCount < maxRetries) {
@@ -1554,8 +1590,29 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     data class DrmConfig(val scheme: String, val license: String)
 
     private fun createClearKeyJson(license: String): String {
-        // Support MULTIPLE comma-separated keys (KID1:KEY1,KID2:KEY2)
-        val keyEntries = license.split(",")
+        val trimmedLicense = license.trim()
+        
+        // FIX: Check if license is ALREADY a JSON object (from M3U KODIPROP)
+        if (trimmedLicense.startsWith("{") && trimmedLicense.endsWith("}")) {
+            try {
+                // It's already JSON - SANITIZE it by removing incompatible fields
+                val jsonObj = JSONObject(trimmedLicense)
+                // Ensure it has "keys" array
+                if (jsonObj.has("keys") && jsonObj.get("keys") is JSONArray) {
+                    // CRITICAL FIX: Samsung/Android 14 CDM rejects "type":"temporary"
+                    // Create a new sanitized JSON with ONLY "keys" field
+                    val sanitized = JSONObject()
+                    sanitized.put("keys", jsonObj.getJSONArray("keys"))
+                    Log.d(TAG, "Using sanitized JSON license directly from M3U KODIPROP (removed type field)")
+                    return sanitized.toString()
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Error parsing JSON license: ${e.message}")
+            }
+        }
+        
+        // Legacy path: Support MULTIPLE comma-separated keys (KID1:KEY1,KID2:KEY2)
+        val keyEntries = trimmedLicense.split(",")
         val keysArray = JSONArray()
 
         for (entry in keyEntries) {

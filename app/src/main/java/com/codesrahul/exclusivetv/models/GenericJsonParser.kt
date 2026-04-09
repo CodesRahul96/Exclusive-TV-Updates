@@ -108,6 +108,7 @@ object GenericJsonParser {
                 }
             } catch (e: Exception) {
                 // If one item fails, skip it and continue
+                Log.w(TAG, "Error parsing array item, skipping", e)
                 try { reader.skipValue() } catch (e2: Exception) {}
             }
         }

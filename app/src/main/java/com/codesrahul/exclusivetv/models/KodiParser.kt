@@ -182,6 +182,7 @@ object KodiParser {
                         }
                         
                     } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing DRM license from: $trimmedLine", e)
                     }
 
                 } else if (trimmedLine.startsWith("#KODIPROP:")) {
@@ -310,6 +311,7 @@ object KodiParser {
                     }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Error parsing STRM/Kodi playlist", e)
             }
         }
 

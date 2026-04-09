@@ -52,4 +52,53 @@ https://keys.vodep39240327.workers.dev/mpd/144
     assertEquals("https://jiotv.com/", ch2.headers!!["Referer"])
     assertEquals("plaYtv/7.1.3 (Linux;Android 13) ygx/824.1 ExoPlayerLib/824.0", ch2.headers!!["User-Agent"])
 }
+
+    @Test
+    fun testDishhomeFormat() {
+        val testM3u = """
+# EXTVLCOPT:http-referrer=https://dishhomego.com.np/
+https://ottlive.dishhome.com.np/protected/Ybdn8poB2gHDw8GGqcPT/dash/manifest.mpd
+
+# EXTVLCOPT:http-referrer=https://dishhomego.com.np/
+https://ottlive.dishhome.com.np/protected/5gTOzZkB0RDJ74Ryniqo/dash/manifest.mpd
+        """.trimIndent()
+
+        val reader = BufferedReader(StringReader(testM3u))
+        val channels = M3UParser.parse(reader)
+
+        assertEquals(2, channels.size)
+        
+        assertEquals("ExclusiveTV 1", channels[0].name)
+        assertEquals("https://ottlive.dishhome.com.np/protected/Ybdn8poB2gHDw8GGqcPT/dash/manifest.mpd", channels[0].uris[0])
+        assertEquals("https://dishhomego.com.np/", channels[0].headers!!["Referer"])
+
+        assertEquals("ExclusiveTV 2", channels[1].name)
+        assertEquals("https://ottlive.dishhome.com.np/protected/5gTOzZkB0RDJ74Ryniqo/dash/manifest.mpd", channels[1].uris[0])
+        assertEquals("https://dishhomego.com.np/", channels[1].headers!!["Referer"])
+    }
+
+    @Test
+    fun testMaxTvFormat() {
+        val testM3u = """
+# EXTVLCOPT:http-user-agent=SecureTV OkHttp
+http://103.154.47.247/x-media/C94/master.m3u8
+
+# EXTVLCOPT:http-user-agent=SecureTV OkHttp
+http://103.154.47.247/x-media/C207/master.m3u8
+        """.trimIndent()
+
+        val reader = BufferedReader(StringReader(testM3u))
+        val channels = M3UParser.parse(reader)
+
+        assertEquals(2, channels.size)
+        // 1st channel
+        assertEquals("C94 master", channels[0].name) // due to URL extraction
+        assertEquals("http://103.154.47.247/x-media/C94/master.m3u8", channels[0].uris[0])
+        assertEquals("SecureTV OkHttp", channels[0].headers!!["User-Agent"])
+
+        // 2nd channel
+        assertEquals("C207 master", channels[1].name) // due to URL extraction
+        assertEquals("http://103.154.47.247/x-media/C207/master.m3u8", channels[1].uris[0])
+        assertEquals("SecureTV OkHttp", channels[1].headers!!["User-Agent"])
+    }
 }

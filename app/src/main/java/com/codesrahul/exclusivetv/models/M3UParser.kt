@@ -259,6 +259,7 @@ object M3UParser {
                             }
                         }
                     } else if (trimmedLine.startsWith("#EXTHTTP:") || trimmedLine.startsWith("# EXTHTTP:")) {
+                        if (currentUris.isNotEmpty()) saveAndReset()
                         // Parse JSON headers (supports new format with multiple header lines before URL)
                         val jsonStr = trimmedLine.substringAfter("HTTP:").trim()
                         try {
@@ -280,6 +281,7 @@ object M3UParser {
                         }
 
                     } else if (trimmedLine.startsWith("#KODIPROP:")) {
+                        if (currentUris.isNotEmpty()) saveAndReset()
                         // KODIPROP can appear multiple times - accumulate all properties
                         // Do NOT reset if URIs are present, as headers may precede URLs in new format
                         val parts = trimmedLine.substringAfter("#KODIPROP:").split("=", limit = 2)
@@ -331,6 +333,7 @@ object M3UParser {
                             }
                         }
                     } else if (trimmedLine.startsWith("#EXTVLCOPT:")) {
+                        if (currentUris.isNotEmpty()) saveAndReset()
                         // VLC options can appear multiple times - accumulate all
                         val parts = trimmedLine.substringAfter("#EXTVLCOPT:").split("=", limit = 2)
                         if (parts.size == 2) {
@@ -349,16 +352,20 @@ object M3UParser {
                         var finalUrl = trimmedLine
                         
                         // DECRYPTION INTERCEPT: If the URL doesn't look like a standard URL, try decrypting it
-                        if (!isUrl) {
+                        // BUT: Only if it doesn't contain ://, otherwise it's already a valid URL
+                        if (!isUrl && trimmedLine.isNotEmpty()) {
                             try {
                                 val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
                                 val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(finalUrl, key)
                                 if (decrypted.contains("://")) {
                                     finalUrl = decrypted
                                     isUrl = true
+                                    android.util.Log.d(TAG, "Decrypted URL: $finalUrl")
                                 }
                             } catch (e: Exception) {
-                                // Continue with original URL
+                                // Decryption failed - this is expected for normal URLs
+                                // Keep original URL and continue
+                                android.util.Log.d(TAG, "Decryption not needed or failed: ${e.message}")
                             }
                         }
 
@@ -395,8 +402,9 @@ object M3UParser {
                             
                             currentUris.add(finalUrl)
                             
-                            // Keep track of all URLs for fallback simple parser
-                            if (!isM3U) plainUrls.add(finalUrl)
+                            // Keep track of all URLs for fallback simple parser (always, not just non-M3U)
+                            // This ensures we have a recovery mechanism if M3U parsing fails to save channels
+                            plainUrls.add(finalUrl)
 
                             if (currentName.isEmpty() || currentName.startsWith("Channel")) {
                                 val extracted = extractNameFromUrl(finalUrl)
@@ -409,9 +417,11 @@ object M3UParser {
                         }
                     }
                 } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing line: $line", e)
                 }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error parsing M3U/playlist", e)
         }
 
         // Add last channel
@@ -419,10 +429,28 @@ object M3UParser {
 
         // Fallback for plain lists (no M3U headers found but URLs present)
         if (channels.isEmpty() && !isM3U && plainUrls.isNotEmpty()) {
+            Log.d(TAG, "Using fallback: Found ${plainUrls.size} plain URLs, creating channels")
             for ((index, l) in plainUrls.withIndex()) {
                 channels.add(createTV(index, "", "", "", "", listOf(l), mapOf(), null, null, null, null, null))
             }
         }
+
+        // COMPREHENSIVE LOGGING for debugging
+        Log.i(TAG, "=== PARSER RESULTS ===")
+        Log.i(TAG, "Format: ${if (isM3U) "M3U" else "PLAIN/GENERIC"}")
+        Log.i(TAG, "Total channels parsed: ${channels.size}")
+        Log.i(TAG, "Plain URLs in fallback list: ${plainUrls.size}")
+        if (channels.isNotEmpty()) {
+            Log.i(TAG, "First 3 channels:")
+            channels.take(3).forEach { channel ->
+                Log.i(TAG, "  - ${channel.title} (${channel.logo}) [URIs: ${channel.uris.size}]")
+            }
+            Log.i(TAG, "Last 3 channels:")
+            channels.takeLast(3).forEach { channel ->
+                Log.i(TAG, "  - ${channel.title} (${channel.logo}) [URIs: ${channel.uris.size}]")
+            }
+        }
+        Log.i(TAG, "======================")
 
         return channels
     }

@@ -85,6 +85,7 @@ object PlsParser {
             
 
         } catch (e: Exception) {
+            Log.e(TAG, "Error parsing PLS playlist", e)
         }
         
         return list
