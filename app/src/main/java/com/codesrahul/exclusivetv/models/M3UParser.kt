@@ -117,7 +117,7 @@ object M3UParser {
                     if (trimmedLine.isEmpty()) continue
 
                     // 1. Normalize tags with spaces (e.g., "# EXTINF" -> "#EXTINF")
-                    if (trimmedLine.startsWith("# ")) {
+                    if (trimmedLine.startsWith("# ") || trimmedLine.startsWith("#  ")) {
                         val parts = trimmedLine.split(Regex("\\s+"), limit = 2)
                         if (parts.isNotEmpty()) {
                             // Reconstruct "#TAG rest"
@@ -461,14 +461,16 @@ object M3UParser {
     }
     
     private fun normalizeHeaderKey(key: String): String {
-        return when (key.lowercase().replace("_", "-")) {
-            "cookie" -> "Cookie"
-            "user-agent", "useragent" -> "User-Agent"
-            "referer", "referrer" -> "Referer"
-            "origin" -> "Origin"
-            "authorization" -> "Authorization"
-            "content-type" -> "Content-Type"
-            "accept" -> "Accept"
+        val k = key.lowercase().replace("_", "-")
+        return when {
+            k == "cookie" || k == "http-cookie" -> "Cookie"
+            k == "user-agent" || k == "http-user-agent" || k == "useragent" -> "User-Agent"
+            k == "referer" || k == "referrer" || k == "http-referer" || k == "http-referrer" -> "Referer"
+            k == "origin" || k == "http-origin" -> "Origin"
+            k == "authorization" -> "Authorization"
+            k == "content-type" -> "Content-Type"
+            k == "accept" -> "Accept"
+            k == "x-forwarded-for" -> "X-Forwarded-For"
             else -> key 
         }
     }

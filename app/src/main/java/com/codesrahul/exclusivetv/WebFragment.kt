@@ -1040,6 +1040,12 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
              requestHeaders.remove("Referer") 
         }
 
+        // HARDCODED OPTIMIZATION: DishHome DASH Referer Consistency
+        if (url.contains("dishhome.com.np") && !requestHeaders.containsKey("Referer")) {
+            requestHeaders["Referer"] = "https://dishhomego.com.np/"
+            requestHeaders["Origin"] = "https://dishhomego.com.np"
+        }
+
         // Use Extension Renderers if available (e.g. FFMpeg) and ENABLE FALLBACK
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(requireContext())
             .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
@@ -1907,6 +1913,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private fun getLoadControl(url: String? = null): androidx.media3.exoplayer.LoadControl {
         val bufferMode = SP.bufferMode
         val isVod = isVODContent()
+        val isDash = url?.contains(".mpd", ignoreCase = true) == true
         
         // Mode 0: Default (Balanced)
         // Mode 1: Max Stability (Large buffer for slow net)
@@ -1916,23 +1923,25 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         var minBuffer = when (bufferMode) {
             1 -> 60000 // 60s
             2 -> 15000 // 15s
-            else -> if (isVod) 50000 else 30000 // 50s for VOD, 30s for Live
+            else -> if (isVod) 50000 else if (isDash) 20000 else 30000 // 50s for VOD, 20s for DASH, 30s for HLS/Live
         }
         // Force minimums for stability
-        minBuffer = Math.max(minBuffer, if (isVod) 45000 else 15000)
+        minBuffer = Math.max(minBuffer, if (isVod) 45000 else if (isDash) 10000 else 15000)
 
         var maxBuffer = when (bufferMode) {
             1 -> 150000 // 150s
             2 -> 45000  // 45s
-            else -> if (isVod) 120000 else 90000 // 120s for VOD, 90s for Live
+            else -> if (isVod) 120000 else if (isDash) 60000 else 90000 // 120s for VOD, 60s for DASH, 90s for Live
         }
-        // Force minimum 90s for Global Stability
-        maxBuffer = Math.max(maxBuffer, 90000)
+        // Force minimum 90s for Global Stability (except DASH which needs lower max for live window keep-up)
+        if (!isDash) {
+            maxBuffer = Math.max(maxBuffer, 90000)
+        }
 
         var startBuffer = when (bufferMode) {
             1 -> 5000 // 5s start
             2 -> 1500 // 1.5s start
-            else -> if (isVod) 5000 else 2500 // 5s for Movies, 2.5s for Live
+            else -> if (isVod) 5000 else if (isDash) 2000 else 2500 // 5s for Movies, 2s for DASH, 2.5s for Live
         }
         
         val context = context ?: return DefaultLoadControl.Builder().build()
