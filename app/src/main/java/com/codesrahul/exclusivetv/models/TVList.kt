@@ -752,9 +752,9 @@ object TVList {
                 }
             }
             
-            if (firstChar == '{'.toInt() || firstChar == '['.toInt()) {
+            if (firstChar == '{'.code || firstChar == '['.code) {
                 return GenericJsonParser.parse(pushbackReader)
-            } else if (firstChar == '#'.toInt()) {
+            } else if (firstChar == '#'.code) {
                 return M3UParser.parse(BufferedReader(pushbackReader))
             } else if (firstChar >= 0x4D00 && firstChar <= 0x4DFF) {
                 // Gua requires full string for decoding. 
@@ -900,7 +900,7 @@ object TVList {
                  val reader = java.io.FileReader(file)
                  val first = reader.read()
                  reader.close()
-                 if (first == '{'.toInt() || first == '['.toInt()) {
+                 if (first == '{'.code || first == '['.code) {
                      isJson = true
                  }
              } catch(e: Exception) {}
@@ -947,7 +947,7 @@ object TVList {
         }
         
         // 3. Strategy B: Gua / Encrypted (Legacy String requirement)
-        if (peekContent.isNotEmpty() && (peekContent[0].toInt() >= 0x4D00 && peekContent[0].toInt() <= 0x4DFF)) {
+        if (peekContent.isNotEmpty() && (peekContent[0].code >= 0x4D00 && peekContent[0].code <= 0x4DFF)) {
             try {
                 val content = file.readText()
                 val g = Gua()
@@ -1119,7 +1119,6 @@ object TVList {
                 }
 
                 val categoryOrder = OrderPreferenceManager.getCategoryOrder()
-                val categoryRenames = OrderPreferenceManager.getCategoryRenames()
                 
                 val sortedCategories = if (categoryOrder != null && categoryOrder.isNotEmpty()) {
                     val orderedCategories = mutableListOf<String>()

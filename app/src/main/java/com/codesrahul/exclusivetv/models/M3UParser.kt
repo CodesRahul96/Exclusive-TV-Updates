@@ -298,12 +298,12 @@ object M3UParser {
                                         else -> value
                                     }
                                 }
-                                "inputstream.adaptive.license_key" -> {
+                                 "inputstream.adaptive.license_key" -> {
                                     if (value.contains("|")) {
-                                        val parts = value.split("|")
-                                        currentDrmLicense = parts[0]
-                                        if (parts.size > 1) {
-                                            val headerParts = parts[1].split("&")
+                                        val licenseParts = value.split("|")
+                                        currentDrmLicense = licenseParts[0]
+                                        if (licenseParts.size > 1) {
+                                            val headerParts = licenseParts[1].split("&")
                                             for (h in headerParts) {
                                                 val kv = h.split("=", limit = 2)
                                                 if (kv.size == 2) {
