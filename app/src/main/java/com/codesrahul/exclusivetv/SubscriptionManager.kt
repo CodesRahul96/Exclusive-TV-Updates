@@ -93,11 +93,10 @@ object SubscriptionManager {
                             updateData[bindField] = currentDeviceId
                             db.collection(COLLECTION_USERS).document(phoneNumber)
                                 .update(updateData as Map<String, Any>)
-                        } else {
                             // Scenario C: Device limit reached
                             val limitMsg = if (maxDevices > 1) "2 devices" else "1 device"
                             SP.userId = null // Sign out locally
-                            onError("Security: This account is restricted to $limitMsg only.")
+                            onError("[AUTH_ERR] Security: This account is restricted to $limitMsg only.")
                             return@addOnSuccessListener
                         }
                     }
@@ -258,7 +257,7 @@ object SubscriptionManager {
                                     if (e is FirebaseFunctionsException) {
                                         // Server rejected on purpose - DO NOT FALLBACK!
                                         if (e.code == FirebaseFunctionsException.Code.ALREADY_EXISTS || e.code == FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED) {
-                                            onError(e.message ?: "Registration blocked by server.")
+                                            onError("[AUTH_ERR] " + (e.message ?: "Registration blocked by server."))
                                             return@addOnFailureListener
                                         }
                                     }
@@ -271,7 +270,7 @@ object SubscriptionManager {
                 }
             }
             .addOnFailureListener { exception ->
-                onError("Verification failed: ${exception.message}")
+                onError("[NET_ERR] Verification failed: ${exception.message}")
             }
     }
 
@@ -453,31 +452,43 @@ object SubscriptionManager {
             }
     }
 
-    fun signOut(context: android.content.Context) {
-        clearAppData(context)
+    fun signOut(context: android.content.Context, isFactoryReset: Boolean = false) {
+        clearAppData(context, isFactoryReset)
     }
 
-    private fun clearAppData(context: android.content.Context) {
-        // [NEW] Clear local SP login state
+    private fun clearAppData(context: android.content.Context, isFactoryReset: Boolean) {
+        // [NEW] Clear local SP memory state
         SP.userId = null
         expiryDate = null
         planName = null
+        
+        if (isFactoryReset) {
+            SP.hasCompletedOnboarding = false
+        }
         
         // 1. Clear all Preference Managers (Synchronously using commit())
         try { SP.reset() } catch (e: Exception) { e.printStackTrace() }
         try { OrderPreferenceManager.resetAll() } catch (e: Exception) { e.printStackTrace() }
 
-        // 2. Delete all local files (legacy channels.txt, etc)
-        try { deleteRecursive(context.filesDir) } catch (e: Exception) { e.printStackTrace() }
+        // 2. The Nuclear Option: Delete all directories in dataDir
+        val baseDir = context.filesDir.parentFile
+        if (baseDir != null && baseDir.exists()) {
+            val dirsToClear = arrayOf("files", "cache", "shared_prefs", "databases", "no_backup")
+            dirsToClear.forEach { dirName ->
+                try {
+                    val dir = java.io.File(baseDir, dirName)
+                    deleteRecursive(dir)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
         
-        // 4. Delete cache (epg_cache.xml.gz, etc)
-        try { deleteRecursive(context.cacheDir) } catch (e: Exception) { e.printStackTrace() }
-        
-        // 5. Clear WebViews/Cookies if any
+        // 3. Clear WebViews/Cookies
         try { 
             android.webkit.WebStorage.getInstance().deleteAllData()
             android.webkit.CookieManager.getInstance().removeAllCookies(null)
-            android.webkit.CookieManager.getInstance().flush() // Force write
+            android.webkit.CookieManager.getInstance().flush() 
         } catch (e: Exception) { e.printStackTrace() }
 
         com.codesrahul.exclusivetv.models.TVList.clear(com.codesrahul.exclusivetv.MyTVApplication.getInstance())

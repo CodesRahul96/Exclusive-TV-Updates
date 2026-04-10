@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Include only standard app settings (UI preferences, EPG shift, etc.) -->
+    <include domain="sharedpref" path="Exclusive TV.xml"/>
+    
+    <!-- Explicitly exclude the heavy channel playlist cache -->
+    <exclude domain="file" path="channels.txt"/>
+    
+    <!-- Exclude local databases (EPG data) to keep backup small and clean -->
+    <exclude domain="database" path="*"/>
+</full-backup-content>

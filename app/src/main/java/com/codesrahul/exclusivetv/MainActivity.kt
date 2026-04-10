@@ -524,10 +524,21 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 },
                 onError = { error ->
                     runOnUiThread {
-                        Toast.makeText(this@MainActivity, error, Toast.LENGTH_LONG).show()
-                        webFragment.stop() // Stop any previous playback
-                        showFragment(loginFragment)
-                        hideFragment(loadingFragment)
+                        val isHardError = error.contains("[AUTH_ERR]")
+                        val cleanError = error.replace("[AUTH_ERR]", "").replace("[NET_ERR]", "").trim()
+                        
+                        Toast.makeText(this@MainActivity, cleanError, Toast.LENGTH_LONG).show()
+                        
+                        if (isHardError) {
+                            // Hard Security Error (Banned, Limit Reached): Force Logout
+                            webFragment.stop() 
+                            showFragment(loginFragment)
+                            hideFragment(loadingFragment)
+                        } else {
+                            // Soft Network Error: Allow graceful fallback to main UI if already logged in
+                            Log.d("AUTH", "Transient auth error: $cleanError. Allowing session to continue.")
+                            onFinished() // Proceed to data load/bootstrap completion
+                        }
                     }
                 },
                 onDowngrade = { message ->

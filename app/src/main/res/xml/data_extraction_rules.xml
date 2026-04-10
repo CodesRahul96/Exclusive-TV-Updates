@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Back up standard UI preferences and settings -->
+        <include domain="sharedpref" path="Exclusive TV.xml"/>
+        
+        <!-- Exclude temporary channel cache and session data for a clean restore -->
+        <exclude domain="file" path="channels.txt"/>
+        <exclude domain="database" path="*"/>
+        <exclude domain="sharedpref" path="Exclusive TV_secure.xml"/>
+    </cloud-backup>
+    <device-transfer>
+        <!-- For device-to-device transfer, we can include more settings -->
+        <include domain="sharedpref" path="Exclusive TV.xml"/>
+    </device-transfer>
+</data-extraction-rules>

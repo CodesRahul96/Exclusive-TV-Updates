@@ -71,8 +71,8 @@ object TVList {
     private const val UPDATE_COOLDOWN_MS = 15 * 60 * 1000L // 15 minutes TTL
     private lateinit var appDirectory: File
 
-    private lateinit var serverUrl: String
-    private lateinit var list: List<TV>
+    private var serverUrl: String = ""
+    private var list: List<TV> = emptyList()
     var listModel: List<TVModel> = listOf()
     val groupModel = TVGroupModel()
     
@@ -168,7 +168,7 @@ object TVList {
                     }
                 }
                 
-                if (!::list.isInitialized || list.isEmpty()) {
+                if (list.isEmpty()) {
                     context.resources.openRawResource(R.raw.channels).bufferedReader(Charsets.UTF_8).use { reader ->
                          // Use streaming parser for resource
                          val result = parseUniversal(reader)
@@ -477,9 +477,22 @@ object TVList {
                       // PROFESSIONAL IMPROVEMENT: Remove redundant unrolling. 
                       // The player already handles backup links (uris list) correctly.
                       // This keeps the UI list clean and prevents duplicate entries.
-                      val finalChannels = allChannels.toMutableList()
+                      // SMART DEDUPLICATION: Group channels with same title across different sources
+                      val mergedMap = LinkedHashMap<String, TV>()
+                      allChannels.forEach { tv ->
+                          val key = tv.title.lowercase().trim()
+                          if (mergedMap.containsKey(key)) {
+                              val existing = mergedMap[key]!!
+                              val combinedUris = (existing.uris + tv.uris).distinct()
+                              existing.uris = combinedUris
+                          } else {
+                              mergedMap[key] = tv
+                          }
+                      }
                       
-                      // FIX: Re-index securely
+                      val finalChannels = mergedMap.values.toMutableList()
+                      
+                      // FIX: Re-index securely after merging
                       finalChannels.forEachIndexed { index, tv ->
                           tv.id = index
                       }
@@ -1083,7 +1096,7 @@ object TVList {
         if (SecurityUtil.isMaintenanceMode || SecurityUtil.isAppOutdated) {
             return
         }
-        if (!::list.isInitialized || list.isEmpty()) {
+        if (list.isEmpty()) {
             return
         }
 
@@ -1257,7 +1270,7 @@ object TVList {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                if (!::list.isInitialized || list.isEmpty()) return@launch
+                if (list.isEmpty()) return@launch
 
                 val initialSize = list.size
 

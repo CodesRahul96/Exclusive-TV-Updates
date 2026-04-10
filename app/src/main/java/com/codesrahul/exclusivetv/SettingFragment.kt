@@ -90,8 +90,13 @@ class SettingFragment : Fragment() {
         
         if (binding.playlistUrlContainer.visibility == View.VISIBLE) {
             binding.config.requestFocus()
-        } else {
+        } else if (binding.managePlaylists.visibility == View.VISIBLE) {
             binding.managePlaylists.apply {
+                isFocusable = true
+                requestFocus()
+            }
+        } else {
+            binding.manageCategories.apply {
                 isFocusable = true
                 requestFocus()
             }
@@ -280,7 +285,12 @@ class SettingFragment : Fragment() {
                 if (binding.playlistUrlContainer.visibility != View.VISIBLE) {
                     binding.playlistUrlContainer.visibility = View.VISIBLE
                     binding.playlistUrlDivider.visibility = View.VISIBLE
-                    Toast.makeText(requireContext(), "Playlist URL option unlocked!", Toast.LENGTH_SHORT).show()
+                    
+                    // Unified Unlock for manage_playlists
+                    binding.managePlaylists.visibility = View.VISIBLE
+                    binding.managePlaylistsDivider.visibility = View.VISIBLE
+                    
+                    Toast.makeText(requireContext(), "Advanced Settings unlocked!", Toast.LENGTH_SHORT).show()
                     binding.config.requestFocus() // Focus the newly visible input
                 }
             }
@@ -293,8 +303,8 @@ class SettingFragment : Fragment() {
                 .setTitle("Logout?")
                 .setMessage("Are you sure you want to logout? This will clear all app data.")
                 .setPositiveButton("Logout") { _, _ ->
-                    // Restart app to go back to login (logic inside performFullReset)
-                    performFullReset() 
+                    // Restart app to go back to login (isFactoryReset = false)
+                    performFullReset(isFactoryReset = false) 
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
@@ -373,7 +383,7 @@ class SettingFragment : Fragment() {
 
             btnReset.setOnClickListener {
                 tvUiUtils?.playClickSound()
-                performFullReset()
+                performFullReset(isFactoryReset = true)
                 dialog.dismiss()
             }
             
@@ -493,18 +503,23 @@ class SettingFragment : Fragment() {
         syncStatusUI()
     }
 
-    private fun performFullReset(justRestart: Boolean = false) {
+    private fun performFullReset(isFactoryReset: Boolean) {
         try {
-            if (!justRestart) {
-                Toast.makeText(requireContext(), "Resetting...", Toast.LENGTH_SHORT).show()
+            if (isFactoryReset) {
+                Toast.makeText(requireContext(), "Performing Factory Reset...", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(requireContext(), "Logging out...", Toast.LENGTH_SHORT).show()
             }
             
-            // Delegate comprehensive data clearing to SubscriptionManager
-            SubscriptionManager.signOut(requireContext())
+            // Clear legacy session file specifically mentioned in SP keep-alive logic
+            try {
+                requireContext().getSharedPreferences("SP", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+            } catch (e: Exception) {}
 
-            Toast.makeText(requireContext(), if (justRestart) "Restarting..." else "Factory Reset Complete. Restarting...", Toast.LENGTH_LONG).show()
+            // Delegate comprehensive data clearing to SubscriptionManager
+            SubscriptionManager.signOut(requireContext(), isFactoryReset)
+
+            Toast.makeText(requireContext(), if (isFactoryReset) "Factory Reset Complete. Restarting..." else "Logged out. Restarting...", Toast.LENGTH_LONG).show()
 
             // 5. Force Restart App using Phoenix Process Pattern (Professional Approach)
             val ctx = context ?: return
@@ -514,7 +529,7 @@ class SettingFragment : Fragment() {
                     PhoenixActivity.trigger(ctx)
                 } catch (e: Exception) {
                     e.printStackTrace()
-                     // Fallback to simple restart if Phoenix fails for some reason
+                     // Fallback to simple restart
                      val pm = ctx.packageManager
                      val launchIntent = pm.getLaunchIntentForPackage(ctx.packageName)
                      if (launchIntent != null) {
@@ -528,7 +543,6 @@ class SettingFragment : Fragment() {
 
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Reset failed: ${e.message}", Toast.LENGTH_SHORT).show()
-            // Try to crash/restart anyway to clear state
             System.exit(0) 
         }
     }
@@ -741,7 +755,7 @@ class SettingFragment : Fragment() {
                                 dialog.dismiss()
                                 
                                 // FORCE LOGOUT & RESTART
-                                performFullReset(justRestart = true)
+                                performFullReset(isFactoryReset = false)
                             }
                             .addOnFailureListener { e ->
                                 Toast.makeText(requireContext(), "Failed to update OTP", Toast.LENGTH_SHORT).show()

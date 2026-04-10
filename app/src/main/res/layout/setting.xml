@@ -239,9 +239,13 @@
                         android:id="@+id/manage_playlists"
                         style="@style/SettingsActionItem"
                         android:text="Manage Subscription Sources"
-                        android:drawableStart="@drawable/ic_playlist" />
+                        android:drawableStart="@drawable/ic_playlist"
+                        android:visibility="gone" />
 
-                    <View style="@style/SettingsDivider"/>
+                    <View 
+                        android:id="@+id/manage_playlists_divider"
+                        style="@style/SettingsDivider"
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/manage_categories"

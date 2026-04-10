@@ -6,9 +6,11 @@
     android:background="@color/overlay_background">
 
     <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:layout_width="550dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:fillViewport="true"
+        android:clipToPadding="false">
 
         <LinearLayout
             style="@style/ResponsiveDialogStyle"

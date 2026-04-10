@@ -877,13 +877,50 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             java.net.CookieHandler.setDefault(cookieManager)
         }
 
-        try {
-            // If we have a saved position (from a VOD hard reset escape), apply it
-            val seekPos = if (isVODContent()) lastPlaybackPosition else -1L
-            doInitializePlayer(url, seamless = false, seekPosition = seekPos)
-        } catch (e: Exception) {
-            tvModel?.setErrInfo("Playback Error")
-            releasePlayer()
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                // If we have a saved position (from a VOD hard reset escape), apply it
+                val seekPos = if (isVODContent()) lastPlaybackPosition else -1L
+                
+                // ASYNC PRE-FETCH: If ClearKey URL is present, fetch it now on Dispatchers.IO
+                val currentTv = tvModel?.tv
+                if (currentTv != null && currentTv.drmScheme?.lowercase() == "clearkey") {
+                    var licenseUrl = currentTv.drmLicenseUrl ?: ""
+                    if (licenseUrl.startsWith("http")) {
+                        // Extract URL from pipes if present
+                        if (licenseUrl.contains("|")) {
+                            licenseUrl = licenseUrl.split("|")[0]
+                        }
+                        
+                        val fetchedJson = withContext(Dispatchers.IO) {
+                            try {
+                                val client = OkHttpClient.Builder()
+                                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                                    .build()
+                                val request = Request.Builder().url(licenseUrl).get().build()
+                                val response = client.newCall(request).execute()
+                                response.body?.string() ?: ""
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to pre-fetch clearkey: ${e.message}")
+                                ""
+                            }
+                        }
+                        
+                        if (fetchedJson.contains("\"keys\"") || fetchedJson.contains("\"k\"")) {
+                            // Update the model temporarily with the actual JSON so doInitializePlayer uses it
+                            currentTv.drmLicenseUrl = fetchedJson
+                            Log.d(TAG, "Successfully pre-fetched remote ClearKey JSON")
+                        }
+                    }
+                }
+                
+                doInitializePlayer(url, seamless = false, seekPosition = seekPos)
+            } catch (e: Exception) {
+                Log.e(TAG, "Playback Init Error: ${e.message}")
+                tvModel?.setErrInfo("Playback Error")
+                releasePlayer()
+            }
         }
     }
 
@@ -1014,30 +1051,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     mimeType, requiresSecureDecoder, requiresTunnelingDecoder
                 )
                 
-                // AUDIO CODEC FIX: Force software decoders for audio to bypass encrypted stream decryption failures
-                // Hardware decoders often fail with "decrypt failed: -2001" errors on protected streams
-                if (mimeType == MimeTypes.AUDIO_AAC || mimeType == MimeTypes.AUDIO_MPEG || mimeType == MimeTypes.AUDIO_AC3) {
-                    val softwareDecoders = decoders.filter { 
-                        it.name.startsWith("OMX.google.") || it.name.startsWith("c2.android.") 
-                    }
-                    if (softwareDecoders.isNotEmpty()) {
-                        android.util.Log.d("CodecSelector", "Using software decoder for $mimeType")
-                        return@setMediaCodecSelector softwareDecoders
-                    }
-                }
-                
-                // FIRETV AUDIO FIX: Prioritize software decoders (Google/Android) for AAC and MPEG audio 
-                // to bypass buggy hardware decoders that often output silence on Firestick devices.
-                val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-                if (uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION && 
-                    (mimeType == MimeTypes.AUDIO_MPEG || mimeType == MimeTypes.AUDIO_AAC)) {
-                    val softwareDecoders = decoders.filter { 
-                        it.name.startsWith("OMX.google.") || it.name.startsWith("c2.android.") 
-                    }
-                    if (softwareDecoders.isNotEmpty()) {
-                        return@setMediaCodecSelector softwareDecoders
-                    }
-                }
+                // Allow hardware decoders for audio first, only try software if they fail during playback
+                // Previous forced software decode caused CPU lag on high bitrate 4K streams
                 decoders
             }
 
@@ -1075,7 +1090,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
 
         val hlsExtractorFactory = DefaultHlsExtractorFactory(
-            1 or 8, // FLAG_ALLOW_NON_IDR_KEYFRAMES (1) | FLAG_DETECT_ACCESS_UNIT_DELIMITERS (8)
+            DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
+            DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS or
+            DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS or
+            DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM,
             true
         )
 
@@ -1121,13 +1139,25 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 .setDefaultRequestProperties(requestHeaders)
                 .setAllowCrossProtocolRedirects(true)
 
-            if (schemeUuid == C.CLEARKEY_UUID && !licenseUrl.startsWith("http") && licenseUrl.isNotEmpty()) {
-                 val drmCallback = LocalMediaDrmCallback(createClearKeyJson(licenseUrl).toByteArray())
-                 DefaultDrmSessionManager.Builder()
-                    .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
-                    .setMultiSession(true)
-                    .setPlayClearSamplesWithoutKeys(true) // Prevent black screen stall at stream start
-                    .build(drmCallback)
+            if (schemeUuid == C.CLEARKEY_UUID && licenseUrl.isNotEmpty()) {
+                 val clearkeyJson = createClearKeyJson(licenseUrl)
+                 if (clearkeyJson.isNotEmpty()) {
+                     val drmCallback = LocalMediaDrmCallback(clearkeyJson.toByteArray())
+                     DefaultDrmSessionManager.Builder()
+                        .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                        .setMultiSession(true)
+                        .setPlayClearSamplesWithoutKeys(true)
+                        .build(drmCallback)
+                 } else {
+                     // Fallback to standard HTTP POST
+                     HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory).let { callback ->
+                        DefaultDrmSessionManager.Builder()
+                            .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                            .setMultiSession(true)
+                            .setPlayClearSamplesWithoutKeys(true)
+                            .build(callback)
+                     }
+                 }
             } else if (licenseUrl.isNotEmpty()) {
                  val drmCallback = HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory)
                  drmCallback.setKeyRequestProperty("User-Agent", userAgent)
@@ -1181,10 +1211,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                      builder.setPreferredAudioLanguages(defaultLang)
                  }
 
-                 // FIRETV AUDIO FIX: Force Stereo Downmix for TV devices to prevent passthrough failures
+                 // TV AUDIO FIX: Allow 5.1/6-channel audio to pass through to hardware rather than forcing stereo downmix
                  val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
                  if (uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) {
-                     builder.setMaxAudioChannelCount(2) // Force stereo downmix
+                     builder.setMaxAudioChannelCount(6) // 5.1 Surround Support
                  }
                  
                  exoPlayer!!.trackSelectionParameters = builder.build()
@@ -1592,18 +1622,19 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private fun createClearKeyJson(license: String): String {
         val trimmedLicense = license.trim()
         
-        // FIX: Check if license is ALREADY a JSON object (from M3U KODIPROP)
+        // 1. JSON PATH: Support JWK format (M3U KODIPROP or remote fetch)
         if (trimmedLicense.startsWith("{") && trimmedLicense.endsWith("}")) {
             try {
-                // It's already JSON - SANITIZE it by removing incompatible fields
                 val jsonObj = JSONObject(trimmedLicense)
-                // Ensure it has "keys" array
-                if (jsonObj.has("keys") && jsonObj.get("keys") is JSONArray) {
-                    // CRITICAL FIX: Samsung/Android 14 CDM rejects "type":"temporary"
-                    // Create a new sanitized JSON with ONLY "keys" field
+                // RECURSIVE SEARCH: Find "keys" array anywhere in the response (Support nested keys)
+                val keysArray = findKeysArrayRecursive(jsonObj)
+                
+                if (keysArray != null) {
+                    // SANITIZATION: Create a new object with ONLY the keys array.
+                    // This fixes Android 14/Samsung CDM errors caused by "type":"temporary" or other extra fields.
                     val sanitized = JSONObject()
-                    sanitized.put("keys", jsonObj.getJSONArray("keys"))
-                    Log.d(TAG, "Using sanitized JSON license directly from M3U KODIPROP (removed type field)")
+                    sanitized.put("keys", keysArray)
+                    Log.d(TAG, "Successfully extracted ${keysArray.length()} keys (including nested) for ClearKey")
                     return sanitized.toString()
                 }
             } catch (e: Exception) {
@@ -1611,7 +1642,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             }
         }
         
-        // Legacy path: Support MULTIPLE comma-separated keys (KID1:KEY1,KID2:KEY2)
+        // 2. LEGACY PATH: Support comma-separated strings (KID1:KEY1,KID2:KEY2)
         val keyEntries = trimmedLicense.split(",")
         val keysArray = JSONArray()
 
@@ -1622,27 +1653,58 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             val val1 = parts[0].trim()
             val val2 = parts[1].trim()
             
-            // SMART RECOVERY: Many playlists flip KID:KEY. 
-            // We provide BOTH combinations so the CDM always finds a match.
             val b1 = hexToBase64Url(val1)
             val b2 = hexToBase64Url(val2)
 
+            // DUAL-COMBINATION RECOVERY: Many playlists flip KID:KEY or use non-standard order.
+            // By providing BOTH combinations, we ensure the CDM always correctly identifies the decryption key.
+            
             // Combination A: assume [0]=KID, [1]=KEY
             val objA = JSONObject()
             objA.put("kty", "oct")
             objA.put("kid", b1)
             objA.put("k", b2)
             keysArray.put(objA)
+
+            // Combination B: assume [0]=KEY, [1]=KID (Flipped)
+            val objB = JSONObject()
+            objB.put("kty", "oct")
+            objB.put("kid", b2)
+            objB.put("k", b1)
+            keysArray.put(objB)
         }
 
         if (keysArray.length() == 0) return ""
 
         val jsonObject = JSONObject()
         jsonObject.put("keys", keysArray)
-        
-        // STRICT CDM FIX (Samsung/Android 14): Remove "type":"temporary" entirely.
-        // It violates the W3C JWK spec and causes BAD_VALUE exceptions on strict plugins.
         return jsonObject.toString()
+    }
+
+    private fun findKeysArrayRecursive(obj: JSONObject): JSONArray? {
+        if (obj.has("keys") && obj.get("keys") is JSONArray) {
+            return obj.getJSONArray("keys")
+        }
+        val keys = obj.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val item = obj.optJSONObject(key)
+            if (item != null) {
+                val found = findKeysArrayRecursive(item)
+                if (found != null) return found
+            }
+            val array = obj.optJSONArray(key)
+            if (array != null) {
+                for (i in 0 until array.length()) {
+                    val nestedObj = array.optJSONObject(i)
+                    if (nestedObj != null) {
+                        val found = findKeysArrayRecursive(nestedObj)
+                        if (found != null) return found
+                    }
+                }
+            }
+        }
+        return null
     }
 
     private fun hexToBase64Url(input: String): String {
@@ -1880,21 +1942,22 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         
         val totalMemGb = memoryInfo.totalMem / (1024 * 1024 * 1024.0)
         val isHighEnd = totalMemGb > 3.0 // Raised threshold
-        
-        // Target Buffer: Optimized for IPTV
+        val is4K = url?.contains("420.m3u8") == true || url?.contains("4K", ignoreCase = true) == true || tvModel?.tv?.title?.contains("4K", ignoreCase = true) == true
+
+        // Target Buffer: Optimized for IPTV and 4K Streams
         val targetBufferBytes = if (isHighEnd) {
-            128 * 1024 * 1024 
+            if (is4K) 256 * 1024 * 1024 else 128 * 1024 * 1024 
         } else {
-            64 * 1024 * 1024
+            if (is4K) 128 * 1024 * 1024 else 64 * 1024 * 1024
         }
         
         return DefaultLoadControl.Builder()
             .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                if (isHighEnd && isVod) 60000 else minBuffer,
-                if (isHighEnd && isVod) 150000 else maxBuffer,
-                startBuffer,
-                if (isVod) 10000 else 2500 // Re-buffering threshold
+                if (isHighEnd && isVod) 60000 else if (is4K) minBuffer * 2 else minBuffer,
+                if (isHighEnd && isVod) 150000 else if (is4K) maxBuffer * 2 else maxBuffer,
+                if (is4K) 5000 else startBuffer,
+                if (isVod) 10000 else if (is4K) 5000 else 2500 // Re-buffering threshold
             )
             .setTargetBufferBytes(targetBufferBytes)
             .setPrioritizeTimeOverSizeThresholds(true) 
