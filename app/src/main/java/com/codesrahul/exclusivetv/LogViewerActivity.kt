@@ -67,7 +67,8 @@ class LogViewerActivity : Activity() {
                 for (line in lines) {
                     // Filter for our tags or errors
                     if (line.contains("TVList") || 
-                        line.contains("GenericJsonParser") || 
+                        line.contains("DeepHeuristicParser") || 
+                        line.contains("M3UParser") || 
                         line.contains("Exception") || 
                         line.contains("System.err") ||
                         line.contains("ExclusiveTV")) {

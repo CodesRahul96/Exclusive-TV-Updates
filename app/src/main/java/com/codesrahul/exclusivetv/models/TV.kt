@@ -38,6 +38,16 @@ data class TV(
     var catchupDays: String? = null,
     @SerializedName("catchup_source")
     var catchupSource: String? = null,
+    @SerializedName("language")
+    var language: String? = null,
+    @SerializedName("country")
+    var country: String? = null,
+    @SerializedName("genre")
+    var genre: String? = null,
+    @SerializedName("is_audio_only")
+    var isAudioOnly: Boolean = false,
+    @SerializedName("is_webview_embed")
+    var isWebViewEmbed: Boolean = false,
     
     // Audio/Video Format Support (Non-Breaking Addition)
     @SerializedName("audio_formats")

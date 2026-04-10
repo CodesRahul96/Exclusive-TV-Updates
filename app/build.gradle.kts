@@ -196,6 +196,9 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.google.android.play:integrity:1.3.0")
 
+    // WorkManager for background sync
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     testImplementation("junit:junit:4.13.2")
 }
 

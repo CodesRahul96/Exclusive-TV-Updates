@@ -2,14 +2,18 @@ package com.codesrahul.exclusivetv.models
 
 import android.util.Log
 import java.io.BufferedReader
-import java.io.StringReader
 import java.util.ArrayList
 import java.util.HashMap
+import org.json.JSONObject
 
+/**
+ * TiviMate-Grade Smart M3U Parser.
+ * Robustly extracts metadata from diverse IPTV sources without hardcoded rules.
+ * Handles: #EXTINF, #EXTHTTP, #KODIPROP, #EXTVLCOPT, Pipe-Headers, and Query-Headers.
+ */
 object M3UParser {
     private const val TAG = "M3UParser"
-    // Compile Regex once for performance
-    // Matches: key="value" OR key=value
+    // Regex for key="value" or key=value
     private val PROP_REGEX = Regex("([a-zA-Z0-9\\-_]+)=(?:\"([^\"]*)\"|([^, ]+))")
 
     fun parse(reader: BufferedReader): List<TV> {
@@ -17,571 +21,419 @@ object M3UParser {
         var line: String?
 
         // Current Channel State
-        var currentName: String = ""
-        var currentLogo: String = ""
-        var currentGroup: String = ""
-        var currentTvgId: String = ""
+        var currentName = ""
+        var currentLogo = ""
+        var currentGroup = ""
+        var currentTvgId = ""
         var currentHeaders = mutableMapOf<String, String>()
         var currentDrmScheme: String? = null
         var currentDrmLicense: String? = null
-
+        var currentMimeType: String? = null
         var currentCatchupType: String? = null
         var currentCatchupDays: String? = null
         var currentCatchupSource: String? = null
+        
+        // Advanced Metadata
+        var currentLanguage: String? = null
+        var currentCountry: String? = null
+        var currentResolution: String? = null
+        var currentBitrate: String? = null
+        var currentFrameRate: String? = null
+        var currentVideoCodec: String? = null
+        
+        var isAudioOnly = false
+        var isWebViewEmbed = false
+        var currentGenre: String? = null
+        val currentSubtitles = mutableListOf<SubtitleTrack>()
+        
         var channelCount = 0
-
         val currentUris = mutableListOf<String>()
         val globalHeaders = mutableMapOf<String, String>()
 
-        // Helper to save current channel
         fun saveAndReset() {
             if (currentUris.isNotEmpty()) {
-                // Merge global headers with current headers (current takes precedence)
-                val finalHeaders = if (globalHeaders.isNotEmpty()) {
-                    val merged = globalHeaders.toMutableMap()
-                    merged.putAll(currentHeaders)
-                    merged
-                } else currentHeaders
+                // Priority Merging: Global < Tag-Level < URL-Pipe-Level
+                val finalHeaders = globalHeaders.toMutableMap()
+                finalHeaders.putAll(currentHeaders)
 
-                // IMPORTANT FIX: For inputstream.adaptive addon, create stream_headers from all accumulated headers
-                // This ensures that User-Agent, Referer, Cookie, etc. are properly passed to DASH manifest requests
-                val enrichedHeaders = finalHeaders.toMutableMap()
-                if (enrichedHeaders.isNotEmpty() && (currentDrmScheme != null || currentUris.any { it.contains(".mpd") })) {
-                    // Build stream_headers format: key|value|key2|value2|... for inputstream
-                    val streamHeadersBuilder = StringBuilder()
-                    enrichedHeaders.forEach { (key, value) ->
-                        if (streamHeadersBuilder.isNotEmpty()) {
-                            streamHeadersBuilder.append("|")
-                        }
-                        streamHeadersBuilder.append(key).append("|").append(value)
-                    }
-                    if (streamHeadersBuilder.isNotEmpty()) {
-                        enrichedHeaders["inputstream.adaptive.stream_headers"] = streamHeadersBuilder.toString()
+                // SMART AUTO-DRM: If we have a license but no scheme, detect from URL/Headers
+                if (currentDrmLicense != null && currentDrmScheme == null) {
+                    val url = currentUris.firstOrNull()?.lowercase() ?: ""
+                    currentDrmScheme = when {
+                        url.contains(".mpd") || url.contains("dash") || currentMimeType?.contains("mpd") == true -> "widevine"
+                        url.contains("m3u8") || url.contains("hls") || currentMimeType?.contains("m3u8") == true -> "clearkey"
+                        else -> null
                     }
                 }
 
-                // Fallback ID if missing
+                // FIX for inputstream.adaptive: format the stream_headers string for DASH/DRM
+                if (finalHeaders.isNotEmpty() && (currentDrmScheme != null || currentUris.any { it.contains(".mpd") })) {
+                    val builder = StringBuilder()
+                    finalHeaders.forEach { (k, v) ->
+                        if (builder.isNotEmpty()) builder.append("|")
+                        builder.append(k).append("|").append(v)
+                    }
+                    if (builder.isNotEmpty()) {
+                        finalHeaders["inputstream.adaptive.stream_headers"] = builder.toString()
+                    }
+                }
+
                 val finalId = if (currentTvgId.isNotEmpty()) currentTvgId else "id_${currentName.hashCode()}"
 
-                channels.add(
-                    createTV(
-                        channelCount++,
-                        finalId,
-                        currentName,
-                        currentLogo,
-                        currentGroup,
-                        currentUris,
-                        enrichedHeaders,
-                        currentDrmScheme,
-                        currentDrmLicense,
-                        currentCatchupType,
-                        currentCatchupDays,
-                        currentCatchupSource
-                    )
-                )
-                // Reset State
-                currentName = ""
-                currentLogo = ""
-                // Do NOT reset group if it came from a stream-independent tag? 
-                // However, M3U logic typically resets per item.
-                currentGroup = ""
-                currentTvgId = ""
-                currentHeaders = mutableMapOf()
-                currentDrmScheme = null
-                currentDrmLicense = null
-                currentCatchupType = null
-                currentCatchupDays = null
-                currentCatchupSource = null
+                channels.add(createTV(
+                    channelCount++, finalId, currentName, currentLogo, currentGroup, 
+                    currentUris, finalHeaders, currentDrmScheme, currentDrmLicense,
+                    currentCatchupType, currentCatchupDays, currentCatchupSource,
+                    currentLanguage, currentCountry, currentResolution, currentBitrate,
+                    currentFrameRate, currentVideoCodec, isAudioOnly, isWebViewEmbed,
+                    currentGenre
+                ))
+
+                // Reset per-channel state
+                currentName = ""; currentLogo = ""; currentGroup = ""; currentTvgId = ""
+                currentHeaders = mutableMapOf(); currentDrmScheme = null; currentDrmLicense = null
+                currentMimeType = null; currentCatchupType = null; currentCatchupDays = null; currentCatchupSource = null
+                currentLanguage = null; currentCountry = null; currentResolution = null
+                currentBitrate = null; currentFrameRate = null; currentVideoCodec = null
+                isAudioOnly = false; isWebViewEmbed = false; currentGenre = null
+                currentSubtitles.clear()
                 currentUris.clear()
             }
         }
-        
-        var isM3U = false
-        val plainUrls = mutableListOf<String>()
 
         try {
-            // Peek for JSON
-            reader.mark(1024)
-            var peekLine = reader.readLine()?.trim()
-            while (peekLine?.isEmpty() == true) peekLine = reader.readLine()?.trim()
-            
-            if (peekLine?.startsWith("{") == true || peekLine?.startsWith("[") == true) {
-                reader.reset()
-                return GenericJsonParser.parse(reader)
-            }
-            reader.reset()
-            
             while (reader.readLine().also { line = it } != null) {
-                try {
-                    var trimmedLine = line?.trim() ?: continue
-                    if (trimmedLine.isEmpty()) continue
+                var trimmedLine = line?.trim() ?: continue
+                if (trimmedLine.isEmpty()) continue
 
-                    // 1. Normalize tags with spaces (e.g., "# EXTINF" -> "#EXTINF")
-                    if (trimmedLine.startsWith("# ") || trimmedLine.startsWith("#  ")) {
-                        val parts = trimmedLine.split(Regex("\\s+"), limit = 2)
-                        if (parts.isNotEmpty()) {
-                            // Reconstruct "#TAG rest"
-                            trimmedLine = parts[0] + (if (parts.size > 1) " " + parts[1] else "")
-                        }
-                        // Force remove space after # just in case logic above missed simple "# TAG"
-                        if (trimmedLine.startsWith("# ")) {
-                            trimmedLine = "#" + trimmedLine.substring(1).trimStart()
-                        }
+                if (trimmedLine.startsWith("# ") || trimmedLine.startsWith("#  ")) {
+                    trimmedLine = "#" + trimmedLine.substring(1).trimStart()
+                }
+
+                when {
+                    trimmedLine.startsWith("#EXTM3U") -> {
+                        parsePropertiesToMap(trimmedLine, globalHeaders)
                     }
-
-                    if (trimmedLine.contains("#EXT-X-TARGETDURATION") || 
-                        trimmedLine.contains("#EXT-X-STREAM-INF") || 
-                        trimmedLine.contains("#EXT-X-MEDIA-SEQUENCE")) {
-                        return emptyList()
-                    }
-
-                    if (trimmedLine.startsWith("#EXTM3U")) {
-                        isM3U = true
-                        // Extract global properties from #EXTM3U tag
-                        val matches = PROP_REGEX.findAll(trimmedLine)
-                        for (match in matches) {
-                            val key = match.groupValues[1].lowercase()
-                            val value = if (match.groupValues[2].isNotEmpty()) match.groupValues[2] else match.groupValues[3]
-
-                            when (key) {
-                                "user-agent", "user_agent", "http-user-agent" -> globalHeaders["User-Agent"] = value
-                                "referer", "referrer", "http-referer" -> globalHeaders["Referer"] = value
-                                "cookie", "cookies" -> globalHeaders["Cookie"] = value
-                                "origin", "http-origin" -> globalHeaders["Origin"] = value
-                                "x-forwarded-for" -> globalHeaders["X-Forwarded-For"] = value
+                    trimmedLine.startsWith("#EXTINF:") -> {
+                        if (currentUris.isNotEmpty()) {
+                            saveAndReset()
+                        }
+                        
+                        val lastComma = trimmedLine.lastIndexOf(',')
+                        if (lastComma != -1) {
+                            currentName = trimmedLine.substring(lastComma + 1).trim()
+                        }
+                        
+                        val propsPart = if (lastComma != -1) trimmedLine.substring(0, lastComma) else trimmedLine
+                        val props = mutableMapOf<String, String>()
+                        parsePropertiesToMap(propsPart, props)
+                        
+                        currentTvgId = props["tvg-id"] ?: props["id"] ?: props["channel-id"] ?: ""
+                        currentLogo = props["tvg-logo"] ?: props["logo"] ?: props["icon"] ?: ""
+                        currentGroup = props["group-title"] ?: props["group"] ?: props["category"] ?: ""
+                        if (props.containsKey("tvg-name")) currentName = props["tvg-name"]!!
+                        
+                        // Localization
+                        currentLanguage = props["tvg-language"] ?: props["language"] ?: props["lang"]
+                        currentCountry = props["tvg-country"] ?: props["country"]
+                        currentGenre = props["tvg-genre"] ?: props["genre"]
+                        
+                        // Behavior Flags
+                        isAudioOnly = props["audio"]?.toBoolean() ?: props["radio"]?.toBoolean() ?: false
+                        isWebViewEmbed = props["embed"]?.toBoolean() ?: props["webview"]?.toBoolean() ?: false
+                        
+                        // Technical Specs
+                        currentResolution = props["resolution"] ?: props["quality"]
+                        currentFrameRate = props["frame-rate"] ?: props["fps"]
+                        currentBitrate = props["bitrate"]
+                        currentVideoCodec = props["video-codec"] ?: props["codec"]
+                        
+                        // Logo with Header unrolling (url|Referer=...)
+                        currentLogo = props["tvg-logo"] ?: props["logo"] ?: props["icon"] ?: ""
+                        if (currentLogo.contains("|")) {
+                            val logoParts = currentLogo.split("|", limit = 2)
+                            currentLogo = logoParts[0]
+                            logoParts[1].split("&").forEach { pair ->
+                                val kv = pair.split("=", limit = 2)
+                                if (kv.size == 2) currentHeaders[normalizeHeaderKey(kv[0])] = kv[1]
                             }
                         }
-                        continue
+                        
+                        // Headers as props
+                        props["user-agent"]?.let { currentHeaders["User-Agent"] = it }
+                        props["referer"]?.let { currentHeaders["Referer"] = it }
+                        props["cookie"]?.let { currentHeaders["Cookie"] = it }
+                        
+                        currentCatchupType = props["catchup"] ?: props["catchup-type"]
+                        currentCatchupDays = props["catchup-days"] ?: props["timeshift"]
+                        currentCatchupSource = props["catchup-source"]
                     }
-
-                    if (trimmedLine.startsWith("#EXTINF:")) {
-                        // Save previous if exists
-                        saveAndReset()
-
-                        // Extract Name (everything after the last comma)
-                        val lastCommaIndex = trimmedLine.lastIndexOf(',')
-                        if (lastCommaIndex != -1) {
-                            val rawName = trimmedLine.substring(lastCommaIndex + 1).trim()
-                            if (rawName.isNotEmpty()) currentName = rawName
+                    trimmedLine.startsWith("#EXTGRP:") -> {
+                        currentGroup = trimmedLine.substringAfter(":").trim()
+                    }
+                    trimmedLine.startsWith("#EXTHTTP:") -> {
+                        if (currentUris.isNotEmpty()) {
+                            saveAndReset()
                         }
-
-                        if (currentName.isEmpty()) {
-                            currentName = "ExclusiveTV ${channelCount + 1}"
-                        }
-
-                        // Extract Properties
-                        val propertiesPart = if (lastCommaIndex != -1) trimmedLine.substring(0, lastCommaIndex) else trimmedLine
-
-                        val matches = PROP_REGEX.findAll(propertiesPart)
-                        for (match in matches) {
-                            val key = match.groupValues[1].lowercase()
-                            val value = if (match.groupValues[2].isNotEmpty()) match.groupValues[2] else match.groupValues[3]
-
-                            when (key) {
-                                // ID
-                                "tvg-id", "tvg_id", "channel-id", "channel_id", "id" -> currentTvgId = value
-
-                                // Logo
-                                "tvg-logo", "tvg_logo", "logo", "icon", "thumb", "image" -> currentLogo = value
-
-                                // Group
-                                "group-title", "group_title", "group", "category", "genre" -> currentGroup = value
-
-                                // Name aliases (override comma name if present)
-                                "tvg-name", "tvg_name", "channel-name", "name", "title" -> {
-                                    if (value.isNotEmpty()) currentName = value
-                                }
-
-                                // Catchup
-                                "catchup", "catchup-type", "catchup_type" -> currentCatchupType = value
-                                "catchup-days", "catchup_days", "timeshift" -> currentCatchupDays = value
-                                "catchup-source", "catchup_source" -> currentCatchupSource = value
-
-                                // Headers (Standard & Extended)
-                                "user-agent", "user_agent", "http-user-agent" -> currentHeaders["User-Agent"] = value
-                                "referer", "referrer", "http-referer" -> currentHeaders["Referer"] = value
-                                "cookie", "cookies", "http-cookie" -> currentHeaders["Cookie"] = value
-                                "origin", "http-origin" -> currentHeaders["Origin"] = value
-
-                                // DRM
-                                "license-key", "license_key", "license-url", "license_url", "clearkey", "key" -> {
-                                    if (value.contains("|")) {
-                                        val parts = value.split("|")
-                                        currentDrmLicense = parts[0]
-                                        if (parts.size > 1) {
-                                            val headerParts = parts[1].split("&")
-                                            for (h in headerParts) {
-                                                val kv = h.split("=", limit = 2)
-                                                if (kv.size == 2) {
-                                                    currentHeaders[kv[0]] = kv[1]
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        currentDrmLicense = value
-                                    }
-                                }
-                                "license-type", "license_type", "drm-scheme", "drm" -> {
-                                    currentDrmScheme = when (value.lowercase()) {
-                                        "com.widevine.alpha", "widevine" -> "widevine"
-                                        "com.microsoft.playready", "playready" -> "playready"
-                                        "org.w3.clearkey", "com.clearkey.alpha", "clearkey" -> "clearkey"
-                                        else -> value
-                                    }
-                                }
-                            }
-                        }
-
-                    } else if (trimmedLine.startsWith("#EXTGRP:")) {
-                        // Group tag often follows EXTINF
-                        val group = trimmedLine.substringAfter("#EXTGRP:").trim()
-                        if (group.isNotEmpty()) currentGroup = group
-
-                    } else if (trimmedLine.startsWith("#EXT-X-KEY:")) {
-                        // EXT-X-KEY usually for HLS DRM
-                        if (currentUris.isNotEmpty()) saveAndReset()
-
-                        val matches = PROP_REGEX.findAll(trimmedLine)
-                        for (match in matches) {
-                            val key = match.groupValues[1].uppercase()
-                            val value = if (match.groupValues[2].isNotEmpty()) match.groupValues[2] else match.groupValues[3]
-
-                            when (key) {
-                                "METHOD" -> {
-                                    if (value != "NONE") {
-                                        currentDrmScheme = when (value) {
-                                            "AES-128", "SAMPLE-AES", "SAMPLE-AES-CTR" -> "clearkey"
-                                            else -> value.lowercase()
-                                        }
-                                    }
-                                }
-                                "URI" -> currentDrmLicense = value
-                            }
-                        }
-                    } else if (trimmedLine.startsWith("#EXTHTTP:") || trimmedLine.startsWith("# EXTHTTP:")) {
-                        // Parse JSON headers (supports new format with multiple header lines before URL)
-                        val jsonStr = trimmedLine.substringAfter("HTTP:").trim()
+                        // Support for JSON-formatted headers (Common in mixed-source playlists)
+                        val json = trimmedLine.substringAfter(":").trim()
                         try {
-                            val jsonObject = org.json.JSONObject(jsonStr)
-                            
-                            // Handle nested "headers" object if exists
-                            val headersObj = jsonObject.optJSONObject("headers")
-                            val sourceObj = if (headersObj != null) headersObj else jsonObject
-                            
-                            val keys = sourceObj.keys()
-                            while (keys.hasNext()) {
-                                val key = keys.next()
-                                val value = sourceObj.getString(key)
-                                // Normalize and add header
-                                currentHeaders[normalizeHeaderKey(key)] = value
+                            val obj = JSONObject(json)
+                            val headerObj = obj.optJSONObject("headers") ?: obj
+                            headerObj.keys().forEach { k ->
+                                currentHeaders[normalizeHeaderKey(k)] = headerObj.getString(k)
                             }
-                        } catch (e: Exception) {
-                            Log.d(TAG, "Failed to parse EXTHTTP JSON: ${e.message}")
+                        } catch (e: Exception) {}
+                    }
+                    trimmedLine.startsWith("#EXT-X-STREAM-INF:") -> {
+                        // This indicates the FOLLOWING line is a manifest variant, not just a raw stream.
+                        // We can use this to set a hint for the mimeType.
+                        currentMimeType = "application/x-mpegURL"
+                        parsePropertiesToMap(trimmedLine, currentHeaders)
+                    }
+                    trimmedLine.startsWith("#EXT-X-MEDIA:TYPE=SUBTITLES") -> {
+                        // Extract External Subtitle Track
+                        val props = mutableMapOf<String, String>()
+                        parsePropertiesToMap(trimmedLine, props)
+                        val subUri = props["uri"]
+                        val subName = props["name"] ?: props["language"] ?: "Subtitle"
+                        val subLang = props["language"]
+                        if (!subUri.isNullOrEmpty()) {
+                            currentSubtitles.add(SubtitleTrack(
+                                language = subLang ?: "und",
+                                languageName = subName,
+                                url = subUri,
+                                format = "vtt" // Default for HLS
+                            ))
                         }
-
-                    } else if (trimmedLine.startsWith("#KODIPROP:")) {
-                        // KODIPROP can appear multiple times - accumulate all properties
-                        // Do NOT reset if URIs are present, as headers may precede URLs in new format
-                        val parts = trimmedLine.substringAfter("#KODIPROP:").split("=", limit = 2)
+                    }
+                    trimmedLine.startsWith("#KODIPROP:") || trimmedLine.startsWith("#EXTVLCOPT:") -> {
+                        if (currentUris.isNotEmpty()) {
+                            saveAndReset()
+                        }
+                        // Cross-Compatibility for Kodi and VLC style properties (Headers/DRM)
+                        val parts = trimmedLine.substringAfter(":").split("=", limit = 2)
                         if (parts.size == 2) {
                             val key = parts[0].trim()
                             val value = parts[1].trim()
-
-                            when (key) {
-                                "inputstream.adaptive.license_type" -> {
-                                    currentDrmScheme = when (value.lowercase()) {
-                                        "com.widevine.alpha", "widevine" -> "widevine"
-                                        "com.microsoft.playready", "playready" -> "playready"
-                                        "org.w3.clearkey", "com.clearkey.alpha", "clearkey" -> "clearkey"
-                                        else -> value
-                                    }
-                                }
-                                 "inputstream.adaptive.license_key" -> {
-                                    if (value.contains("|")) {
-                                        val licenseParts = value.split("|")
-                                        currentDrmLicense = licenseParts[0]
-                                        if (licenseParts.size > 1) {
-                                            val headerParts = licenseParts[1].split("&")
-                                            for (h in headerParts) {
-                                                val kv = h.split("=", limit = 2)
-                                                if (kv.size == 2) {
-                                                    currentHeaders[kv[0]] = kv[1]
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        currentDrmLicense = value
-                                    }
-                                }
-                                "inputstream.adaptive.stream_headers" -> {
-                                    val headerPairs = value.split("&")
-                                    for (pair in headerPairs) {
-                                        val kv = pair.split("=", limit = 2)
-                                        if (kv.size == 2) {
-                                            currentHeaders[kv[0]] = kv[1]
-                                        }
-                                    }
-                                }
-                                // Pass through other KODIPROP values that might be needed as headers
-                                else -> {
-                                    if (!key.startsWith("inputstream")) {
-                                        currentHeaders[normalizeHeaderKey(key)] = value
-                                    }
-                                }
-                            }
-                        }
-                    } else if (trimmedLine.startsWith("#EXTVLCOPT:")) {
-                        // VLC options can appear multiple times - accumulate all
-                        val parts = trimmedLine.substringAfter("#EXTVLCOPT:").split("=", limit = 2)
-                        if (parts.size == 2) {
-                            val key = parts[0].trim().lowercase()
-                            val value = parts[1].trim()
-                            when (key) {
-                                "http-user-agent", "user-agent", "useragent" -> currentHeaders["User-Agent"] = value
-                                "http-referrer", "http-referer", "referrer", "referer" -> currentHeaders["Referer"] = value
-                                "http-origin", "origin" -> currentHeaders["Origin"] = value
-                                "http-cookie", "cookie" -> currentHeaders["Cookie"] = value
-                            }
-                        }
-                    } else if (!trimmedLine.startsWith("#")) {
-                        // Non-comment line could be URL or other data
-                        var isUrl = trimmedLine.contains("://")
-                        var finalUrl = trimmedLine
-                        
-                        // DECRYPTION INTERCEPT: If the URL doesn't look like a standard URL, try decrypting it
-                        // BUT: Only if it doesn't contain ://, otherwise it's already a valid URL
-                        if (!isUrl && trimmedLine.isNotEmpty()) {
-                            try {
-                                val key = com.codesrahul.exclusivetv.SecretManager.getAppKey()
-                                val decrypted = com.codesrahul.exclusivetv.SecurityUtil.decryptChannelData(finalUrl, key)
-                                if (decrypted.contains("://")) {
-                                    finalUrl = decrypted
-                                    isUrl = true
-                                    android.util.Log.d(TAG, "Decrypted URL: $finalUrl")
-                                }
-                            } catch (e: Exception) {
-                                // Decryption failed - this is expected for normal URLs
-                                // Keep original URL and continue
-                                android.util.Log.d(TAG, "Decryption not needed or failed: ${e.message}")
-                            }
-                        }
-
-                        if (isUrl) {
-                             // Handle pipe headers
-                             if (finalUrl.contains("|")) {
-                                 val urlParts = finalUrl.split("|", limit = 2)
-                                 finalUrl = urlParts[0].trim()
-                                 val headersPart = urlParts[1]
-                                 val headerPairs = headersPart.split("&")
-                                 for (pair in headerPairs) {
-                                     val kv = pair.split("=", limit = 2)
-                                     if (kv.size == 2) {
-                                         currentHeaders[normalizeHeaderKey(kv[0])] = kv[1]
-                                     }
-                                 }
-                             }
-                             
-                             // Handle query string headers (e.g. http://.../s.m3u8?user-agent=...&referer=...)
-                             // This is common in some IPTV links that don't use pipes
-                             if (finalUrl.contains("?")) {
-                                 val queryParams = finalUrl.substringAfter("?").split("&")
-                                 for (param in queryParams) {
-                                     val kv = param.split("=", limit = 2)
-                                     if (kv.size == 2) {
-                                         val key = kv[0].lowercase()
-                                         if (key == "user-agent" || key == "http-user-agent" || key == "useragent" ||
-                                             key == "referer" || key == "referrer" || key == "origin" || key == "cookie") {
-                                             currentHeaders[normalizeHeaderKey(key)] = kv[1]
-                                         }
-                                     }
-                                 }
-                             }
-                            
-                            currentUris.add(finalUrl)
-                            
-                            // Keep track of all URLs for fallback simple parser (always, not just non-M3U)
-                            // This ensures we have a recovery mechanism if M3U parsing fails to save channels
-                            plainUrls.add(finalUrl)
-
-                            if (currentName.isEmpty() || currentName.startsWith("Channel")) {
-                                val extracted = extractNameFromUrl(finalUrl)
-                                if (extracted.isNotEmpty()) currentName = extracted
-                            }
-                            
-                            // IMPORTANT: Now that we have a URL, save this channel
-                            // This allows multiple URI sources for same channel to be added before moving to next EXTINF
-                            // If next line is EXTINF, the saveAndReset at top of EXTINF block will save this properly
+                            processTagProperty(key, value, currentHeaders, { currentDrmScheme = it }, { currentDrmLicense = it }, { currentMimeType = it })
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error parsing line: $line", e)
+                    !trimmedLine.startsWith("#") -> {
+                        if (currentUris.isNotEmpty() && currentName.isEmpty()) {
+                             // This is a naked URL following another naked URL with no metadata in between
+                             saveAndReset()
+                        }
+                        // This is a Stream URL
+                        var finalUrl = trimmedLine
+                        
+                        // TiviMate Support: Pipe Header Extraction (|Header=Value&Header2=Value2)
+                        if (finalUrl.contains("|")) {
+                            val parts = finalUrl.split("|", limit = 2)
+                            finalUrl = parts[0].trim()
+                            val headersStr = parts[1]
+                            headersStr.split("&").forEach { pair ->
+                                val kv = pair.split("=", limit = 2)
+                                if (kv.size == 2) currentHeaders[normalizeHeaderKey(kv[0])] = kv[1]
+                            }
+                        }
+                        
+                        // TiviMate Support: Query String Header Extraction (?user-agent=...&referer=...)
+                        if (finalUrl.contains("?")) {
+                            val query = finalUrl.substringAfter("?")
+                            query.split("&").forEach { pair ->
+                                val kv = pair.split("=", limit = 2)
+                                if (kv.size == 2) {
+                                    val k = kv[0].lowercase()
+                                    if (k == "user-agent" || k == "referer" || k == "cookie" || k == "origin") {
+                                        currentHeaders[normalizeHeaderKey(k)] = kv[1]
+                                    }
+                                }
+                            }
+                        }
+
+
+
+                        // 3. UNIVERSAL GROUPING HEURISTIC: Derive group from domain if missing
+                        if (currentGroup.isEmpty()) {
+                            val uri = android.net.Uri.parse(finalUrl)
+                            val host = uri.host?.lowercase() ?: ""
+                            if (host.isNotEmpty()) {
+                                currentGroup = host.split(".")
+                                    .filter { it != "www" && it != "com" && it != "net" && it != "org" && it != "tv" && it != "pages" && it != "dev" }
+                                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                                    .trim()
+                                    
+                                if (currentGroup.isEmpty() && host.isNotEmpty()) {
+                                    currentGroup = host.replaceFirstChar { it.uppercase() }
+                                }
+                            }
+                        }
+
+                        currentUris.add(finalUrl)
+                        
+                        // HYPER-PARITY HEURISTIC: Force video mode for DASH manifests
+                        if (finalUrl.contains(".mpd", ignoreCase = true)) {
+                            isAudioOnly = false
+                        }
+
+                        if (currentName.isEmpty()) {
+                            currentName = extractNameFromUrl(finalUrl)
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing M3U/playlist", e)
+            Log.e(TAG, "M3U Smart Parsing Error", e)
         }
-
-        // Add last channel
+        
         saveAndReset()
-
-        // Fallback for plain lists (no M3U headers found but URLs present)
-        if (channels.isEmpty() && !isM3U && plainUrls.isNotEmpty()) {
-            Log.d(TAG, "Using fallback: Found ${plainUrls.size} plain URLs, creating channels")
-            for ((index, l) in plainUrls.withIndex()) {
-                channels.add(createTV(index, "", "", "", "", listOf(l), mapOf(), null, null, null, null, null))
-            }
-        }
-
-        // COMPREHENSIVE LOGGING for debugging
-        Log.i(TAG, "=== PARSER RESULTS ===")
-        Log.i(TAG, "Format: ${if (isM3U) "M3U" else "PLAIN/GENERIC"}")
-        Log.i(TAG, "Total channels parsed: ${channels.size}")
-        Log.i(TAG, "Plain URLs in fallback list: ${plainUrls.size}")
-        if (channels.isNotEmpty()) {
-            Log.i(TAG, "First 3 channels:")
-            channels.take(3).forEach { channel ->
-                Log.i(TAG, "  - ${channel.title} (${channel.logo}) [URIs: ${channel.uris.size}]")
-            }
-            Log.i(TAG, "Last 3 channels:")
-            channels.takeLast(3).forEach { channel ->
-                Log.i(TAG, "  - ${channel.title} (${channel.logo}) [URIs: ${channel.uris.size}]")
-            }
-        }
-        Log.i(TAG, "======================")
-
         return channels
     }
 
-    // Overload for String compatibility (wrapping)
-    fun parse(content: String): List<TV> {
-        return parse(BufferedReader(StringReader(content)))
-    }
-    
-    private fun normalizeHeaderKey(key: String): String {
-        val k = key.lowercase().replace("_", "-")
-        return when {
-            k == "cookie" || k == "http-cookie" -> "Cookie"
-            k == "user-agent" || k == "http-user-agent" || k == "useragent" -> "User-Agent"
-            k == "referer" || k == "referrer" || k == "http-referer" || k == "http-referrer" -> "Referer"
-            k == "origin" || k == "http-origin" -> "Origin"
-            k == "authorization" -> "Authorization"
-            k == "content-type" -> "Content-Type"
-            k == "accept" -> "Accept"
-            k == "x-forwarded-for" -> "X-Forwarded-For"
-            else -> key 
+    private fun parsePropertiesToMap(line: String, map: MutableMap<String, String>) {
+        PROP_REGEX.findAll(line).forEach { m ->
+            val key = m.groupValues[1].lowercase()
+            val value = m.groupValues[2].ifEmpty { m.groupValues[3] }
+            map[key] = value
         }
     }
 
-    // Extracted name helper
-    private fun extractNameFromUrl(url: String): String {
-        try {
-            // Fast Path: String manipulation to avoid expensive Uri.parse for thousands of items
-            val queryStart = url.indexOf('?')
-            val pathPart = if (queryStart != -1) url.substring(0, queryStart) else url
-            val segments = pathPart.split('/')
-            
-            if (segments.isEmpty()) return ""
-            
-            var pIdx = segments.lastIndex
-            while (pIdx >= 0 && (segments[pIdx].isEmpty() || segments[pIdx].contains("."))) {
-                val s = segments[pIdx].lowercase()
-                if (s.endsWith(".m3u8") || s.endsWith(".mpd") || s.endsWith(".ts") || s.endsWith(".m4s")) {
-                     val name = s.substringBeforeLast('.')
-                     if (name != "index" && name != "master" && name != "manifest" && name != "playlist" && name != "chunk") {
-                         // If it's a meaningful filename, use it
-                         return name.replace('_', ' ').replace('-', ' ').trim()
-                     }
+    private fun processTagProperty(key: String, value: String, headers: MutableMap<String, String>, setDrm: (String) -> Unit, setLicense: (String) -> Unit, setMime: (String) -> Unit) {
+        val k = key.lowercase()
+        when {
+            k.contains("license_type") || k.contains("drm-scheme") -> {
+                setDrm(when(value.lowercase()) {
+                    "com.widevine.alpha", "widevine" -> "widevine"
+                    "org.w3.clearkey", "clearkey" -> "clearkey"
+                    "com.microsoft.playready", "playready" -> "playready"
+                    else -> value
+                })
+            }
+            k.contains("license_key") || k.contains("license_url") || k == "clearkey" -> {
+                // Support both direct URL and pipe-delimited headers in license field
+                if (value.contains("|")) {
+                    val parts = value.split("|")
+                    setLicense(parts[0])
+                    if (parts.size > 1) {
+                         parts[1].split("&").forEach { pair ->
+                             val kv = pair.split("=", limit = 2)
+                             if (kv.size == 2) headers[normalizeHeaderKey(kv[0])] = kv[1]
+                         }
+                    }
+                } else {
+                    setLicense(value)
                 }
-                pIdx--
             }
-            
-            if (pIdx >= 0) {
-                 var name = segments[pIdx]
-                 // Skip hash-like hex IDs
-                 if (name.length > 20 && name.matches(Regex("[a-fA-F0-9]+"))) {
-                     pIdx--
-                     if (pIdx >= 0) name = segments[pIdx]
-                 }
-                 
-                 // Strip common segment/timestamp suffixes (e.g., _12345678)
-                 name = name.replace(Regex("[-_]\\d{5,}$"), "")
-                 return name.replace('_', ' ').replace('-', ' ').trim()
+            k == "manifest_type" || k == "inputstream.adaptive.manifest_type" -> {
+                setMime(when(value.lowercase()) {
+                    "mpd", "dash" -> "application/dash+xml"
+                    "m3u8", "hls" -> "application/x-mpegURL"
+                    else -> value
+                })
             }
-        } catch (e: Exception) {
+            k == "user-agent" || k == "http-user-agent" || k == "useragent" -> headers["User-Agent"] = value
+            k == "referer" || k == "http-referer" || k == "referrer" -> headers["Referer"] = value
+            k == "cookie" || k == "http-cookie" -> headers["Cookie"] = value
+            k == "origin" -> headers["Origin"] = value
+            else -> {
+                // Pass through other Kodi/VLC properties as headers if they aren't internal plugin keys
+                if (!k.startsWith("inputstream")) {
+                    headers[normalizeHeaderKey(key)] = value
+                }
+            }
         }
-        return ""
+    }
+
+    private fun normalizeHeaderKey(key: String): String {
+        return when (key.lowercase().trim()) {
+            "user-agent", "ua", "http-user-agent", "useragent" -> "User-Agent"
+            "referer", "referrer", "http-referer" -> "Referer"
+            "cookie", "http-cookie" -> "Cookie"
+            "origin" -> "Origin"
+            "authorization" -> "Authorization"
+            "token" -> "Token"
+            "x-forwarded-for" -> "X-Forwarded-For"
+            else -> key
+        }
+    }
+
+    private fun extractNameFromUrl(url: String): String {
+        return try {
+            val segments = url.substringBefore('?').split('/').filter { it.isNotEmpty() }
+            
+            // Try to find a meaningful path segment (e.g., /mp1/CH_NAME/index.mpd)
+            var rawName = when {
+                segments.size >= 2 && segments.last().contains("index") -> segments[segments.size - 2]
+                segments.isNotEmpty() -> segments.last().substringBeforeLast('.')
+                else -> ""
+            }
+
+            if (rawName.length <= 1) return ""
+
+            // 1. SEMANTIC FORENSICS: Strip CDN Noise (Hex strings, timestamps, hashes)
+            // Example: "57ae0b6fa2b64281984574d406f9a696" -> Strip
+            // Example: "1540057075" -> Strip
+            val noiseRegex = "^[a-f0-9]{8,}$|^[a-f0-9]{32,}$|^\\d{10,}$".toRegex()
+            if (noiseRegex.matches(rawName.lowercase())) {
+                // If the last segment was noise, try the previous one
+                if (segments.size >= 3 && segments.last().contains("index")) {
+                    rawName = segments[segments.size - 3]
+                } else if (segments.size >= 2) {
+                    rawName = segments[segments.size - 2]
+                }
+            }
+
+            // 2. CLEANING: Replace separators with spaces
+            var cleanName = rawName.replace('_', ' ').replace('-', ' ').trim()
+
+            // 3. CAMEL CASE SPLITTING: Insert spaces in "StarPlusHD" -> "Star Plus HD"
+            val camelRegex = "(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])".toRegex()
+            cleanName = cleanName.replace(camelRegex, " ")
+
+            // 4. NORMALIZATION: Capitalize words
+            cleanName.split(" ").filter { it.isNotEmpty() }.joinToString(" ") { 
+                it.lowercase().replaceFirstChar { char -> char.uppercase() } 
+            }
+        } catch (e: Exception) { "" }
     }
 
     private fun createTV(
-        id: Int,
-        apiId: String,
-        name: String,
-        logo: String,
-        group: String,
-        uris: List<String>,
-        headers: Map<String, String>,
-        drmScheme: String?,
-        drmLicense: String?,
-        catchupType: String?,
-        catchupDays: String?,
-        catchupSource: String?
+        id: Int, apiId: String, name: String, logo: String, group: String, uris: List<String>, 
+        headers: Map<String, String>, drmScheme: String?, drmLicense: String?, 
+        catchupType: String?, catchupDays: String?, catchupSource: String?,
+        language: String?, country: String?, resolution: String?, bitrate: String?,
+        frameRate: String?, videoCodec: String?, isAudioOnly: Boolean, 
+        isWebViewEmbed: Boolean, genre: String?
     ): TV {
-        // Default name if still empty
-        val finalName = if (name.isEmpty()) "ExclusiveTV ${id + 1}" else name
-        val finalGroup = group
-
-        // Auto-detect audio formats from URLs
-        val audioFormats = mutableSetOf<String>()
-        var hasDolbyAtmos = false
-        var hasDolbyDigital = false
-        var hasDolbyTrueHD = false
-        
-        uris.forEach { url ->
-            val detected = AudioFormatDetector.detectFromUrl(url)
-            detected.forEach { format ->
-                audioFormats.add(format.name)
-                when (format) {
-                    AudioFormat.EAC3_JOC -> hasDolbyAtmos = true
-                    AudioFormat.AC3, AudioFormat.EAC3 -> hasDolbyDigital = true
-                    AudioFormat.TRUEHD -> hasDolbyTrueHD = true
-                    else -> {}
-                }
-            }
-        }
-
-        // Detect device compatibility based on audio/video capabilities
-        val compatibleDevices = mutableSetOf("firetv", "androidtv", "mobile", "web")
-        if (hasDolbyAtmos) {
-            compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
-        }
-        if (hasDolbyTrueHD) {
-            compatibleDevices.retainAll(setOf("firetv", "androidtv_11_plus", "smart_tv"))
-        }
-
+        val finalName = name.ifEmpty { "ExclusiveTV ${id + 1}" }
         return TV(
             id = id,
             apiId = apiId,
             name = finalName,
             title = finalName,
-            description = null,
             logo = logo,
-            image = null,
             uris = ArrayList(uris),
             headers = if (headers.isNotEmpty()) HashMap(headers) else null,
-            group = finalGroup,
+            group = group,
             type = Type.STREAM,
             drmScheme = drmScheme,
             drmLicenseUrl = drmLicense,
             catchupType = catchupType,
             catchupDays = catchupDays,
             catchupSource = catchupSource,
-            // Audio/Video format metadata
-            audioFormats = audioFormats,
-            dolbyDigital = hasDolbyDigital,
-            dolbyAtmos = hasDolbyAtmos,
-            dolbyTrueHD = hasDolbyTrueHD,
-            compatibleDevices = compatibleDevices,
-            child = listOf()
+            language = language,
+            country = country,
+            resolution = resolution,
+            bitrate = bitrate,
+            frameRate = frameRate,
+            videoCodec = videoCodec,
+            isAudioOnly = isAudioOnly,
+            isWebViewEmbed = isWebViewEmbed,
+            genre = genre,
+            audioFormats = setOf(),
+            compatibleDevices = setOf("androidtv", "mobile"),
+            child = emptyList()
         )
     }
 }

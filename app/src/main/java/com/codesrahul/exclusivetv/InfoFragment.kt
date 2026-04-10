@@ -195,11 +195,18 @@ class InfoFragment : Fragment() {
         b.channelNumber.text = String.format("%04d", tvViewModel.tv.id + 1)
         b.title.text = tvViewModel.tv.title
 
-        LogoUtil.loadLogo(requireContext(), b.logo, tvViewModel.tv.logo, tvViewModel.tv.title)
-
         // Fix for symbols/icons not showing correctly on API < 23 (XML tint ignored)
+        tvUiUtils?.tintTextViewDrawable(b.languageBadge, android.graphics.Color.WHITE)
         tvUiUtils?.tintTextViewDrawable(b.videoBadge, android.graphics.Color.WHITE)
         tvUiUtils?.tintTextViewDrawable(b.audioBadge, android.graphics.Color.WHITE)
+
+        // Language Display
+        if (!tvViewModel.tv.language.isNullOrEmpty()) {
+            b.languageBadge.text = tvViewModel.tv.language
+            b.languageBadge.visibility = View.VISIBLE
+        } else {
+            b.languageBadge.visibility = View.GONE
+        }
 
         tvViewModel.videoQuality.observe(viewLifecycleOwner) {
             if (!it.isNullOrEmpty()) {

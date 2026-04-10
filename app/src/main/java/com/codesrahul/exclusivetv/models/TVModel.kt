@@ -59,6 +59,13 @@ class TVModel(var tv: TV) : ViewModel() {
 
     init {
         updateEPG()
+        
+        // Seed Technical Specs from Playlist Metadata
+        tv.resolution?.let { _videoQuality.postValue(it) }
+        tv.videoCodec?.let { if (_videoQuality.value.isNullOrEmpty()) _videoQuality.postValue(it) }
+        
+        // Audio Quality seed from codec info
+        tv.audioCodec?.let { _audioQuality.postValue(it) }
     }
 
     // Methods

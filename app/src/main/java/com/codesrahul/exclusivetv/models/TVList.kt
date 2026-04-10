@@ -101,6 +101,10 @@ object TVList {
     val importProgress: LiveData<Int>
         get() = _importProgress
         
+    private val _lastUpdatedTimeStr = MutableLiveData<String>()
+    val lastUpdatedTimeStr: LiveData<String>
+        get() = _lastUpdatedTimeStr
+
     private val initDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
 
     fun findChannelByName(query: String): TVModel? {
@@ -474,23 +478,49 @@ object TVList {
                            }
                       }
                      
-                      // PROFESSIONAL IMPROVEMENT: Remove redundant unrolling. 
-                      // The player already handles backup links (uris list) correctly.
-                      // This keeps the UI list clean and prevents duplicate entries.
-                      // SMART DEDUPLICATION: Group channels with same title across different sources
-                      val mergedMap = LinkedHashMap<String, TV>()
+                      // SMART DEDUPLICATION: 
+                      // 1. Group by Title to collect backup URLs.
+                      // 2. Then ensure unique URLs to prevent same stream appearing multiple times.
+                      val titleMap = LinkedHashMap<String, TV>()
+                      val seenUrls = mutableSetOf<String>()
+                      
                       allChannels.forEach { tv ->
-                          val key = tv.title.lowercase().trim()
-                          if (mergedMap.containsKey(key)) {
-                              val existing = mergedMap[key]!!
+                          val titleKey = tv.title.lowercase().trim()
+                          val primaryUrl = tv.uris.firstOrNull() ?: ""
+                          
+                          if (primaryUrl.isEmpty()) return@forEach
+                          
+                          if (titleMap.containsKey(titleKey)) {
+                              val existing = titleMap[titleKey]!!
+                              // Merge missing technical metadata if existing is empty
+                              if (existing.logo.isEmpty() && tv.logo.isNotEmpty()) existing.logo = tv.logo
+                              if (existing.language.isNullOrEmpty() && !tv.language.isNullOrEmpty()) existing.language = tv.language
+                              if (existing.country.isNullOrEmpty() && !tv.country.isNullOrEmpty()) existing.country = tv.country
+                              if (existing.resolution.isNullOrEmpty() && !tv.resolution.isNullOrEmpty()) existing.resolution = tv.resolution
+                              if (existing.bitrate.isNullOrEmpty() && !tv.bitrate.isNullOrEmpty()) existing.bitrate = tv.bitrate
+                              if (existing.frameRate.isNullOrEmpty() && !tv.frameRate.isNullOrEmpty()) existing.frameRate = tv.frameRate
+                              if (existing.videoCodec.isNullOrEmpty() && !tv.videoCodec.isNullOrEmpty()) existing.videoCodec = tv.videoCodec
+                              if (existing.genre.isNullOrEmpty() && !tv.genre.isNullOrEmpty()) existing.genre = tv.genre
+                              
+                              // Collect unique backup URLs
                               val combinedUris = (existing.uris + tv.uris).distinct()
                               existing.uris = combinedUris
                           } else {
-                              mergedMap[key] = tv
+                              titleMap[titleKey] = tv
                           }
                       }
                       
-                      val finalChannels = mergedMap.values.toMutableList()
+                      // Now Filter for Unique Primary URLs across all titled channels
+                      val finalChannelsList = mutableListOf<TV>()
+                      titleMap.values.forEach { tv ->
+                          val primaryUrl = tv.uris.firstOrNull() ?: ""
+                          if (primaryUrl.isNotEmpty() && !seenUrls.contains(primaryUrl)) {
+                              finalChannelsList.add(tv)
+                              seenUrls.add(primaryUrl)
+                          }
+                      }
+                      
+                      val finalChannels = finalChannelsList.toMutableList()
                       
                       // FIX: Re-index securely after merging
                       finalChannels.forEachIndexed { index, tv ->
@@ -530,6 +560,9 @@ object TVList {
                       }
                       lastListHash = newListHash
                       SP.lastUpdateTime = System.currentTimeMillis() // Update success timestamp
+                      
+                      val dateFormat = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
+                      _lastUpdatedTimeStr.postValue("Last sync: ${dateFormat.format(java.util.Date())}")
 
                       // ATOMIC SAVE: Write to temp file first then rename to prevent corruption on crash
                       val finalFile = File(ctx.filesDir, FILE_NAME)
@@ -735,13 +768,10 @@ object TVList {
     }
 
     private fun parseUniversal(reader: BufferedReader): List<TV> {
-        // Use PushbackReader to peek at the first non-whitespace character 
-        // to decide between JSON and M3U without consuming the stream or relying on mark/reset.
-        val pushbackReader = java.io.PushbackReader(reader, 10)
+        val pushbackReader = java.io.PushbackReader(reader, 1024)
         
         try {
             var firstChar = -1
-            // Skip leading whitespace to find the first significant character
             while (true) {
                 val c = pushbackReader.read()
                 if (c == -1) break
@@ -752,138 +782,61 @@ object TVList {
                 }
             }
             
-            if (firstChar == '{'.code || firstChar == '['.code) {
-                return GenericJsonParser.parse(pushbackReader)
-            } else if (firstChar == '#'.code) {
-                return M3UParser.parse(BufferedReader(pushbackReader))
-            } else if (firstChar >= 0x4D00 && firstChar <= 0x4DFF) {
-                // Gua requires full string for decoding. 
-                // We read the rest of the stream into a string.
-                val remaining = BufferedReader(pushbackReader).readText()
-                val g = Gua()
-                val decoded = if (g.verify(remaining)) g.decode(remaining) else remaining
-                val secretKey = SecretManager.getAppKey()
-                val finalContent = SecurityUtil.decryptChannelData(decoded, secretKey)
-                return parseUniversal(finalContent)
-            } else {
+            return when {
+                firstChar == '{'.code || firstChar == '['.code -> {
+                    DeepHeuristicParser.parse(pushbackReader)
+                }
+                firstChar == '#'.code -> {
+                    M3UParser.parse(BufferedReader(pushbackReader))
+                }
+                firstChar >= 0x4D00 && firstChar <= 0x4DFF -> {
+                    // Encrypted/Gua
+                    val remaining = BufferedReader(pushbackReader).readText()
+                    val g = Gua()
+                    val decoded = if (g.verify(remaining)) g.decode(remaining) else remaining
+                    val secretKey = SecretManager.getAppKey()
+                    val finalContent = SecurityUtil.decryptChannelData(decoded, secretKey)
+                    parseUniversal(finalContent)
+                }
+                else -> {
+                    // Fallback: Try Heuristic on raw text
+                    DeepHeuristicParser.parse(pushbackReader)
+                }
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Universal Parsing Error", e)
         }
         
         return emptyList()
     }
 
     private fun parseUniversal(content: String): List<TV> {
-        var string = content.trim()
-
-        // 1. ULTIMATE JSON BYPASS: If it looks like JSON, skip decryption entirely.
-        // Decrypting plain text JSON often results in garbage or empty strings.
-        if (string.startsWith("{") || string.startsWith("[")) {
-             try {
-                 val result = GenericJsonParser.parse(string)
-                 if (result.isNotEmpty()) return result
-             } catch (e: Exception) {
-             }
-        }
-
-        // SECURITY UPGRADE: Use Native Key
-        // Layer 1: Gua64 Decoding (Encoding layer)
-        val g = Gua()
-        val decodedFromGua = if (g.verify(string)) g.decode(string) else string
-        
-        // Layer 2: AES Decryption (Security layer)
-        val secretKey = SecretManager.getAppKey()
-        val finalString = SecurityUtil.decryptChannelData(decodedFromGua, secretKey)
-        
-        string = finalString
-        
+        val string = content.trim()
         if (string.isBlank()) return emptyList()
-        val decryptedContent = string
 
-        // 1. JSON Detection (PRIORITY)
-        val startIndex = string.indexOfFirst { it == '[' || it == '{' }
-        if (startIndex != -1) {
-             try {
-                val jsonString = string.substring(startIndex)
-                val element = com.google.gson.JsonParser.parseString(jsonString)
-                val allChannels = mutableListOf<TV>()
-                val gson = com.google.gson.GsonBuilder().setLenient().create()
-
-                fun processElement(item: com.google.gson.JsonElement) {
-                    when {
-                        item.isJsonObject -> {
-                            val obj = item.asJsonObject
-                            try {
-                                val tv = gson.fromJson(obj, TV::class.java)
-                                if (tv != null && !tv.uris.isNullOrEmpty()) {
-                                    allChannels.add(tv)
-                                } else {
-                                    val genericTv = GenericJsonParser.parseSingleObject(obj, allChannels.size)
-                                    if (genericTv != null) allChannels.add(genericTv)
-                                }
-                            } catch (e: Exception) {
-                                val subList = GenericJsonParser.parse(obj.toString())
-                                if (subList.isNotEmpty()) allChannels.addAll(subList)
-                            }
-                        }
-                        item.isJsonPrimitive && item.asJsonPrimitive.isString -> {
-                            val m3uContent = item.asString
-                            if (m3uContent.contains("#EXTINF") || m3uContent.contains("http") || m3uContent.contains("EXTHTTP")) {
-                                allChannels.addAll(parseUniversal(m3uContent))
-                            }
-                        }
-                    }
-                }
-
-                if (element.isJsonArray) {
-                    element.asJsonArray.forEach { processElement(it) }
-                } else if (element.isJsonObject) {
-                    processElement(element)
-                }
-
-                if (allChannels.isNotEmpty()) {
-                    return allChannels
-                }
-            } catch (e: Exception) {
+        return when {
+            string.startsWith("{") || string.startsWith("[") -> {
+                DeepHeuristicParser.parse(string)
             }
-        }
-
-        // 2. PLS Playlist
-        if (decryptedContent.contains("[playlist]", ignoreCase = true)) {
-             val plsList = PlsParser.parse(decryptedContent)
-             if (plsList.isNotEmpty()) return plsList
-        }
-
-        // 3. M3U / M3U8 / Kodi / Star Playlist
-        if (decryptedContent.contains("#EXTINF") || decryptedContent.contains("#EXTM3U") || 
-            decryptedContent.contains("EXTHTTP") || decryptedContent.contains("#KODIPROP")) {
-            
-            // Route to KodiParser if it contains Kodi properties or Star headers
-            if (decryptedContent.contains("#KODIPROP") || decryptedContent.contains("EXTHTTP")) {
-                try {
-                    val kodiList = KodiParser.parse(decryptedContent)
-                    if (kodiList.isNotEmpty()) return kodiList
-                } catch (e: Exception) {
+            string.startsWith("#EXTM3U") || string.startsWith("#EXTINF") -> {
+                M3UParser.parse(BufferedReader(StringReader(string)))
+            }
+            else -> {
+                // Secondary check: Gua/Encrypted
+                if (string[0].code >= 0x4D00 && string[0].code <= 0x4DFF) {
+                    val g = Gua()
+                    val decoded = if (g.verify(string)) g.decode(string) else string
+                    val secretKey = SecretManager.getAppKey()
+                    val decrypted = SecurityUtil.decryptChannelData(decoded, secretKey)
+                    parseUniversal(decrypted)
+                } else if (string.contains("[playlist]", ignoreCase = true)) {
+                    PlsParser.parse(string)
+                } else {
+                    // Final Heuristic Attempt
+                    DeepHeuristicParser.parse(string)
                 }
             }
-
-            try {
-                // Use String Reader for M3UParser (compatible)
-                val m3uList = M3UParser.parse(java.io.BufferedReader(java.io.StringReader(decryptedContent)))
-                if (m3uList.isNotEmpty()) return m3uList
-            } catch (e: Exception) {
-            }
         }
-
-        // 4. Fallback: Try Simple List Parser (Original Logic Restored)
-        if (string.contains("http://") || string.contains("https://")) {
-            val simpleList = SimpleListParser.parse(string)
-            if (simpleList.isNotEmpty()) {
-                return simpleList
-            }
-        }
-
-        return emptyList()
     }
 
     private suspend fun parseUniversalFile(file: File): List<TV> = withContext(Dispatchers.IO) {
@@ -983,103 +936,50 @@ object TVList {
         
         return@withContext emptyList<TV>()
     }
-
-    private suspend fun expandNestedPlaylists(originalList: List<TV>, depth: Int = 0): List<TV> = withContext(Dispatchers.IO) {
-        // Prevent infinite recursion or excessive depth
-        // Optimization: Don't auto-expand large lists. Big lists are usually final channel lists.
-        if (depth > 1 || originalList.size > 20) {
-            return@withContext originalList
-        }
-
-        val client = SecureHttpClient.client
-        // Limit concurrency to avoid overwhelming servers (max 5 parallel fetches)
-        val semaphore = kotlinx.coroutines.sync.Semaphore(5)
+    private suspend fun expandNestedPlaylists(originalList: List<TV>, depth: Int = 0, processedUrls: MutableSet<String> = mutableSetOf()): List<TV> = withContext(Dispatchers.IO) {
+        if (depth > 3 || originalList.size > 2000) return@withContext originalList
         
-        // 1. Map each item to a Deferred result (or immediate value)
-        val deferredResults = originalList.map { tv ->
-            val url = tv.uris.firstOrNull() ?: ""
+        val expandedList = mutableListOf<TV>()
+        val client = SecureHttpClient.client
+        
+        for (tv in originalList) {
+            val url = tv.uris.firstOrNull() ?: continue
             
-            // Broader check for playlists
-            // If it's NOT a clearly identified stream extension, treat it as a potential playlist
-            // specially if coming from a dynamic API
-            val isStream = (url.contains(".m3u8", ignoreCase = true) || 
-                           url.contains(".mpd", ignoreCase = true) ||
-                           url.contains(".ts", ignoreCase = true) ||
-                           url.contains(".mkv", ignoreCase = true) ||
-                           url.contains(".mp4", ignoreCase = true) ||
-                           url.startsWith("rtsp://", ignoreCase = true) ||
-                           url.startsWith("rtmp://", ignoreCase = true) ||
-                           url.contains("/manifest", ignoreCase = true) ||
-                           url.contains("playlist.m3u8", ignoreCase = true) ||
-                           url.contains("stream/", ignoreCase = true) ||
-                           url.contains("/live/", ignoreCase = true) ||
-                           url.contains("/play/", ignoreCase = true)) && 
-                           !url.contains(".m3u", ignoreCase = true) // .m3u is usually an IPTV list we WANT to expand
+            // Smater logic: check if this is a playlist link, not a stream
+            val isPlaylist = url.endsWith(".m3u") || url.endsWith(".m3u8") || 
+                           url.endsWith(".json") || url.endsWith(".txt") ||
+                           url.contains("playlist") || url.contains("get.php")
+            
+            // Streams usually have certain keywords or multiple segments
+            val isLikelyStream = url.contains(".ts") || url.contains("/hls/") || url.contains(".mpd") || url.contains(".m3u8/")
 
-            // If it has children already, it's a group, don't expand
-            if (tv.child.isNotEmpty()) {
-                 async { listOf(tv) }
-            }
-            // If it's a candidate (not a stream, or a .m3u), fetch asynchronously
-            else if ((!isStream || url.contains(".m3u", ignoreCase = true)) && url.startsWith("http")) {
-                async {
-                    semaphore.acquire()
-                    try {
-                        if (SecurityUtil.isMaintenanceMode) return@async listOf(tv)
-                        val requestBuilder = Request.Builder().url(url).get()
-                        
-                        // FIX: Do NOT propagate parent headers to the nested playlist fetch.
-                        // We want to fetch the M3U using the standard client (Chrome UA), just like Source Config.
-                        // Propagating API headers to a GitHub/External URL is incorrect.
-                        
-                        val request = requestBuilder.build()
-                         
-                        // Execute blocking call with shorter timeout for nested expansion
-                        val expansionClient = client.newBuilder()
-                            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                            .build()
-                        
-                        expansionClient.newCall(request).execute().use { response ->
-                            // FIX: Use streaming instead of .string() to avoid OOM
-                            val responseBody = response.body
-                            if (response.isSuccessful && responseBody != null) {
-                                // Use UNIVERSAL parser with streaming
-                                // We use Reader helper
-                                val sourceStream = responseBody.byteStream()
-                                val reader = java.io.BufferedReader(java.io.InputStreamReader(sourceStream, Charsets.UTF_8))
-                                
-                                 val subChannels = parseUniversal(reader)
-                                 if (subChannels.isNotEmpty()) {
-                                     subChannels.forEach { child ->
-                                         // Inherit group from parent name if child has no group or is "Uncategorized"
-                                         if (child.group.isBlank() || child.group == "Uncategorized") {
-                                             child.group = tv.name
-                                         }
-                                     }
-                                    // RECURSIVE: Expand if these items are also playlists
-                                    expandNestedPlaylists(subChannels, depth + 1)
-                                } else {
-                                    listOf(tv) // Keep original if empty/parsing failed
-                                }
+            if (isPlaylist && !isLikelyStream && !processedUrls.contains(url)) {
+                processedUrls.add(url)
+                try {
+                    val request = Request.Builder().url(url).build()
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val bodyText = response.body?.string() ?: ""
+                            val nestedChannels = parseUniversal(bodyText)
+                            if (nestedChannels.isNotEmpty()) {
+                                // RECURSION: Smater than TiviMate (recursive merging)
+                                val deepChannels = expandNestedPlaylists(nestedChannels, depth + 1, processedUrls)
+                                expandedList.addAll(deepChannels)
                             } else {
-                                listOf(tv)
+                                expandedList.add(tv)
                             }
+                        } else {
+                            expandedList.add(tv)
                         }
-                    } catch (e: Exception) {
-                        listOf(tv)
-                    } finally {
-                        semaphore.release()
                     }
+                } catch (e: Exception) {
+                    expandedList.add(tv)
                 }
             } else {
-                // If not a candidate, wrap in immediate result
-                async { listOf(tv) }
+                expandedList.add(tv)
             }
         }
-
-        // 2. Await all results and flatten
-        deferredResults.map { it.await() }.flatten()
+        return@withContext expandedList
     }
 
     fun refreshModels(ctx: Context) {

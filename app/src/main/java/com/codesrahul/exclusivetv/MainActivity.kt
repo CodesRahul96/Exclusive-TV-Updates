@@ -42,6 +42,12 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.remoteConfigSettings
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.IntegrityTokenRequest
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.ExistingPeriodicWorkPolicy
+import java.util.concurrent.TimeUnit
 
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -440,6 +446,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             updateManager.checkAndUpdate()
             startPeriodicUpdateCheck()
         }
+
+        // --- SMART BACKGROUND SYNC ---
+        scheduleBackgroundSync()
         
         // Auto-play last channel if available
         val pos = TVList.position.value ?: -1
@@ -788,6 +797,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 
                 val downloadHostFallback = remoteConfig.getString("api_download_host_fallback")
                 if (downloadHostFallback.isNotBlank()) SP.apiDownloadHostFallback = downloadHostFallback
+
+                // --- SCHEDULE BACKGROUND SYNC AFTER CONFIG UPDATE ---
+                // This ensures that if the server interval changes, we reschedule
+                scheduleBackgroundSync()
 
                 // Fetch EPG URL
                 val remoteEpgUrl = remoteConfig.getString("epg_url")
@@ -2273,6 +2286,34 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             return true // Consume to prevent Alexa from appearing
         }
         return false // Let system handle if voice search is disabled in settings
+    }
+
+    /**
+     * Schedules periodic background sync using WorkManager.
+     * This makes the app "smart" by keeping the playlist fresh automatically.
+     */
+    private fun scheduleBackgroundSync() {
+        Log.d("EXCL_SYNC", "Scheduling Periodic Background Sync...")
+        
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        // Schedule every 6 hours
+        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS)
+            .setConstraints(constraints)
+            .setInitialDelay(6, TimeUnit.HOURS) 
+            .build()
+
+        try {
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "PlaylistSync",
+                ExistingPeriodicWorkPolicy.KEEP,
+                syncRequest
+            )
+        } catch (e: Exception) {
+            Log.e("EXCL_SYNC", "Failed to schedule background sync: ${e.message}")
+        }
     }
 
     companion object {

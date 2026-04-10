@@ -241,93 +241,19 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 request: WebResourceRequest?
             ): WebResourceResponse? {
                 val uri = request?.url
-                if (uri?.host == "www.nmtv.cn" && uri.path?.endsWith(
-                        ".css"
-                    ) == true
-                ) {
-                    return null
-                }
-                if (uri?.host == "cdnjs.cloudflare.com" && uri.path?.endsWith(
-                        "controls.min.css"
-                    ) == true
-                ) {
-                    return null
+                if (OptimizationManager.shouldBlockRequest(uri)) {
+                    return OptimizationManager.createEmptyResponse()
                 }
 
-
-
-
-
-                if ((uri?.host == "www.btzx.com.cn"
-                            || uri?.host == "g.cbg.cn"
-                            || uri?.host == "www.ahtv.cn"
-//                            || uri?.host == "mapi.ahtv.cn"
-//                            || uri?.host == "live.kankanews.com"
-//                            || uri?.host == "skin.kankanews.com"
-
-                            ) && uri.path?.endsWith(
-                        ".css"
-                    ) == true
-                ) {
-                    return null
-                }
-                if ((uri?.host == "www.yupptv.com"
-
-                            ) && uri.path?.endsWith(
-                        "jioAds.js"
-                    ) == true
-                ) {
-                    return null
-                }
-//                if (uri?.host == "aj2031.online" ||
-//                    uri?.host == "www.googletagmanager.com"
-//
-//                ) {
-//                    return null
-//                }
-                if (  uri?.path?.endsWith(
-                        "gpt.js"
-                    ) == true
-                ) {
-                    return null
-                }
-
-//                if (uri?.host == "www.xjtvs.com.cn" && uri.path?.endsWith(
-//                        ".css"
-//                    ) == true
-//                ) {
-//                    return null
-//                }
-
-                if (request?.isForMainFrame == false && (uri?.path?.endsWith(".jpg") == true || uri?.path?.endsWith(
-                        ".png"
-                    ) == true || uri?.path?.endsWith(
-                        ".gif"
-                    ) == true || uri?.path?.endsWith(
-                        ".css"
-                    ) == true)
-                ) {
-                    return WebResourceResponse("text/plain", "utf-8", null)
-                }
-
-                if (uri?.host?.endsWith("cctvpic.com") == true && uri.path?.endsWith(
-                        ".css"
-                    ) == true
-                ) {
-                    return WebResourceResponse("text/plain", "utf-8", null)
-                }
-                if ( uri?.host == "pagead2.googlesyndication.com"
-                    || uri?.host == "www.googletagmanager.com"
-                    || uri?.host == "jouwaikekaivep.net"
-                    || uri?.host == "instant.page"
-                    || uri?.path?.endsWith(
-                        "adsbygoogle.js"
-                    ) == true
-                    || uri?.path?.endsWith(
-                        "anti_copy.js"
-                    ) == true
-                ) {
-                    return WebResourceResponse("text/plain", "utf-8", null)
+                // Generic Logic: Block non-essential media/css on non-mainframe requests 
+                // to speed up Portal-based streams.
+                if (request?.isForMainFrame == false && (
+                    uri?.path?.endsWith(".jpg") == true || 
+                    uri?.path?.endsWith(".png") == true || 
+                    uri?.path?.endsWith(".gif") == true || 
+                    uri?.path?.endsWith(".css") == true || 
+                    uri?.path?.endsWith(".ico") == true)) {
+                    return OptimizationManager.createEmptyResponse()
                 }
 
                 return null
@@ -346,399 +272,9 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 """.trimIndent()
                 webView.loadUrl(fillCss)
 
-                val uri = Uri.parse(url)
-                when (uri.host) {
-                    "tv.cctv.com" -> webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                        .bufferedReader()
-                        .use { it.readText() }) { value ->
-                        if (value == "success") {
-                        }
-                    }
-
-                    "www.tvmalaysia.live"-> webView.evaluateJavascript(context.resources.openRawResource(R.raw.tvmalaysia)
-                        .bufferedReader()
-                        .use { it.readText() }) { value ->
-                        if (value == "success") {
-                        }
-                    }
-
-
-
-                    "www.gdtv.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.setv.sh.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.gdtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.yangshipin.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ysp)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.sztv.com.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "news.hbtv.com.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-//                    "www.ahtv.cn" -> {
-//                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-//                            .bufferedReader()
-//                            .use { it.readText() }) { value ->
-//                            if (value == "success") {
-//                            }
-//                        }
-//                    }
-                    "www.nxtv.com.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "tv.gxtv.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "live.fjtv.net" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "tc.hnntv.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.hebtv.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "live.mgtv.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.hnntv.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.yupptv.com" -> {
-
-//                        webView.postDelayed({
-//                            val javaScript = "javascript:document.querySelectorAll('.jw-icon-fullscreen')[0].click();"
-//                            webView.loadUrl(javaScript)
-//                        },60000)
-
-                            webView.loadUrl(
-                                "javascript:(function() { " +
-                                        "const divElement = document.createElement('div'); " +
-                                        "divElement.id = 'overlayDiv'; " +
-                                        "divElement.style.position = 'fixed'; " +
-                                        "divElement.style.top = '0'; " +
-                                        "divElement.style.left = '0'; " +
-                                        "divElement.style.width = '100%'; " +
-                                        "divElement.style.height = '100%'; " +
-                                        "divElement.style.backgroundColor = '#000'; " +
-                                        "divElement.style.zIndex = '99998'; " +
-                                        "document.body.appendChild(divElement); " +
-                                        "})()"
-                            )
-
-
-
-                            webView.postDelayed({
-                                webView.evaluateJavascript(context.resources.openRawResource(R.raw.yupp)
-                                    .bufferedReader()
-                                    .use { it.readText() }) { value ->
-                                    if (value == "success") {
-                                    }
-                                }
-                            }, 1000) // Ensure the page is loaded
-
-
-                    }
-//
-//                    "news.hbtv.com.cn" -> {
-//                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-//                            .bufferedReader()
-//                            .use { it.readText() }) { value ->
-//                            if (value == "success") {
-//                            }
-//                        }
-//                    }
-
-                    "cricktv.site"-> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "{}") {
-                            }
-                        }
-                    }
-
-                    "l455o.com"-> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.moon)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "{}") {
-                            }
-                        }
-                    }
-
-                    "filemoon.nl"-> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.moon)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "{}") {
-                            }
-                        }
-                    }
-
-                    "filemoon.sx"-> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.moon)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "{}") {
-                            }
-                        }
-                    }
-
-                    "tapmadtv.live"-> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.gdtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.8088yyy.news" -> {
-//                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.jxtv)
-//                            .bufferedReader()
-//                            .use { it.readText() }) { value ->
-//                            if (value == "success") {
-//                            }
-//                        }
-                    }
-
-                    "www.gzstv.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.cztv.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.jlntv.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-//                    "v.iqilu.com" -> {
-//                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-//                            .bufferedReader()
-//                            .use { it.readText() }) { value ->
-//                            if (value == "success") {
-//                            }
-//                        }
-//                    }
-
-                    "www.qhbtv.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.qhtb.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.hljtv.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "static.hntv.tv" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.btzx.com.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "live.snrtv.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-//                    "www.snrtv.com" -> {
-//                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-//                            .bufferedReader()
-//                            .use { it.readText() }) { value ->
-//                            if (value == "success") {
-//                            }
-//                        }
-//                    }
-
-                    "www.nmtv.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.nmgtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.yntv.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.yntv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.yb983.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.ahtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.xjtvs.com.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.xjtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.sxrtv.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.sxrtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "www.cbg.cn" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.cqtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
-
-                    "live.kankanews.com" -> {
-                        webView.evaluateJavascript(context.resources.openRawResource(R.raw.shtv)
-                            .bufferedReader()
-                            .use { it.readText() }) { value ->
-                            if (value == "success") {
-                            }
-                        }
-                    }
+                // APPLY DYNAMIC OPTIMIZATIONS (JS/CSS)
+                if (url != null) {
+                    OptimizationManager.applyWebView(webView, url)
                 }
             }
         }
@@ -788,7 +324,14 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             (url.contains(".php", ignoreCase = true) && (url.contains("id=") || url.contains("stream") || url.contains("live"))) ||
             url.startsWith("rtmp://", ignoreCase = true) || 
             url.startsWith("rtsp://", ignoreCase = true) || 
-            url.contains("?|")) {
+            url.contains("?|") ||
+            (tvModel.tv.isAudioOnly && !tvModel.tv.isWebViewEmbed)) {
+            
+            // PRIORITY OVERRIDE: If metadata forces WebView (e.g. Wiseplay embed:true)
+            if (tvModel.tv.isWebViewEmbed) {
+                switchToWebView(url)
+                return
+            }
             
             webView.visibility = View.GONE
             playerView.visibility = View.VISIBLE
@@ -802,24 +345,15 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             return
         }
 
-        // Not ExoPlayer supported URL, use WebView
+        // Zero-Hardcode: Pure WebView Loading
+        switchToWebView(url)
+    }
+
+    private fun switchToWebView(url: String) {
         playerView.visibility = View.GONE
         webView.visibility = View.VISIBLE
         releasePlayer()
-
-
-
-        val uri = Uri.parse(url)
-        when (uri.host) {
-            "tv.cctv.com" -> {
-                webView.evaluateJavascript(
-                    "localStorage.setItem('cctv_live_resolution', '720');",
-                    null
-                )
-            }
-        }
-
-    webView.loadUrl(url)
+        webView.loadUrl(url)
     }
 
     fun refreshPlayback() {
@@ -908,14 +442,30 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                         }
                         
                         if (fetchedJson.contains("\"keys\"") || fetchedJson.contains("\"k\"")) {
-                            // Update the model temporarily with the actual JSON so doInitializePlayer uses it
                             currentTv.drmLicenseUrl = fetchedJson
                             Log.d(TAG, "Successfully pre-fetched remote ClearKey JSON")
                         }
                     }
                 }
+
+                // SMART SNIFFING for ambiguous URLs (e.g. .m, .php, .aspx)
+                var sniffedMime: String? = null
+                if (!url.contains(".m3u8") && !url.contains(".mpd") && !url.contains(".ts")) {
+                    sniffedMime = withContext(Dispatchers.IO) {
+                        try {
+                            val client = OkHttpClient.Builder()
+                                .connectTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+                                .followRedirects(true)
+                                .build()
+                            val request = Request.Builder().url(url).head().build()
+                            client.newCall(request).execute().use { response ->
+                                response.header("Content-Type")?.lowercase()
+                            }
+                        } catch (e: Exception) { null }
+                    }
+                }
                 
-                doInitializePlayer(url, seamless = false, seekPosition = seekPos)
+                doInitializePlayer(url, seamless = false, seekPosition = seekPos, sniffedMime = sniffedMime)
             } catch (e: Exception) {
                 Log.e(TAG, "Playback Init Error: ${e.message}")
                 tvModel?.setErrInfo("Playback Error")
@@ -924,7 +474,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
     }
 
-    private fun doInitializePlayer(url: String, seamless: Boolean = false, seekPosition: Long = -1L) {
+    private fun doInitializePlayer(url: String, seamless: Boolean = false, seekPosition: Long = -1L, sniffedMime: String? = null) {
         // Only release the previous player if we're not doing a seamless re-connect
         if (!seamless) {
             releasePlayer()
@@ -944,32 +494,28 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val requestHeaders = mutableMapOf<String, String>()
         var userAgent = getOptimalUserAgent(url)
 
-        // 1. Load from TV Model (Priority)
+        // 1. Metadata-Driven Headers & Identity (Priority: Channel Metadata)
         val currentTv = tvModel?.tv
         if (currentTv != null) {
-            // Headers
             currentTv.headers?.let { requestHeaders.putAll(it) }
             
-            // User-Agent override
+            // Extract UA from headers if present
             requestHeaders["User-Agent"]?.let { 
                 userAgent = it 
-                requestHeaders.remove("User-Agent") // Remove from generic headers to avoid duplicate/conflict if set via setter
+                requestHeaders.remove("User-Agent") 
             }
 
-            // DRM
+            // DRM: Smart detection from model
             if (!currentTv.drmScheme.isNullOrEmpty()) {
-                // Pre-parse license URL headers if they exist using the | delimiter
                 var rawLicenseUrl = currentTv.drmLicenseUrl ?: ""
+                // Support pipe-delimited license headers
                 if (rawLicenseUrl.contains("|")) {
                     val parts = rawLicenseUrl.split("|")
                     rawLicenseUrl = parts[0]
                     if (parts.size > 1) {
-                        val headerParts = parts[1].split("&")
-                        for (h in headerParts) {
-                            val kv = h.split("=", limit = 2)
-                            if (kv.size == 2) {
-                                requestHeaders[kv[0].trim()] = kv[1].trim()
-                            }
+                        parts[1].split("&").forEach { pair ->
+                            val kv = pair.split("=", limit = 2)
+                            if (kv.size == 2) requestHeaders[kv[0].trim()] = kv[1].trim()
                         }
                     }
                 }
@@ -977,49 +523,31 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             }
         }
 
-        // HARDCODED OPTIMIZATION: Portal/TS Stream Persistence
-        if (url.contains("mac=", ignoreCase = true) || url.contains("extension=ts", ignoreCase = true) || url.contains(".ts", ignoreCase = true)) {
-            requestHeaders["Connection"] = "keep-alive"
-            requestHeaders["Keep-Alive"] = "timeout=60, max=100"
+        
+        // 3. UNIVERSAL IDENTITY MIRRORING: Derivative security suite from technical context
+        val inferredHeaders = OptimizationManager.inferSecurityContext(url)
+        inferredHeaders.forEach { (k, v) ->
+            if (!requestHeaders.containsKey(k)) {
+                requestHeaders[k] = v
+            }
         }
         
-        // HARDCODED OPTIMIZATION: SunNxt Proactive Header Injection
-        if (url.contains("sunnxt.com")) {
-            requestHeaders["Origin"] = "https://www.sunnxt.com"
-            requestHeaders["Referer"] = "https://www.sunnxt.com/"
-            requestHeaders["sec-ch-ua"] = "\"Not A(Brand\";v=\"99\", \"Google Chrome\";v=\"121\", \"Chromium\";v=\"121\""
-            requestHeaders["sec-ch-ua-mobile"] = "?1"
-            requestHeaders["sec-ch-ua-platform"] = "\"Android\""
-            requestHeaders["sec-fetch-dest"] = "empty"
-            requestHeaders["sec-fetch-mode"] = "cors"
-            requestHeaders["sec-fetch-site"] = "same-site"
-        }
-
-
-        // 2. Legacy/URL-based Overrides (Backward Compatibility & Specific overrides)
+        // 4. Fallback URL Parameter Extraction (Legacy support)
         val regex = "(?i)(\\?\\|)|(\\?%7C)".toRegex()
         val matchResult = regex.find(url)
-
         if (matchResult != null) {
             val splitIndex = matchResult.range.first
             videoUrl = url.substring(0, splitIndex)
-            val paramsString = url.substring(matchResult.range.last + 1)
-            
-            val params = paramsString.split("&")
-            for (param in params) {
-                val parts = param.split("=", limit = 2)
-                if (parts.size == 2) {
-                    val key = parts[0].trim()
-                    val value = parts[1].trim()
-
-                    when (key.lowercase()) {
-                        "drmscheme" -> {
-                             // URL override? Maybe. Let's allow it.
-                             val license = params.find { it.startsWith("drmLicense", ignoreCase = true) }?.split("=", limit=2)?.getOrNull(1) ?: ""
-                             drmConfig = DrmConfig(value, license)
-                        }
-                        "user-agent" -> userAgent = value
-                        else -> requestHeaders[key] = value // Add other params as headers
+            val params = url.substring(matchResult.range.last + 1).split("&")
+            params.forEach { param ->
+                val kv = param.split("=", limit = 2)
+                if (kv.size == 2) {
+                    val k = kv[0].lowercase()
+                    val v = kv[1]
+                    when (k) {
+                        "drmscheme" -> drmConfig = DrmConfig(v, params.find { it.startsWith("drmlicense", true) }?.split("=")?.getOrNull(1) ?: "")
+                        "user-agent" -> userAgent = v
+                        else -> requestHeaders[k] = v
                     }
                 }
             }
@@ -1029,22 +557,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         // OPTIMIZED BUFFER SETTINGS
         val loadControl = getLoadControl(url)
         
-        // HARDCODED OPTIMIZATION: SonyLiv Performance Fix
-        val nameLower = tvModel?.tv?.name?.lowercase() ?: ""
-        val titleLower = tvModel?.tv?.title?.lowercase() ?: ""
-        if (nameLower.contains("sony") || nameLower.contains("liv") || 
-            titleLower.contains("sony") || titleLower.contains("liv")) {
-             userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-             requestHeaders.remove("Cookie")
-             requestHeaders.remove("Authorization")
-             requestHeaders.remove("Referer") 
-        }
-
-        // HARDCODED OPTIMIZATION: DishHome DASH Referer Consistency
-        if (url.contains("dishhome.com.np") && !requestHeaders.containsKey("Referer")) {
-            requestHeaders["Referer"] = "https://dishhomego.com.np/"
-            requestHeaders["Origin"] = "https://dishhomego.com.np"
-        }
+        // BITRATE & QUALITY SELECTION LOGIC
+        applyBitrateParameters()
 
         // Use Extension Renderers if available (e.g. FFMpeg) and ENABLE FALLBACK
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(requireContext())
@@ -1079,21 +593,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .setUserAgent(userAgent)
             .setDefaultRequestProperties(requestHeaders)
             .setAllowCrossProtocolRedirects(true)
-
-        // HARDCODED OPTIMIZATION: Hotstar Cookie & Origin Sync
-        if (url.contains("hotstar.com") || url.contains("livetv.hotstar")) {
-            requestHeaders["Origin"] = "https://www.hotstar.com"
-            requestHeaders["Referer"] = "https://www.hotstar.com/"
-            try {
-                val cookieManager = android.webkit.CookieManager.getInstance()
-                val cookies = cookieManager.getCookie(url)
-                if (!cookies.isNullOrEmpty()) {
-                    requestHeaders["Cookie"] = cookies
-                }
-            } catch (e: Exception) {}
-            httpDataSourceFactory.setDefaultRequestProperties(requestHeaders)
-        }
-
 
         val hlsExtractorFactory = DefaultHlsExtractorFactory(
             DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
@@ -1133,13 +632,15 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
             var licenseUrl = drmConfig?.license ?: mediaItem.localConfiguration?.drmConfiguration?.licenseUri?.toString() ?: ""
 
-            // HARDCODED OPTIMIZATION: Force ClearKey for SunNxt to bypass manifest conflicts
-            // Also map the Common PSSH UUID (1077efec...) which is standard for ClearKey DASH.
+            // HEURISTIC: Force ClearKey if the manifest uses the Common PSSH UUID (1077efec...) 
+            // standard for ClearKey DASH, and no remote license URL is provided.
             val commonPsshUuid = java.util.UUID.fromString("1077efec-c0b2-4d02-ace3-3c1e52e2fb4b")
-            if ((schemeUuid == commonPsshUuid || url.contains("sunnxt.com")) && !licenseUrl.startsWith("http") && licenseUrl.isNotEmpty()) {
+            if (schemeUuid == commonPsshUuid && !licenseUrl.startsWith("http") && licenseUrl.isNotEmpty()) {
                 schemeUuid = C.CLEARKEY_UUID
             }
 
+            // BRIDGE: Provide the SAME authentication headers (Cookies, User-Agent) to the DRM key-server.
+            // This is mandatory for Hotstar and high-security CDNs.
             val drmDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
                 .setUserAgent(userAgent)
                 .setDefaultRequestProperties(requestHeaders)
@@ -1260,6 +761,16 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 // AUTO RETRY & MULTI-URL FALLBACK LOGIC
                 if (retryCount < maxRetries) {
                     retryCount++
+                    
+                    // SMATER THAN ANY APP: If error is 403 Forbidden, rotate UA immediately
+                    if (error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS) {
+                        val msg = error.message ?: ""
+                        if (msg.contains("403") || msg.contains("401")) {
+                            uaFallbackIndex++
+                            android.util.Log.w("PlayerError", "403 Forbidden detected, rotating UA to index $uaFallbackIndex")
+                        }
+                    }
+
                     val delay = if(error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) 1000L else 3000L
                     
                     // Improved Logic: Don't show "Retrying" immediately on the first transient error.
@@ -1421,13 +932,15 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         
         val uri = Uri.parse(videoUrl)
         val isHls = (videoUrl.contains(".m3u8", ignoreCase = true) || 
-                   (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live")))) &&
+                   (videoUrl.contains(".php", ignoreCase = true) && (videoUrl.contains("id=") || videoUrl.contains("stream") || videoUrl.contains("live") || videoUrl.contains("ch="))) ||
+                   sniffedMime?.contains("mpegurl") == true || sniffedMime?.contains("m3u8") == true) &&
                    !videoUrl.contains("extension=ts", ignoreCase = true) &&
                    !videoUrl.contains(".ts", ignoreCase = true)
 
         val isDash = videoUrl.contains(".mpd", ignoreCase = true) || 
                     (videoUrl.contains("/mpd/", ignoreCase = true)) || 
-                    videoUrl.contains("dash", ignoreCase = true)
+                    videoUrl.contains("dash", ignoreCase = true) ||
+                    sniffedMime?.contains("dash+xml") == true
                     
         val finalMimeType = when {
             isHls -> androidx.media3.common.MimeTypes.APPLICATION_M3U8
@@ -1582,44 +1095,12 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
 
     private fun getOptimalUserAgent(url: String): String {
-        // TIERED FALLBACK SYSTEM: Use rotation index to bypass blocks
+        // TiviMate-Grade Identity Rotation
         return when (uaFallbackIndex) {
-            1 -> "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
-            2 -> "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
-            3 -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-            4 -> "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200/2.0.4 Safari/533.3"
-            else -> {
-                // Tier 0: Smart Logic based on Domain
-                when {
-                    // GENERIC PREMIUM IDENTITY: If it's a DASH stream with DRM, it's almost always 
-                    // a restricted stream that needs a Chrome-like browser identity to work.
-                    (url.contains(".mpd", ignoreCase = true) || url.contains("/mpd/", ignoreCase = true) || url.contains("dash", ignoreCase = true)) 
-                      && (url.contains("drm", ignoreCase = true) || url.contains("license", ignoreCase = true) || tvModel?.tv?.drmScheme != null) ->
-                        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
-
-                    // IPTV Portals / Global Last Resort (Requires MAG200/MAG250 Identity)
-                    uaFallbackIndex == 4 || url.contains("mac=", ignoreCase = true) || url.contains("portal", ignoreCase = true) -> 
-                        "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200/2.0.4 Safari/533.3"
-                    
-                    url.contains("drmlive.net") || url.contains("servertvhub.site") || url.contains("workers.dev") -> 
-                        "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
-                    
-                    // OSTV / Tokenized Streams / General TS - TiviMate is the gold standard for compatibility
-                    url.contains("ostv.info") || url.contains("token=") || url.endsWith(".ts", ignoreCase = true) -> 
-                        "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
-        
-                    url.contains("googlevideo.com") || url.contains("youtube.com") -> 
-                        "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US) gzip"
-                        
-                    url.contains("facebook.com") || url.contains("fbcdn.net") ->
-                        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
-                        
-                    url.contains("twitch.tv") ->
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-                        
-                    else -> "Dalvik/2.1.0 (Linux; U; Android 14; SM-S911B Build/UP1A.231005.007)"
-                }
-            }
+            1 -> "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36"
+            2 -> "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+            3 -> "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200/2.0.4 Safari/533.3"
+            else -> "TiviMate/4.7.0 (Linux; Android 11; TV Box Build/RTM1.211111.111)"
         }
     }
 
