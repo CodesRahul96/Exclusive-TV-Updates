@@ -1638,9 +1638,28 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 if (keysArray != null) {
                     // SANITIZATION: Create a new object with ONLY the keys array.
                     // This fixes Android 14/Samsung CDM errors caused by "type":"temporary" or other extra fields.
+                    // ALSO: Iterate and ensure all KID/K values are Base64Url encoded (no + or / or padding)
                     val sanitized = JSONObject()
-                    sanitized.put("keys", keysArray)
-                    Log.d(TAG, "Successfully extracted ${keysArray.length()} keys (including nested) for ClearKey")
+                    val sanitizedArray = JSONArray()
+                    
+                    for (i in 0 until keysArray.length()) {
+                        val keyObj = keysArray.optJSONObject(i) ?: continue
+                        val kty = keyObj.optString("kty", "oct")
+                        val kid = keyObj.optString("kid", "")
+                        val k = keyObj.optString("k", "")
+                        
+                        if (kid.isNotEmpty() && k.isNotEmpty()) {
+                            val cleanObj = JSONObject()
+                            cleanObj.put("kty", kty)
+                            // Re-encode to ensure URL-Safe Base64 (CDM Requirement)
+                            cleanObj.put("kid", hexToBase64Url(kid))
+                            cleanObj.put("k", hexToBase64Url(k))
+                            sanitizedArray.put(cleanObj)
+                        }
+                    }
+                    
+                    sanitized.put("keys", sanitizedArray)
+                    Log.d(TAG, "Successfully extracted and sanitized ${sanitizedArray.length()} keys for ClearKey")
                     return sanitized.toString()
                 }
             } catch (e: Exception) {

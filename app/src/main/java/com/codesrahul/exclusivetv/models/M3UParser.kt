@@ -259,7 +259,6 @@ object M3UParser {
                             }
                         }
                     } else if (trimmedLine.startsWith("#EXTHTTP:") || trimmedLine.startsWith("# EXTHTTP:")) {
-                        if (currentUris.isNotEmpty()) saveAndReset()
                         // Parse JSON headers (supports new format with multiple header lines before URL)
                         val jsonStr = trimmedLine.substringAfter("HTTP:").trim()
                         try {
@@ -281,7 +280,6 @@ object M3UParser {
                         }
 
                     } else if (trimmedLine.startsWith("#KODIPROP:")) {
-                        if (currentUris.isNotEmpty()) saveAndReset()
                         // KODIPROP can appear multiple times - accumulate all properties
                         // Do NOT reset if URIs are present, as headers may precede URLs in new format
                         val parts = trimmedLine.substringAfter("#KODIPROP:").split("=", limit = 2)
@@ -333,7 +331,6 @@ object M3UParser {
                             }
                         }
                     } else if (trimmedLine.startsWith("#EXTVLCOPT:")) {
-                        if (currentUris.isNotEmpty()) saveAndReset()
                         // VLC options can appear multiple times - accumulate all
                         val parts = trimmedLine.substringAfter("#EXTVLCOPT:").split("=", limit = 2)
                         if (parts.size == 2) {
