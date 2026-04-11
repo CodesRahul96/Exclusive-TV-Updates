@@ -295,8 +295,7 @@ object TVList {
                 val customUrls = allPlaylistUrls.filter { url ->
                     url.isNotEmpty() && 
                     url != standardUrl && 
-                    url != premiumUrl &&
-                    !url.contains("jioplus.indevs.in")
+                    url != premiumUrl
                 }
 
                 // DEFAULT MODE: Load System APIs

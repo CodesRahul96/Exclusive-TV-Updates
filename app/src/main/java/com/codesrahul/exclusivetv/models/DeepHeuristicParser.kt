@@ -169,7 +169,7 @@ object DeepHeuristicParser {
                         else it 
                     }
                 }
-                k.contains("license_key") || k.contains("license_url") || k == "clearkey" -> {
+                k.contains("license_key") || k.contains("license_url") || k == "clearkey" || k.contains("drm_key") || k.contains("drm_license") -> {
                     drmLicense = v
                 }
                 

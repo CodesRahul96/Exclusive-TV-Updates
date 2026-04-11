@@ -535,6 +535,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         var drmConfig: DrmConfig? = null
         val requestHeaders = mutableMapOf<String, String>()
         var userAgent = getOptimalUserAgent(url)
+        var uaExplicitlySet = false
 
         // 1. Metadata-Driven Headers & Identity (Priority: Channel Metadata)
         val currentTv = tvModel?.tv
@@ -544,7 +545,13 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             // Extract UA from headers if present
             requestHeaders["User-Agent"]?.let { 
                 userAgent = it 
+                uaExplicitlySet = true
                 requestHeaders.remove("User-Agent") 
+            }
+            requestHeaders["user-agent"]?.let { 
+                userAgent = it 
+                uaExplicitlySet = true
+                requestHeaders.remove("user-agent") 
             }
 
             // DRM: Smart detection from model
@@ -570,9 +577,14 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val inferredHeaders = OptimizationManager.inferSecurityContext(url, currentTv?.group)
         inferredHeaders.forEach { (k, v) ->
             if (k == "User-Agent") {
-                userAgent = v
-            } else if (!requestHeaders.containsKey(k)) {
-                requestHeaders[k] = v
+                if (!uaExplicitlySet || userAgent.isBlank()) userAgent = v
+            } else {
+                // BUG FIX: Allow inferred headers to override EMPTY or BLANK manual headers
+                // If the user left the field empty in the UI, we should still apply the heuristic.
+                val existing = requestHeaders[k]
+                if (existing.isNullOrBlank()) {
+                    requestHeaders[k] = v
+                }
             }
         }
         
@@ -666,7 +678,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 when (drmConfig?.scheme?.lowercase()) {
                     "widevine" -> C.WIDEVINE_UUID
                     "playready" -> C.PLAYREADY_UUID
-                    "clearkey" -> C.CLEARKEY_UUID
+                    "clearkey", "org.w3.clearkey" -> C.CLEARKEY_UUID
                     else -> C.WIDEVINE_UUID
                 }
             } else {
@@ -676,10 +688,9 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
             var licenseUrl = drmConfig?.license ?: mediaItem.localConfiguration?.drmConfiguration?.licenseUri?.toString() ?: ""
 
-            // HEURISTIC: Force ClearKey if the manifest uses the Common PSSH UUID (1077efec...) 
-            // standard for ClearKey DASH, and no remote license URL is provided.
-            val commonPsshUuid = java.util.UUID.fromString("1077efec-c0b2-4d02-ace3-3c1e52e2fb4b")
-            if (schemeUuid == commonPsshUuid && !licenseUrl.startsWith("http") && licenseUrl.isNotEmpty()) {
+            // HEURISTIC: Force ClearKey if we have local keys (KID:KEY format instead of URL)
+            // This is mandatory for SunNxt/Times-Play where manifest might prefer Widevine but keys are ClearKey.
+            if (!licenseUrl.startsWith("http") && licenseUrl.isNotEmpty() && licenseUrl.contains(":")) {
                 schemeUuid = C.CLEARKEY_UUID
             }
 
@@ -690,7 +701,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 .setDefaultRequestProperties(requestHeaders)
                 .setAllowCrossProtocolRedirects(true)
 
-            if (schemeUuid == C.CLEARKEY_UUID && licenseUrl.isNotEmpty()) {
+            val manager: androidx.media3.exoplayer.drm.DrmSessionManager = if (schemeUuid == C.CLEARKEY_UUID && licenseUrl.isNotEmpty()) {
                  val clearkeyJson = createClearKeyJson(licenseUrl)
                  if (clearkeyJson.isNotEmpty()) {
                      val drmCallback = LocalMediaDrmCallback(clearkeyJson.toByteArray())
@@ -699,17 +710,17 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                         .setMultiSession(true)
                         .setPlayClearSamplesWithoutKeys(true)
                         .build(drmCallback)
+                 } else if (licenseUrl.startsWith("http")) {
+                     val callback = HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory)
+                     DefaultDrmSessionManager.Builder()
+                        .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
+                        .setMultiSession(true)
+                        .setPlayClearSamplesWithoutKeys(true)
+                        .build(callback)
                  } else {
-                     // Fallback to standard HTTP POST
-                     HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory).let { callback ->
-                        DefaultDrmSessionManager.Builder()
-                            .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
-                            .setMultiSession(true)
-                            .setPlayClearSamplesWithoutKeys(true)
-                            .build(callback)
-                     }
+                     androidx.media3.exoplayer.drm.DrmSessionManager.DRM_UNSUPPORTED
                  }
-            } else if (licenseUrl.isNotEmpty()) {
+            } else if (licenseUrl.isNotEmpty() && licenseUrl.startsWith("http")) {
                  val drmCallback = HttpMediaDrmCallback(licenseUrl, drmDataSourceFactory)
                  drmCallback.setKeyRequestProperty("User-Agent", userAgent)
                  for ((k, v) in requestHeaders) {
@@ -726,6 +737,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     .setUuidAndExoMediaDrmProvider(schemeUuid, FrameworkMediaDrm.DEFAULT_PROVIDER)
                     .build(androidx.media3.exoplayer.drm.LocalMediaDrmCallback(ByteArray(0)))
             }
+            manager
         }
         
         mediaSourceFactory.setDrmSessionManagerProvider(drmProvider)
@@ -1006,7 +1018,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             val uuid = when (drmConfig?.scheme?.lowercase()) {
                 "widevine" -> C.WIDEVINE_UUID
                 "playready" -> C.PLAYREADY_UUID
-                "clearkey" -> C.CLEARKEY_UUID
+                "clearkey", "org.w3.clearkey" -> C.CLEARKEY_UUID
                 else -> C.WIDEVINE_UUID
             }
             
@@ -1021,6 +1033,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 MediaItem.DrmConfiguration.Builder(uuid)
                     .setLicenseUri(licenseUri)
                     .setForceDefaultLicenseUri(true)
+                    // PARITY CRITICAL: Force session activation even if the manifest lacks the ClearKey PSSH box
+                    .setForceSessionsForAudioAndVideoTracks(true)
                     .build()
             )
         }
@@ -1162,13 +1176,9 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         if (trimmedLicense.startsWith("{") && trimmedLicense.endsWith("}")) {
             try {
                 val jsonObj = JSONObject(trimmedLicense)
-                // RECURSIVE SEARCH: Find "keys" array anywhere in the response (Support nested keys)
                 val keysArray = findKeysArrayRecursive(jsonObj)
                 
                 if (keysArray != null) {
-                    // SANITIZATION: Create a new object with ONLY the keys array.
-                    // This fixes Android 14/Samsung CDM errors caused by "type":"temporary" or other extra fields.
-                    // ALSO: Iterate and ensure all KID/K values are Base64Url encoded (no + or / or padding)
                     val sanitized = JSONObject()
                     val sanitizedArray = JSONArray()
                     
@@ -1181,7 +1191,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                         if (kid.isNotEmpty() && k.isNotEmpty()) {
                             val cleanObj = JSONObject()
                             cleanObj.put("kty", kty)
-                            // Re-encode to ensure URL-Safe Base64 (CDM Requirement)
                             cleanObj.put("kid", hexToBase64Url(kid))
                             cleanObj.put("k", hexToBase64Url(k))
                             sanitizedArray.put(cleanObj)
@@ -1189,20 +1198,19 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     }
                     
                     sanitized.put("keys", sanitizedArray)
-                    Log.d(TAG, "Successfully extracted and sanitized ${sanitizedArray.length()} keys for ClearKey")
-                    return sanitized.toString()
+                    return sanitized.toString().replace(" ", "") // Minify to avoid parsing overhead
                 }
-            } catch (e: Exception) {
-                Log.d(TAG, "Error parsing JSON license: ${e.message}")
-            }
+            } catch (e: Exception) { }
         }
         
-        // 2. LEGACY PATH: Support comma-separated strings (KID1:KEY1,KID2:KEY2)
-        val keyEntries = trimmedLicense.split(",")
+        // 2. LEGACY PATH: Support diverse delimiters (KID:KEY, KID-KEY, KID|KEY)
+        // Split by common delimiters (comma, semicolon, space, or newline)
+        val keyEntries = trimmedLicense.split(Regex("[,;\\s\\n]+")).filter { it.isNotBlank() }
         val keysArray = JSONArray()
 
         for (entry in keyEntries) {
-            val parts = entry.split(":")
+            // Split KID and KEY by colon, dash, or pipe
+            val parts = entry.split(Regex("[:|\\-]"))
             if (parts.size < 2) continue
             
             val val1 = parts[0].trim()
@@ -1233,7 +1241,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
         val jsonObject = JSONObject()
         jsonObject.put("keys", keysArray)
-        return jsonObject.toString()
+        return jsonObject.toString().replace(" ", "")
     }
 
     private fun findKeysArrayRecursive(obj: JSONObject): JSONArray? {

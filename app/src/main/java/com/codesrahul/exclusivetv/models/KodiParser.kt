@@ -94,9 +94,9 @@ object KodiParser {
                     continue
                 }
 
-                else if (trimmedLine.startsWith("#EXTINF:")) {
-                    // Should save previous channel if exists
-                    saveAndReset()
+                if (trimmedLine.startsWith("#EXTINF:")) {
+                    // Only save and reset if we already have URIs (meaning the previous channel block is complete)
+                    if (currentUris.isNotEmpty()) saveAndReset()
 
                     // Extract Name (everything after the last comma)
                     val lastCommaIndex = trimmedLine.lastIndexOf(',')

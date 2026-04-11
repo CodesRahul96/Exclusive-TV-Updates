@@ -13,40 +13,11 @@ import org.json.JSONObject
 object OptimizationManager {
     private const val TAG = "OptimizationManager"
 
-    private const val DEFAULT_PROFILES_JSON = """
-        [
-            {
-                "signature": ".hotstar.com",
-                "origin": "https://www.hotstar.com",
-                "referer": "https://www.hotstar.com/",
-                "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-                "highSecurity": true
-            },
-            {
-                "signature": ".sunnxt.com",
-                "origin": "https://www.sunnxt.com",
-                "referer": "https://www.sunnxt.com/",
-                "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36",
-                "highSecurity": true
-            },
-            {
-                "signature": "workers.dev/live/",
-                "drmScheme": "clearkey",
-                "idRegex": "/live/([^/?#.]+)",
-                "licenseTemplate": "{host_base}/{id}/key.json"
-            },
-            {
-                "signature": "workers.dev",
-                "drmScheme": "clearkey",
-                "licenseTemplate": "{base}/key.json"
-            }
-        ]
-    """
-
     // SHARED IDENTITY TOKENS (Identity Parity with high-fidelity browsers)
-    private const val UA_IDENTITY_PORTAL_PRESET = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     const val UA_CHROME_MOBILE = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36"
-    const val UA_CHROME_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+    const val UA_CHROME_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+    const val UA_TIVIMATE = "TiviMate/4.7.0 (Linux; Android 11)"
+    const val UA_JIOTV = "JioTV"
 
     /**
      * PORTAL REGISTRY: Maps technical signatures to security contexts.
@@ -66,8 +37,8 @@ object OptimizationManager {
     private val portalProfiles = java.util.concurrent.CopyOnWriteArrayList<PortalProfile>()
 
     init {
-        // Bootstrap: Load default signatures to ensure basic functionality without network
-        loadProfiles(DEFAULT_PROFILES_JSON)
+        // WORLD-CLASS AGNOSTIC INITIALIZATION: Empty by default.
+        // Rules are injected dynamically from playlists or remote config.
     }
 
     /**
@@ -152,18 +123,12 @@ object OptimizationManager {
      */
     fun inferSecurityContext(url: String, groupName: String? = null): Map<String, String> {
         val headers = mutableMapOf<String, String>()
-        val uri = android.net.Uri.parse(url)
-        val host = uri.host?.lowercase() ?: ""
-        val scheme = uri.scheme ?: "https"
-        val query = uri.query?.lowercase() ?: ""
+        val uri = try { android.net.Uri.parse(url) } catch (e: Exception) { null }
+        val host = uri?.host?.lowercase() ?: ""
+        val path = uri?.path?.lowercase() ?: ""
 
-        // 1. MIRRORING: Automated Referer/Origin derivation (Works for most standard CDNs)
-        if (host.isNotEmpty()) {
-            headers["Referer"] = "$scheme://$host/"
-            headers["Origin"] = "$scheme://$host"
-        }
-
-        // 2. SIGNATURE MATCHING: Apply profile if technical fingerprints match
+        // 1. SIGNATURE MATCHING: Apply profile if technical fingerprints match
+        // These profiles are registered dynamically via the 'exclusivetv.portal_profile' KODIPROP tag.
         val matchedProfile = portalProfiles.find { profile ->
             host.contains(profile.signature) || groupName?.contains(profile.signature, ignoreCase = true) == true
         }
@@ -174,11 +139,46 @@ object OptimizationManager {
             headers["User-Agent"] = profile.userAgent
         }
 
-        // 3. SECURITY ESCALATION: Detect generic high-security tokens (Token-based signatures)
-        if (headers["User-Agent"] == null) {
-            val hasSecurityTokens = query.contains("hdntl") || query.contains("token=")
-            if (hasSecurityTokens || (matchedProfile?.highSecurity == true)) {
-                headers["User-Agent"] = UA_CHROME_DESKTOP
+        // 2. TECHNICAL HEURISTICS: Proactive Security Escalation
+        // If no explicit profile is found, but the stream uses a technical pattern 
+        // common in high-security OTT platforms (DASH/HLS via manifest-specific hosts).
+        val isManifestStream = path.contains(".mpd") || path.contains(".m3u8") || path.contains(".isml")
+        val isTechnicalCdn = host.contains("livestream") || host.contains("manifest") || host.contains("ott") || 
+                             host.contains("cdn") || host.contains("akamai") || host.contains("cloudfront") || 
+                             host.contains("edge") || host.contains("primary")
+
+        // Match major provider signatures in host or groupName (Technical fingerprints)
+        val isMajorOtt = listOf("sunnxt", "hotstar", "jio", "tata", "sony", "zee", "prime", "netflix", "times", "tp")
+            .any { host.contains(it) || groupName?.contains(it, ignoreCase = true) == true }
+
+        if (matchedProfile?.highSecurity == true || (isManifestStream && (isTechnicalCdn || isMajorOtt))) {
+            // 1. GENERIC IDENTITY SYNTHESIS: Mirror professional player signatures
+            if (!headers.containsKey("User-Agent")) {
+                // TiviMate-style identity is the industry standard for IPTV playback stability
+                headers["User-Agent"] = if (isMajorOtt) UA_TIVIMATE else UA_CHROME_DESKTOP
+            }
+            
+            // 2. TECHNICAL ORIGIN/REFERER DERIVATION
+            if (host.isNotEmpty()) {
+                val segments = host.split(".")
+                if (segments.size >= 2) {
+                    val baseDomain = segments.takeLast(2).joinToString(".")
+                    
+                    // Prevent generating invalid Origin headers for generic CDNs
+                    val isGenericCdn = baseDomain.contains("akamaized", true) || 
+                                       baseDomain.contains("cloudfront", true) ||
+                                       baseDomain.contains("appspot", true)
+                    
+                    if (!headers.containsKey("Origin") && !isGenericCdn) {
+                        val prefix = if (isMajorOtt) "www." else ""
+                        headers["Origin"] = "${uri?.scheme ?: "https"}://$prefix$baseDomain"
+                    }
+                    
+                    if (!headers.containsKey("Referer")) {
+                        // Mirror the manifest location as Referer for Akamai-style "Same-Origin" authorization
+                        headers["Referer"] = if (host.contains("akamai")) url else "${uri?.scheme ?: "https"}://www.$baseDomain/"
+                    }
+                }
             }
         }
 

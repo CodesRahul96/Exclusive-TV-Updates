@@ -198,13 +198,31 @@ object M3UParser {
                         }
                         // Support for JSON-formatted headers (Common in mixed-source playlists)
                         val json = trimmedLine.substringAfter(":").trim()
-                        try {
-                            val obj = JSONObject(json)
-                            val headerObj = obj.optJSONObject("headers") ?: obj
-                            headerObj.keys().forEach { k ->
-                                currentHeaders[normalizeHeaderKey(k)] = headerObj.getString(k)
+                        if (json.startsWith("{") && json.endsWith("}")) {
+                            try {
+                                val obj = JSONObject(json)
+                                // Handle both flat JSON and the common {"headers": {...}} structure
+                                val content = if (obj.has("headers")) obj.getJSONObject("headers") else obj
+                                content.keys().forEach { k ->
+                                    val valStr = content.optString(k)
+                                    if (valStr.isNotEmpty()) {
+                                        currentHeaders[normalizeHeaderKey(k)] = valStr
+                                    }
+                                }
+                                // Special check for cookies if they are outside the headers object
+                                if (obj.has("cookie")) {
+                                    val cookie = obj.getString("cookie")
+                                    val existing = currentHeaders["Cookie"]
+                                    if (existing != null && !existing.contains(cookie)) {
+                                        currentHeaders["Cookie"] = "$existing; $cookie"
+                                    } else {
+                                        currentHeaders["Cookie"] = cookie
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("M3UParser", "Failed to parse #EXTHTTP JSON: $json", e)
                             }
-                        } catch (e: Exception) {}
+                        }
                     }
                     trimmedLine.startsWith("#EXT-X-STREAM-INF:") -> {
                         // This indicates the FOLLOWING line is a manifest variant, not just a raw stream.
@@ -273,13 +291,25 @@ object M3UParser {
                         var finalUrl = trimmedLine
                         
                         // TiviMate Support: Pipe Header Extraction (|Header=Value&Header2=Value2)
-                        if (finalUrl.contains("|")) {
-                            val parts = finalUrl.split("|", limit = 2)
+                        // Also support URL-encoded pipe (%7C)
+                        if (finalUrl.contains("|") || finalUrl.contains("%7C", ignoreCase = true)) {
+                            val delimiter = if (finalUrl.contains("|")) "|" else "%7C"
+                            val parts = finalUrl.split(delimiter, limit = 2)
                             finalUrl = parts[0].trim()
                             val headersStr = parts[1]
                             headersStr.split("&").forEach { pair ->
                                 val kv = pair.split("=", limit = 2)
-                                if (kv.size == 2) currentHeaders[normalizeHeaderKey(kv[0])] = kv[1]
+                                if (kv.size == 2) {
+                                    val k = normalizeHeaderKey(kv[0].trim())
+                                    val v = kv[1].trim()
+                                    if (k == "Cookie" && currentHeaders.containsKey("Cookie")) {
+                                        if (!currentHeaders["Cookie"]!!.contains(v)) {
+                                            currentHeaders["Cookie"] += "; $v"
+                                        }
+                                    } else {
+                                        currentHeaders[k] = v
+                                    }
+                                }
                             }
                         }
                         
@@ -291,7 +321,15 @@ object M3UParser {
                                 if (kv.size == 2) {
                                     val k = kv[0].lowercase()
                                     if (k == "user-agent" || k == "referer" || k == "cookie" || k == "origin") {
-                                        currentHeaders[normalizeHeaderKey(k)] = kv[1]
+                                        val normK = normalizeHeaderKey(k)
+                                        val v = kv[1]
+                                        if (normK == "Cookie" && currentHeaders.containsKey("Cookie")) {
+                                            if (!currentHeaders["Cookie"]!!.contains(v)) {
+                                                currentHeaders["Cookie"] += "; $v"
+                                            }
+                                        } else {
+                                            currentHeaders[normK] = v
+                                        }
                                     }
                                 }
                             }
@@ -315,10 +353,25 @@ object M3UParser {
                             }
                         }
 
+                        // SMART INFERENCE: Auto-detect manifest type if KODIPROP hint is missing
+                        if (currentMimeType.isNullOrEmpty()) {
+                            when {
+                                finalUrl.contains(".mpd", ignoreCase = true) || finalUrl.contains("/mpd/", ignoreCase = true) -> 
+                                    currentMimeType = "application/dash+xml"
+                                finalUrl.contains(".m3u8", ignoreCase = true) || finalUrl.contains(".m3u", ignoreCase = true) -> 
+                                    currentMimeType = "application/x-mpegURL"
+                            }
+                        }
+
+                        // DRM DEFAULT: If license is present but scheme is not, assume ClearKey
+                        if (currentDrmScheme.isNullOrEmpty() && !currentDrmLicense.isNullOrEmpty()) {
+                            currentDrmScheme = "clearkey"
+                        }
+
                         currentUris.add(finalUrl)
                         
                         // HYPER-PARITY HEURISTIC: Force video mode for DASH manifests
-                        if (finalUrl.contains(".mpd", ignoreCase = true)) {
+                        if (finalUrl.contains(".mpd", ignoreCase = true) || currentMimeType == "application/dash+xml") {
                             isAudioOnly = false
                         }
 
@@ -379,22 +432,57 @@ object M3UParser {
             }
             k == "user-agent" || k == "http-user-agent" || k == "useragent" -> headers["User-Agent"] = value
             k == "referer" || k == "http-referer" || k == "referrer" -> headers["Referer"] = value
-            k == "cookie" || k == "http-cookie" -> headers["Cookie"] = value
-            k == "origin" -> headers["Origin"] = value
-            k == "exclusivetv.drm_profile" -> {
-                // Format: scheme|signature|regex|template
-                val p = value.split("|")
-                if (p.size >= 4) {
-                    val scheme = p[0].trim()
-                    val signature = p[1].trim()
-                    val regex = p[2].trim()
-                    val template = p[3].trim()
-                    OptimizationManager.registerProfile(OptimizationManager.PortalProfile(
-                        signature = signature,
-                        drmScheme = scheme,
-                        idRegex = regex,
-                        licenseTemplate = template
-                    ))
+            k == "cookie" || k == "http-cookie" -> {
+                val existing = headers["Cookie"]
+                if (existing != null && !existing.contains(value)) {
+                    headers["Cookie"] = "$existing; $value"
+                } else {
+                    headers["Cookie"] = value
+                }
+            }
+            k == "origin" || k == "http-origin" -> headers["Origin"] = value
+            k == "exclusivetv.drm_profile" || k == "exclusivetv.portal_profile" -> {
+                try {
+                    // UNIVERSAL PROFILE INGESTION: Handles both pipe-delimited legacy and modern JSON formats
+                    if (value.startsWith("{")) {
+                        val obj = JSONObject(value)
+                        val signature = obj.getString("signature")
+                        
+                        var ua = obj.optString("userAgent").ifEmpty { null }
+                        if (ua != null) {
+                            ua = when(ua.uppercase()) {
+                                "UA_DESKTOP" -> OptimizationManager.UA_CHROME_DESKTOP
+                                "UA_MOBILE" -> OptimizationManager.UA_CHROME_MOBILE
+                                "UA_TIVIMATE" -> OptimizationManager.UA_TIVIMATE
+                                "UA_JIOTV" -> OptimizationManager.UA_JIOTV
+                                else -> ua
+                            }
+                        }
+
+                        OptimizationManager.registerProfile(OptimizationManager.PortalProfile(
+                            signature = signature,
+                            origin = obj.optString("origin").ifEmpty { null },
+                            referer = obj.optString("referer").ifEmpty { null },
+                            userAgent = ua ?: OptimizationManager.UA_CHROME_DESKTOP,
+                            highSecurity = obj.optBoolean("highSecurity", false),
+                            drmScheme = obj.optString("drmScheme").ifEmpty { null },
+                            idRegex = obj.optString("idRegex").ifEmpty { null },
+                            licenseTemplate = obj.optString("licenseTemplate").ifEmpty { null }
+                        ))
+                    } else if (k == "exclusivetv.drm_profile") {
+                        // Legacy Pipe Format: scheme|signature|regex|template
+                        val p = value.split("|")
+                        if (p.size >= 4) {
+                            OptimizationManager.registerProfile(OptimizationManager.PortalProfile(
+                                signature = p[1].trim(),
+                                drmScheme = p[0].trim(),
+                                idRegex = p[2].trim(),
+                                licenseTemplate = p[3].trim()
+                            ))
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("M3UParser", "Dynamic Profile Registration Failed", e)
                 }
             }
             else -> {
@@ -413,15 +501,18 @@ object M3UParser {
     }
 
     private fun normalizeHeaderKey(key: String): String {
-        return when (key.lowercase().trim()) {
+        return when (val k = key.lowercase().trim()) {
             "user-agent", "ua", "http-user-agent", "useragent" -> "User-Agent"
             "referer", "referrer", "http-referer" -> "Referer"
             "cookie", "http-cookie" -> "Cookie"
-            "origin" -> "Origin"
+            "origin", "http-origin" -> "Origin"
             "authorization" -> "Authorization"
             "token" -> "Token"
             "x-forwarded-for" -> "X-Forwarded-For"
-            else -> key
+            else -> {
+                if (k.startsWith("http-")) k.substring(5).replaceFirstChar { it.uppercase() }
+                else key
+            }
         }
     }
 
