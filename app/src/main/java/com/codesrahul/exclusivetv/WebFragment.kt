@@ -124,8 +124,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         webView.settings.javaScriptCanOpenWindowsAutomatically = true
         webView.settings.mediaPlaybackRequiresUserGesture = false
         webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-        webView.settings.userAgentString =
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 *"
+        webView.settings.userAgentString = OptimizationManager.UA_CHROME_DESKTOP
 
         webView.isClickable = false
         webView.isFocusable = false
@@ -404,7 +403,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         if (context == null) return
         
         // FIX: Ensure a global CookieHandler exists so HttpURLConnection handles Set-Cookie
-        // from CDNs (e.g. JioTV/Akamai) perfectly into subsequent .m3u8 or .ts chunk requests.
+        // from CDNs (e.g. provider-specific/Akamai) perfectly into subsequent .m3u8 or .ts chunk requests.
         if (java.net.CookieHandler.getDefault() == null) {
             val cookieManager = java.net.CookieManager()
             cookieManager.setCookiePolicy(java.net.CookiePolicy.ACCEPT_ORIGINAL_SERVER)
@@ -416,14 +415,48 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 // If we have a saved position (from a VOD hard reset escape), apply it
                 val seekPos = if (isVODContent()) lastPlaybackPosition else -1L
                 
-                // ASYNC PRE-FETCH: If ClearKey URL is present, fetch it now on Dispatchers.IO
+                // ASYNC PRE-FETCH: If ClearKey URL is present (or derived), fetch it now on Dispatchers.IO
                 val currentTv = tvModel?.tv
-                if (currentTv != null && currentTv.drmScheme?.lowercase() == "clearkey") {
+                if (currentTv != null) {
                     var licenseUrl = currentTv.drmLicenseUrl ?: ""
-                    if (licenseUrl.startsWith("http")) {
-                        // Extract URL from pipes if present
+                    var scheme = currentTv.drmScheme?.lowercase() ?: ""
+                    
+                    // HEURISTIC RESOLVER: Use OptimizationManager to resolve DRM context without hardcoding strings
+                    if (licenseUrl.isEmpty() || scheme.isEmpty()) {
+                        val (inferredScheme, inferredLicense) = OptimizationManager.inferDrmContext(url)
+                        if (inferredScheme != null) {
+                            scheme = inferredScheme
+                            if (inferredLicense != null) licenseUrl = inferredLicense
+                        }
+                    }
+
+                    if (scheme == "clearkey" && licenseUrl.startsWith("http")) {
+                        
+                        // IDENTITY BRIDGE: Use the same User-Agent for the license fetch
+                        val fallbackUa = OptimizationManager.UA_CHROME_DESKTOP
+                        val explicitUa = currentTv.headers?.get("User-Agent") ?: currentTv.headers?.get("user-agent")
+                        val finalUa = explicitUa ?: fallbackUa
+
+                        val requestHeaders = mutableMapOf<String, String>()
+                        
+                        // BROAD SECURITY BRIDGE: Carry over all headers (Cookie, Referer, Authorization, etc.) 
+                        // from the channel metadata to the license fetch request for full identity parity.
+                        currentTv.headers?.forEach { (k, v) ->
+                             if (k.lowercase() != "user-agent") {
+                                 requestHeaders[k] = v
+                             }
+                        }
+                        
+                        // Extract URL from pipes if present (Support token-guarded license URLs)
                         if (licenseUrl.contains("|")) {
-                            licenseUrl = licenseUrl.split("|")[0]
+                            val parts = licenseUrl.split("|")
+                            licenseUrl = parts[0]
+                            if (parts.size > 1) {
+                                parts[1].split("&").forEach { pair ->
+                                    val kv = pair.split("=", limit = 2)
+                                    if (kv.size == 2) requestHeaders[kv[0].trim()] = kv[1].trim()
+                                }
+                            }
                         }
                         
                         val fetchedJson = withContext(Dispatchers.IO) {
@@ -432,9 +465,18 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                                     .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
                                     .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
                                     .build()
-                                val request = Request.Builder().url(licenseUrl).get().build()
-                                val response = client.newCall(request).execute()
-                                response.body?.string() ?: ""
+                                
+                                val reqBuilder = Request.Builder().url(licenseUrl).get()
+                                reqBuilder.header("User-Agent", finalUa)
+                                requestHeaders.forEach { (k, v) -> reqBuilder.header(k, v) }
+                                
+                                val response = client.newCall(reqBuilder.build()).execute()
+                                if (response.isSuccessful) {
+                                    response.body?.string() ?: ""
+                                } else {
+                                    Log.w(TAG, "ClearKey Fetch Failed: ${response.code}")
+                                    ""
+                                }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Failed to pre-fetch clearkey: ${e.message}")
                                 ""
@@ -443,7 +485,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                         
                         if (fetchedJson.contains("\"keys\"") || fetchedJson.contains("\"k\"")) {
                             currentTv.drmLicenseUrl = fetchedJson
-                            Log.d(TAG, "Successfully pre-fetched remote ClearKey JSON")
+                            Log.d(TAG, "Successfully pre-fetched remote ClearKey JSON via ${if (explicitUa != null) "Explicit" else "Inferred"} Identity")
                         }
                     }
                 }
@@ -525,9 +567,11 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
         
         // 3. UNIVERSAL IDENTITY MIRRORING: Derivative security suite from technical context
-        val inferredHeaders = OptimizationManager.inferSecurityContext(url)
+        val inferredHeaders = OptimizationManager.inferSecurityContext(url, currentTv?.group)
         inferredHeaders.forEach { (k, v) ->
-            if (!requestHeaders.containsKey(k)) {
+            if (k == "User-Agent") {
+                userAgent = v
+            } else if (!requestHeaders.containsKey(k)) {
                 requestHeaders[k] = v
             }
         }
@@ -640,7 +684,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             }
 
             // BRIDGE: Provide the SAME authentication headers (Cookies, User-Agent) to the DRM key-server.
-            // This is mandatory for Hotstar and high-security CDNs.
+            // This is mandatory for portal-grade security contexts.
             val drmDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
                 .setUserAgent(userAgent)
                 .setDefaultRequestProperties(requestHeaders)
@@ -942,10 +986,15 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     videoUrl.contains("dash", ignoreCase = true) ||
                     sniffedMime?.contains("dash+xml") == true
                     
-        val finalMimeType = when {
+        var finalMimeType = when {
             isHls -> androidx.media3.common.MimeTypes.APPLICATION_M3U8
             isDash -> androidx.media3.common.MimeTypes.APPLICATION_MPD
             else -> null
+        }
+
+        // Priority Hint: Use explicit MIME from TV model if provided (fixes 'naked' DASH/MPD streams)
+        currentTv?.mimeType?.let { 
+            if (it.isNotEmpty()) finalMimeType = it 
         }
 
         val mediaItemBuilder = MediaItem.Builder()
@@ -1215,12 +1264,26 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
     private fun hexToBase64Url(input: String): String {
         try {
-            // STRIP DASHES & SPACES: SunNxt KIDs are often UUIDs (5EA9...-3B1E...)
-            val trimmed = input.trim().replace("-", "").replace(" ", "")
+            val raw = input.trim()
             
-            // AUTO-DETECT: If it's already a valid Base64 string ...
-            if (trimmed.length in 20..44 && (trimmed.contains("_") || trimmed.contains("/") || trimmed.contains("+") || trimmed.endsWith("="))) {
-                val decoded = if (trimmed.contains("_")) {
+            // 1. HEX UUID DETECTION: Only strip dashes/spaces if it matches a Hex pattern (0-9, a-f, dashes, spaces)
+            // This prevents corrupting valid Base64Url strings that use dashes as part of their encoding.
+            val hexUuidRegex = "^[0-9a-fA-F\\-\\s]{32,40}$".toRegex()
+            val trimmed = if (hexUuidRegex.matches(raw)) {
+                raw.replace("-", "").replace(" ", "")
+            } else {
+                raw.replace(" ", "") // Keep dashes for potential Base64Url
+            }
+            
+            // AUTO-DETECT: If it's already a valid Base64/Base64Url string...
+            // IMPROVED: A 16-byte key/ID is represented as 22-24 characters in Base64. 
+            // We shouldn't only rely on special characters like '_' or '+'.
+            val isBase64Pattern = trimmed.length in 20..44 && trimmed.all { it.isLetterOrDigit() || it == '-' || it == '_' || it == '=' }
+            val hasBase64SpecificChar = trimmed.contains("_") || trimmed.contains("/") || trimmed.contains("+") || trimmed.contains("-") || trimmed.endsWith("=")
+            val isHex = trimmed.length % 2 == 0 && trimmed.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
+            
+            if (isBase64Pattern && (hasBase64SpecificChar || !isHex)) {
+                val decoded = if (trimmed.contains("_") || trimmed.contains("-")) {
                      Base64.decode(trimmed, Base64.URL_SAFE)
                 } else {
                      Base64.decode(trimmed, Base64.DEFAULT)

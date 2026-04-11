@@ -195,6 +195,9 @@ class InfoFragment : Fragment() {
         b.channelNumber.text = String.format("%04d", tvViewModel.tv.id + 1)
         b.title.text = tvViewModel.tv.title
 
+        // Load Logo using universal LogoUtil
+        LogoUtil.loadLogo(requireContext(), b.logo, tvViewModel.tv.logo, tvViewModel.tv.title)
+
         // Fix for symbols/icons not showing correctly on API < 23 (XML tint ignored)
         tvUiUtils?.tintTextViewDrawable(b.languageBadge, android.graphics.Color.WHITE)
         tvUiUtils?.tintTextViewDrawable(b.videoBadge, android.graphics.Color.WHITE)

@@ -799,8 +799,26 @@ object TVList {
                     parseUniversal(finalContent)
                 }
                 else -> {
-                    // Fallback: Try Heuristic on raw text
-                    DeepHeuristicParser.parse(pushbackReader)
+                    // Peek deeper to see if it's an M3U starting with comments or other tags
+                    var isM3UFound = false
+                    try {
+                        val buffer = CharArray(1024)
+                        val read = pushbackReader.read(buffer)
+                        if (read > 0) {
+                            val peek = String(buffer, 0, read)
+                            if (peek.contains("#EXTINF") || peek.contains("#KODIPROP") || peek.contains("#EXTVLCOPT")) {
+                                isM3UFound = true
+                            }
+                            pushbackReader.unread(buffer, 0, read)
+                        }
+                    } catch (e: Exception) {}
+
+                    if (isM3UFound) {
+                        M3UParser.parse(BufferedReader(pushbackReader))
+                    } else {
+                        // Fallback: Try Heuristic on raw text
+                        DeepHeuristicParser.parse(pushbackReader)
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -818,12 +836,13 @@ object TVList {
             string.startsWith("{") || string.startsWith("[") -> {
                 DeepHeuristicParser.parse(string)
             }
-            string.startsWith("#EXTM3U") || string.startsWith("#EXTINF") -> {
+            string.contains("#EXTM3U") || string.contains("#EXTINF") || 
+            string.contains("#KODIPROP") || string.contains("#EXTVLCOPT") -> {
                 M3UParser.parse(BufferedReader(StringReader(string)))
             }
             else -> {
                 // Secondary check: Gua/Encrypted
-                if (string[0].code >= 0x4D00 && string[0].code <= 0x4DFF) {
+                if (string.isNotEmpty() && string[0].code >= 0x4D00 && string[0].code <= 0x4DFF) {
                     val g = Gua()
                     val decoded = if (g.verify(string)) g.decode(string) else string
                     val secretKey = SecretManager.getAppKey()

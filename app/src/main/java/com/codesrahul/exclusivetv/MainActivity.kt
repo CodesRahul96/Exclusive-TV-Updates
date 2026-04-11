@@ -779,7 +779,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             "standard_api_url" to "", // Will be gracefully handled by TVList
             "premium_api_url" to SecretManager.getPremiumApiUrl(),
             SecretManager.getMaintenanceModeKey() to false,
-            "registration_enabled" to true  // Controls new user sign-up (ON by default)
+            "registration_enabled" to true,  // Controls new user sign-up (ON by default)
+            "portal_profiles" to ""         // Managed dynamically for high-security CDNs
         )
         remoteConfig.setDefaultsAsync(defaults)
 
@@ -863,6 +864,9 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
                 // Apply registration gate from Remote Config
                 SP.registrationEnabled = remoteConfig.getBoolean("registration_enabled")
+
+                // Update dynamic security profiles (Zero-Hardcoding Logic)
+                OptimizationManager.loadProfiles(remoteConfig.getString("portal_profiles"))
 
                 // CRITICAL: Call the callback to advance the bootstrap
                 onComplete()

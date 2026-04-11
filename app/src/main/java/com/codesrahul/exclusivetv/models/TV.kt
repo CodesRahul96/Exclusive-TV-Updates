@@ -80,6 +80,8 @@ data class TV(
     var hdrType: String? = null,                 // "HDR10", "Dolby Vision", "HLG", etc.
     @SerializedName("frame_packing")
     var framePacking: String? = null,            // "3D" support info
+    @SerializedName("mime_type")
+    var mimeType: String? = null,                // Explicit Format Hint (e.g. application/dash+xml)
 ) : Serializable {
 
     override fun toString(): String {

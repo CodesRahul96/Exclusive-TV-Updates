@@ -4,6 +4,7 @@ import android.util.Log
 import java.io.BufferedReader
 import java.util.ArrayList
 import java.util.HashMap
+import com.codesrahul.exclusivetv.OptimizationManager
 import org.json.JSONObject
 
 /**
@@ -49,25 +50,45 @@ object M3UParser {
         var channelCount = 0
         val currentUris = mutableListOf<String>()
         val globalHeaders = mutableMapOf<String, String>()
+        
+        // GLOBAL TEMPLATE STATE (For leading tags)
+        var globalDrmScheme: String? = null
+        var globalDrmLicense: String? = null
+        var globalMimeType: String? = null
 
         fun saveAndReset() {
             if (currentUris.isNotEmpty()) {
-                // Priority Merging: Global < Tag-Level < URL-Pipe-Level
+                // Priority Merging: Global Template < Tag-Level < URL-Pipe-Level
                 val finalHeaders = globalHeaders.toMutableMap()
+                
+                // Merge current headers with global template headers (if any were found before first #EXTINF)
                 finalHeaders.putAll(currentHeaders)
 
+                // TEMPLATE MERGE: If current channel is missing DRM, use global template DRM (from top of file)
+                val finalDrmScheme = currentDrmScheme ?: globalDrmScheme
+                val finalDrmLicense = currentDrmLicense ?: globalDrmLicense
+                val finalMime = currentMimeType ?: globalMimeType
+
                 // SMART AUTO-DRM: If we have a license but no scheme, detect from URL/Headers
-                if (currentDrmLicense != null && currentDrmScheme == null) {
+                var resolvedDrmScheme = finalDrmScheme
+                if (finalDrmLicense != null && resolvedDrmScheme == null) {
                     val url = currentUris.firstOrNull()?.lowercase() ?: ""
-                    currentDrmScheme = when {
-                        url.contains(".mpd") || url.contains("dash") || currentMimeType?.contains("mpd") == true -> "widevine"
-                        url.contains("m3u8") || url.contains("hls") || currentMimeType?.contains("m3u8") == true -> "clearkey"
+                    resolvedDrmScheme = when {
+                        url.contains(".mpd") || url.contains("dash") || finalMime?.contains("mpd") == true || finalMime?.contains("dash") == true -> "widevine"
+                        url.contains("m3u8") || url.contains("hls") || finalMime?.contains("m3u8") == true || finalMime?.contains("hls") == true -> "clearkey"
                         else -> null
                     }
                 }
 
+                // HYPER-PARITY FIX: If MIME indicates DASH/MPD, force isAudioOnly to false
+                // This resolves the 'audio symbol' issue for naked streams that specify manifest_type=mpd
+                val isActuallyDash = currentUris.any { it.contains(".mpd") } || finalMime?.contains("dash") == true || finalMime?.contains("mpd") == true
+                if (isActuallyDash) {
+                    isAudioOnly = false
+                }
+
                 // FIX for inputstream.adaptive: format the stream_headers string for DASH/DRM
-                if (finalHeaders.isNotEmpty() && (currentDrmScheme != null || currentUris.any { it.contains(".mpd") })) {
+                if (finalHeaders.isNotEmpty() && (resolvedDrmScheme != null || isActuallyDash)) {
                     val builder = StringBuilder()
                     finalHeaders.forEach { (k, v) ->
                         if (builder.isNotEmpty()) builder.append("|")
@@ -82,11 +103,11 @@ object M3UParser {
 
                 channels.add(createTV(
                     channelCount++, finalId, currentName, currentLogo, currentGroup, 
-                    currentUris, finalHeaders, currentDrmScheme, currentDrmLicense,
+                    currentUris, finalHeaders, resolvedDrmScheme, finalDrmLicense,
                     currentCatchupType, currentCatchupDays, currentCatchupSource,
                     currentLanguage, currentCountry, currentResolution, currentBitrate,
                     currentFrameRate, currentVideoCodec, isAudioOnly, isWebViewEmbed,
-                    currentGenre
+                    currentGenre, finalMime
                 ))
 
                 // Reset per-channel state
@@ -211,15 +232,39 @@ object M3UParser {
                         if (currentUris.isNotEmpty()) {
                             saveAndReset()
                         }
+                        
                         // Cross-Compatibility for Kodi and VLC style properties (Headers/DRM)
                         val parts = trimmedLine.substringAfter(":").split("=", limit = 2)
                         if (parts.size == 2) {
                             val key = parts[0].trim()
                             val value = parts[1].trim()
-                            processTagProperty(key, value, currentHeaders, { currentDrmScheme = it }, { currentDrmLicense = it }, { currentMimeType = it })
+                            
+                            // If channelCount is 0 and name is empty, these might be global template tags
+                            val isGlobalPhase = channelCount == 0 && currentName.isEmpty()
+                            
+                            processTagProperty(key, value, currentHeaders, 
+                                { drm -> 
+                                    currentDrmScheme = drm
+                                    if (isGlobalPhase) globalDrmScheme = drm
+                                }, 
+                                { lic -> 
+                                    currentDrmLicense = lic
+                                    if (isGlobalPhase) globalDrmLicense = lic
+                                }, 
+                                { mime -> 
+                                    currentMimeType = mime
+                                    if (isGlobalPhase) globalMimeType = mime
+                                }
+                            )
                         }
                     }
                     !trimmedLine.startsWith("#") -> {
+                        // SANITIZATION: Verify it's actually a URL (contains protocol or is a valid file path)
+                        // This ignores decorative lines like "------- TATA PLAY -------------"
+                        if (!trimmedLine.contains("://") && !trimmedLine.contains("/") && !trimmedLine.contains("\\")) {
+                            continue
+                        }
+
                         if (currentUris.isNotEmpty() && currentName.isEmpty()) {
                              // This is a naked URL following another naked URL with no metadata in between
                              saveAndReset()
@@ -336,9 +381,31 @@ object M3UParser {
             k == "referer" || k == "http-referer" || k == "referrer" -> headers["Referer"] = value
             k == "cookie" || k == "http-cookie" -> headers["Cookie"] = value
             k == "origin" -> headers["Origin"] = value
+            k == "exclusivetv.drm_profile" -> {
+                // Format: scheme|signature|regex|template
+                val p = value.split("|")
+                if (p.size >= 4) {
+                    val scheme = p[0].trim()
+                    val signature = p[1].trim()
+                    val regex = p[2].trim()
+                    val template = p[3].trim()
+                    OptimizationManager.registerProfile(OptimizationManager.PortalProfile(
+                        signature = signature,
+                        drmScheme = scheme,
+                        idRegex = regex,
+                        licenseTemplate = template
+                    ))
+                }
+            }
             else -> {
                 // Pass through other Kodi/VLC properties as headers if they aren't internal plugin keys
-                if (!k.startsWith("inputstream")) {
+                // Special handling for stream_headers which is often used in Kodi
+                if (k == "stream_headers" || k == "inputstream.adaptive.stream_headers") {
+                     value.split("|").forEach { pair ->
+                         val kv = pair.split("=", limit = 2)
+                         if (kv.size == 2) headers[normalizeHeaderKey(kv[0].trim())] = kv[1].trim()
+                     }
+                } else if (!k.startsWith("inputstream")) {
                     headers[normalizeHeaderKey(key)] = value
                 }
             }
@@ -404,7 +471,7 @@ object M3UParser {
         catchupType: String?, catchupDays: String?, catchupSource: String?,
         language: String?, country: String?, resolution: String?, bitrate: String?,
         frameRate: String?, videoCodec: String?, isAudioOnly: Boolean, 
-        isWebViewEmbed: Boolean, genre: String?
+        isWebViewEmbed: Boolean, genre: String?, mimeType: String?
     ): TV {
         val finalName = name.ifEmpty { "ExclusiveTV ${id + 1}" }
         return TV(
@@ -433,7 +500,8 @@ object M3UParser {
             genre = genre,
             audioFormats = setOf(),
             compatibleDevices = setOf("androidtv", "mobile"),
-            child = emptyList()
+            child = emptyList(),
+            mimeType = mimeType
         )
     }
 }
