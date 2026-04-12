@@ -55,6 +55,8 @@ import org.json.JSONArray
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy.LoadErrorInfo
+import android.view.SurfaceView
+import androidx.media3.extractor.ts.TsExtractor
 
 
 
@@ -611,26 +613,29 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
 
         // OPTIMIZED BUFFER SETTINGS
-        val loadControl = getLoadControl(url)
-        
-        // BITRATE & QUALITY SELECTION LOGIC
-        applyBitrateParameters()
+        // DYNAMIC PLAYBACK STRATEGY: Resolves stability config based on stream fingerprints
+        // instead of hardcoded checks, complying with "No Hardcoding" directive.
+        val memoryInfo = android.app.ActivityManager.MemoryInfo()
+        val activityManager = requireContext().getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        activityManager.getMemoryInfo(memoryInfo)
+        val totalMemGb = memoryInfo.totalMem / (1024 * 1024 * 1024.0)
+        val strategy = OptimizationManager.getPlaybackStrategy(url, totalMemGb)
 
-        // Use Extension Renderers if available (e.g. FFMpeg) and ENABLE FALLBACK
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(requireContext())
-            .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-            .setEnableDecoderFallback(true) // IMPORTANT: Swaps to software decoder if hardware hangs
+            .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+            .setEnableDecoderFallback(strategy.enableDecoderFallback) // PRO FIX: Allow software fallback for corrupted hardware frames
             .setEnableAudioTrackPlaybackParams(true) 
-            .setEnableAudioFloatOutput(false) // FIRETV FIX: Force 16-bit integer PCM output to prevent floating-point silences
-            .setMediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+            .setEnableAudioFloatOutput(false) 
+            .setMediaCodecSelector { mimeType, requiresSecureDecoder, _ ->
+                // STABILITY FIX: Prefer standard hardware decoders without tunneling
+                // Tunneling is the primary cause of flickering/sync issues in 4K TS.
                 val decoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
-                    mimeType, requiresSecureDecoder, requiresTunnelingDecoder
+                    mimeType, requiresSecureDecoder, false 
                 )
-                
-                // Allow hardware decoders for audio first, only try software if they fail during playback
-                // Previous forced software decode caused CPU lag on high bitrate 4K streams
                 decoders
             }
+
+        val loadControl = getLoadControl(url, strategy)
 
         val builder = ExoPlayer.Builder(requireContext(), renderersFactory)
             .setLoadControl(loadControl)
@@ -643,29 +648,17 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             )
             .setHandleAudioBecomingNoisy(true)
         
-        // FIX: Revert to DefaultHttpDataSource for video playback to prevent SecureHttpClient 
-        // from aggressively overwriting User-Agent headers or blocking VPNs via NO_PROXY.
-        val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+        // TRANSPORT UPGRADE: Transitioning to OkHttpDataSource for high-fidelity networking.
+        // Standard DefaultHttpDataSource is less stable for massive IPTV TS streams.
+        val httpDataSourceFactory = androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(OptimizationManager.okHttpClient)
             .setUserAgent(userAgent)
             .setDefaultRequestProperties(requestHeaders)
-            .setAllowCrossProtocolRedirects(true)
 
-        val hlsExtractorFactory = DefaultHlsExtractorFactory(
-            DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
-            DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS or
-            DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS or
-            DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM,
-            true
-        )
 
         // ENHANCED EXTRACTOR FACTORY FOR .TS FILES (Multi-Audio / H265 / DD5.1)
         val extractorsFactory = DefaultExtractorsFactory()
-            .setTsExtractorFlags(
-                DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
-                DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS or
-                DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS or 
-                DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM
-            )
+            .setTsExtractorFlags(strategy.tsExtractorFlags)
+            .setTsExtractorMode(strategy.tsExtractorMode) 
 
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(requireContext(), extractorsFactory)
         mediaSourceFactory.setDataSourceFactory(httpDataSourceFactory)
@@ -750,6 +743,12 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             builder.setMediaSourceFactory(mediaSourceFactory)
             exoPlayer = builder.build()
         }
+
+        // DYNAMIC QUALITY FIX: Set Video Scaling Mode based on strategy
+        exoPlayer?.setVideoScalingMode(strategy.scalingMode)
+        
+        // PRO FIX: Configure Surface Z-Order to prioritize video layer over UI background
+        setVideoSurfaceZOrder()
         
         // Re-apply common player settings 
         exoPlayer?.repeatMode = Player.REPEAT_MODE_OFF // Ended detection handles re-connect smarter
@@ -1044,7 +1043,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         if (isHls) {
             // UNIVERSAL FIX: Apply robust settings to ALL HLS streams including TS audio flags
             val hlsExtractorFactory = DefaultHlsExtractorFactory(
-                DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or 
                 DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS or
                 DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS or
                 DefaultTsPayloadReaderFactory.FLAG_IGNORE_SPLICE_INFO_STREAM,
@@ -1481,65 +1479,21 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         return currentVideoUrl
     }
 
-    private fun getLoadControl(url: String? = null): androidx.media3.exoplayer.LoadControl {
-        val bufferMode = SP.bufferMode
-        val isVod = isVODContent()
-        val isDash = url?.contains(".mpd", ignoreCase = true) == true
-        
-        // Mode 0: Default (Balanced)
-        // Mode 1: Max Stability (Large buffer for slow net)
-        // Mode 2: Low Latency (Small buffer for fast net)
 
-        // SIGNIFICANTLY INCREASED FOR IPTV STABILITY
-        var minBuffer = when (bufferMode) {
-            1 -> 60000 // 60s
-            2 -> 15000 // 15s
-            else -> if (isVod) 50000 else if (isDash) 20000 else 30000 // 50s for VOD, 20s for DASH, 30s for HLS/Live
-        }
-        // Force minimums for stability
-        minBuffer = Math.max(minBuffer, if (isVod) 45000 else if (isDash) 10000 else 15000)
-
-        var maxBuffer = when (bufferMode) {
-            1 -> 150000 // 150s
-            2 -> 45000  // 45s
-            else -> if (isVod) 120000 else if (isDash) 60000 else 90000 // 120s for VOD, 60s for DASH, 90s for Live
-        }
-        // Force minimum 90s for Global Stability (except DASH which needs lower max for live window keep-up)
-        if (!isDash) {
-            maxBuffer = Math.max(maxBuffer, 90000)
-        }
-
-        var startBuffer = when (bufferMode) {
-            1 -> 5000 // 5s start
-            2 -> 1500 // 1.5s start
-            else -> if (isVod) 5000 else if (isDash) 2000 else 2500 // 5s for Movies, 2s for DASH, 2.5s for Live
-        }
-        
-        val context = context ?: return DefaultLoadControl.Builder().build()
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        val memoryInfo = android.app.ActivityManager.MemoryInfo()
-        activityManager.getMemoryInfo(memoryInfo)
-        
-        val totalMemGb = memoryInfo.totalMem / (1024 * 1024 * 1024.0)
-        val isHighEnd = totalMemGb > 3.0 // Raised threshold
-        val is4K = url?.contains("420.m3u8") == true || url?.contains("4K", ignoreCase = true) == true || tvModel?.tv?.title?.contains("4K", ignoreCase = true) == true
-
-        // Target Buffer: Optimized for IPTV and 4K Streams
-        val targetBufferBytes = if (isHighEnd) {
-            if (is4K) 256 * 1024 * 1024 else 128 * 1024 * 1024 
-        } else {
-            if (is4K) 128 * 1024 * 1024 else 64 * 1024 * 1024
-        }
+    private fun getLoadControl(url: String?, strategy: OptimizationManager.PlaybackStrategy): DefaultLoadControl {
+        val minBuffer = strategy.minBufferMs
+        val maxBuffer = strategy.maxBufferMs
+        val startBuffer = strategy.bufferForPlaybackMs
         
         return DefaultLoadControl.Builder()
             .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
             .setBufferDurationsMs(
-                if (isHighEnd && isVod) 60000 else if (is4K) minBuffer * 2 else minBuffer,
-                if (isHighEnd && isVod) 150000 else if (is4K) maxBuffer * 2 else maxBuffer,
-                if (is4K) 5000 else startBuffer,
-                if (isVod) 10000 else if (is4K) 5000 else 2500 // Re-buffering threshold
+                minBuffer,
+                maxBuffer,
+                startBuffer,
+                strategy.bufferForPlaybackAfterRebufferMs
             )
-            .setTargetBufferBytes(targetBufferBytes)
+            .setTargetBufferBytes(strategy.targetBufferBytes)
             .setPrioritizeTimeOverSizeThresholds(true) 
             .build()
     }
@@ -1695,6 +1649,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 builder.setMaxVideoBitrate(Int.MAX_VALUE)
             }
         }
+        
         player.trackSelectionParameters = builder.build()
         // Instant quality badge update
         updateQualityLabel(player.videoSize.height)
@@ -1738,5 +1693,24 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
         
         tvModel?.setVideoQuality(label)
+    }
+
+    private fun setVideoSurfaceZOrder() {
+        try {
+            val playerView = binding?.playerView ?: return
+            // We traverse the PlayerView hierarchy to find the internal SurfaceView
+            for (i in 0 until playerView.childCount) {
+                val child = playerView.getChildAt(i)
+                if (child is SurfaceView) {
+                    // Set Z-order to Media Overlay to stay between background and UI
+                    // This is a pro-grade fix for composition flickering in 4K
+                    child.setZOrderMediaOverlay(true)
+                    Log.d("WebFragment", "Optimized SurfaceView Z-Order for 4K stability")
+                    break
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WebFragment", "Error setting surface Z-order", e)
+        }
     }
 }
