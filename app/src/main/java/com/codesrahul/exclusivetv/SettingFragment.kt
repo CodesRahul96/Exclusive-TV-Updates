@@ -166,6 +166,7 @@ class SettingFragment : Fragment() {
           binding.statusWatermark.text = if (SP.watermarkEnabled) "ON" else "OFF"
           binding.statusPipMode.text = if (SP.pipMode) "ON" else "OFF"
           binding.statusAudioStabilizer.text = if (SP.audioStabilizer) "ON" else "OFF"
+          binding.statusDolbyAudio.text = if (SP.dolbyAudio) "ON" else "OFF"
           binding.statusVoiceSearch.text = if (SP.voiceSearch) "ON" else "OFF"
 
 
@@ -180,7 +181,7 @@ class SettingFragment : Fragment() {
             binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, 
-            binding.statusAudioStabilizer, binding.statusEpgShift, binding.statusVoiceSearch
+            binding.statusAudioStabilizer, binding.statusDolbyAudio, binding.statusEpgShift, binding.statusVoiceSearch
         )
 
         statusViews.forEach { v ->
@@ -221,6 +222,7 @@ class SettingFragment : Fragment() {
             binding.cardBufferMode,
             binding.cardAudioLanguage,
             binding.cardAudioStabilizer,
+            binding.cardDolbyAudio,
             binding.cardVoiceSearch,
             binding.managePlaylists,
             binding.manageCategories,
@@ -272,6 +274,7 @@ class SettingFragment : Fragment() {
         binding.cardBufferMode.setOnClickListener { toggleSetting("bufferMode") }
         binding.cardAudioLanguage.setOnClickListener { setupAudioLanguageDialog() }
         binding.cardAudioStabilizer.setOnClickListener { toggleSetting("audioStabilizer") }
+        binding.cardDolbyAudio.setOnClickListener { toggleSetting("dolbyAudio") }
         binding.cardVoiceSearch.setOnClickListener { toggleSetting("voiceSearch") }
         
         binding.cardTelegram.setOnClickListener {
@@ -497,6 +500,10 @@ class SettingFragment : Fragment() {
             }
             "voiceSearch" -> {
                 SP.voiceSearch = !SP.voiceSearch
+            }
+            "dolbyAudio" -> {
+                SP.dolbyAudio = !SP.dolbyAudio
+                binding.statusDolbyAudio.text = if (SP.dolbyAudio) "ON" else "OFF"
             }
 
         }

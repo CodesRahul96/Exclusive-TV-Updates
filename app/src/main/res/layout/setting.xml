@@ -379,6 +379,18 @@
                         </LinearLayout>
                         <TextView android:id="@+id/status_audio_stabilizer" style="@style/SettingsStatusText" android:text="OFF"/>
                     </LinearLayout>
+                    <View style="@style/SettingsDivider"/>
+
+                    <LinearLayout
+                        android:id="@+id/card_dolby_audio"
+                        style="@style/SettingsToggleItem">
+                        <ImageView style="@style/SettingsIcon" android:src="@drawable/ic_audio_track"/>
+                        <LinearLayout style="@style/SettingsTextContainer">
+                            <TextView style="@style/SettingsTitle" android:text="Dolby Audio (Surround/Downmix)"/>
+                             <TextView style="@style/SettingsSubtitle" android:text="EN: Passthrough for AVR | DIS: Smart Stereo Downmix"/>
+                        </LinearLayout>
+                        <TextView android:id="@+id/status_dolby_audio" style="@style/SettingsStatusText" android:text="OFF"/>
+                    </LinearLayout>
                  </LinearLayout>
 
 

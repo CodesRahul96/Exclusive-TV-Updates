@@ -621,8 +621,17 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val totalMemGb = memoryInfo.totalMem / (1024 * 1024 * 1024.0)
         val strategy = OptimizationManager.getPlaybackStrategy(url, totalMemGb)
 
+        // DOLBY AUDIO LOGIC:
+        // ON (PREFER): High-fidelity passthrough for AVR/Soundbar (Multi-channel)
+        // OFF (ON): Standard compatibility mode. If a channel ONLY has Dolby audio,
+        // ExoPlayer will still play it via hardware/software downmixing to Stereo.
+        val extMode = if (SP.dolbyAudio) 
+            androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+        else 
+            androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(requireContext())
-            .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+            .setExtensionRendererMode(extMode)
             .setEnableDecoderFallback(strategy.enableDecoderFallback) // PRO FIX: Allow software fallback for corrupted hardware frames
             .setEnableAudioTrackPlaybackParams(true) 
             .setEnableAudioFloatOutput(false) 
@@ -1315,15 +1324,36 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val tracks = mutableListOf<AudioTrack>()
         val currentTracks = exoPlayer?.currentTracks ?: return tracks
         
-        var trackIndex = 0
+        var totalIndex = 0
         for (group in currentTracks.groups) {
             if (group.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until group.length) {
                     val format = group.getTrackFormat(i)
-                    val lang = format.language ?: ""
-                    val label = format.label ?: if (lang.isNotEmpty()) lang else "Audio ${trackIndex + 1}"
-                    tracks.add(AudioTrack(trackIndex, label, group.isTrackSelected(i)))
-                    trackIndex++
+                    val langCode = format.language ?: ""
+                    val langName = if (langCode.isNotEmpty()) {
+                        java.util.Locale(langCode).displayLanguage.replaceFirstChar { it.uppercase() }
+                    } else ""
+                    
+                    val channelCount = format.channelCount
+                    val channelLabel = when {
+                        channelCount >= 6 -> "5.1 Surround"
+                        channelCount >= 3 -> "Multi-channel"
+                        channelCount == 2 -> "Stereo"
+                        channelCount == 1 -> "Mono"
+                        else -> ""
+                    }
+                    
+                    val mimeType = format.sampleMimeType?.substringAfterLast("/")?.uppercase()?.replace("E-", "") ?: ""
+                    
+                    val labelBuilder = StringBuilder()
+                    if (langName.isNotEmpty()) labelBuilder.append("[$langName] ")
+                    if (channelLabel.isNotEmpty()) labelBuilder.append(channelLabel)
+                    if (mimeType.isNotEmpty()) labelBuilder.append(" ($mimeType)")
+                    
+                    val finalLabel = labelBuilder.toString().trim().ifEmpty { "Audio ${totalIndex + 1}" }
+                    
+                    tracks.add(AudioTrack(totalIndex, finalLabel, group.isTrackSelected(i)))
+                    totalIndex++
                 }
             }
         }
@@ -1331,15 +1361,16 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     }
 
     fun setAudioTrack(trackIndex: Int) {
-        val currentTracks = exoPlayer?.currentTracks ?: return
+        val player = exoPlayer ?: return
+        val currentTracks = player.currentTracks
         var currentIndex = 0
         
         // If trackIndex is -1 (Default/Auto), clear overrides
         if (trackIndex == -1) {
-             exoPlayer?.trackSelectionParameters = exoPlayer?.trackSelectionParameters
-                ?.buildUpon()
-                ?.clearOverridesOfType(C.TRACK_TYPE_AUDIO)
-                ?.build() ?: return
+             player.trackSelectionParameters = player.trackSelectionParameters
+                .buildUpon()
+                .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                .build()
              return
         }
 
@@ -1347,12 +1378,11 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             if (group.type == C.TRACK_TYPE_AUDIO) {
                 for (i in 0 until group.length) {
                     if (currentIndex == trackIndex) {
-                        exoPlayer?.trackSelectionParameters = exoPlayer?.trackSelectionParameters
-                            ?.buildUpon()
-                            ?.setOverrideForType(
-                                androidx.media3.common.TrackSelectionOverride(group.mediaTrackGroup, i)
-                            )
-                            ?.build() ?: return
+                        player.trackSelectionParameters = player.trackSelectionParameters
+                            .buildUpon()
+                            .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                            .setOverrideForType(androidx.media3.common.TrackSelectionOverride(group.mediaTrackGroup, i))
+                            .build()
                         return
                     }
                     currentIndex++
@@ -1676,13 +1706,30 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private fun updateAudioTrackFromSettings() {
         val player = exoPlayer ?: return
         val lang = SP.defaultAudioLanguage
+        val preferDolby = SP.dolbyAudio
+        
         try {
             val builder = player.trackSelectionParameters.buildUpon()
+            
+            // 1. Apply Language Preference
             if (lang.isNotEmpty()) {
                 builder.setPreferredAudioLanguages(lang)
             } else {
                 builder.setPreferredAudioLanguages()
             }
+            
+            // 2. Apply Dolby / Multi-channel Priority
+            // When Dolby is ON, we avoid lowering channel count to Stereo if a 
+            // multi-channel (AC3/5.1) track is available.
+            if (preferDolby) {
+                // Media3 doesn't have a direct "preferMaxChannels" boolean in builder, 
+                // but we can influence it by ensuring we don't constrain to 2.
+                builder.setMaxAudioChannelCount(Int.MAX_VALUE)
+            } else {
+                // If Dolby is OFF, we might want to prioritize compatibility (Stereo)
+                // but standard auto behavior is usually fine.
+            }
+            
             player.trackSelectionParameters = builder.build()
             
             // Show feedback toast if language was changed manually in settings
@@ -1691,6 +1738,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 Toast.makeText(requireContext(), "Audio Language: ${locale.displayLanguage}", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
+            Log.e("WebFragment", "Error updating audio tracks from settings", e)
         }
     }
 

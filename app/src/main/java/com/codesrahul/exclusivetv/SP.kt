@@ -76,6 +76,7 @@ object SP {
     private const val KEY_SEARCH_HISTORY = "search_history"
     private const val KEY_RECENTLY_WATCHED = "recently_watched"
     private const val KEY_VOICE_SEARCH = "voice_search"
+    private const val KEY_DOLBY_AUDIO = "dolby_audio"
 
     // --- Remote Config Flags (in-memory only, refreshed on every app start) ---
     // Safe default is TRUE so new users are never blocked if Firebase fetch fails
@@ -613,6 +614,15 @@ object SP {
             if (value != this.audioStabilizer) {
                 sp.edit().putBoolean(KEY_AUDIO_STABILIZER, value).apply()
                 notifyListeners(KEY_AUDIO_STABILIZER)
+            }
+        }
+
+    var dolbyAudio: Boolean
+        get() = sp.getBoolean(KEY_DOLBY_AUDIO, false)
+        set(value) {
+            if (value != this.dolbyAudio) {
+                sp.edit().putBoolean(KEY_DOLBY_AUDIO, value).apply()
+                notifyListeners(KEY_DOLBY_AUDIO)
             }
         }
 
