@@ -282,7 +282,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     }
 
     fun stop() {
-        webView.loadUrl("about:blank")
+        clearWebViewResources()
         releasePlayer()
         retryCount = 0 // Stop retrying
         playerView.visibility = View.GONE
@@ -336,7 +336,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             
             webView.visibility = View.GONE
             playerView.visibility = View.VISIBLE
-            webView.loadUrl("about:blank") // Stop webview
+            clearWebViewResources() // Aggressive cleanup before player init
             
             try {
                 initializePlayer(url)
@@ -1364,7 +1364,9 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private fun releasePlayer() {
         playbackHandler.removeCallbacksAndMessages(null)
         try {
+            // CRITICAL: Unbind the player from the View FIRST to break renderer references
             playerView.player = null
+            
             if (loudnessEnhancer != null) {
                 loudnessEnhancer?.release()
                 loudnessEnhancer = null
@@ -1428,7 +1430,23 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         super.onDestroyView()
         SP.removeOnSharedPreferenceChangeListener(this)
         releasePlayer()
+        clearWebViewResources()
         _binding = null
+    }
+
+    private fun clearWebViewResources() {
+        try {
+            binding?.webView?.let { webView ->
+                webView.stopLoading()
+                webView.loadUrl("about:blank")
+                webView.clearHistory()
+                webView.onPause() // Ensure the engine is paused
+                // We don't destroy() here because the instance is often reused by binding,
+                // but we clear all heavy state.
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing WebView resources", e)
+        }
     }
 
     companion object {
@@ -1698,14 +1716,13 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private fun setVideoSurfaceZOrder() {
         try {
             val playerView = binding?.playerView ?: return
-            // We traverse the PlayerView hierarchy to find the internal SurfaceView
+            
+            // Apply Z-order overlay to all content to ensure stable layering 
+            // behind UI components, preventing surface flicker on diverse TV hardware.
             for (i in 0 until playerView.childCount) {
                 val child = playerView.getChildAt(i)
                 if (child is SurfaceView) {
-                    // Set Z-order to Media Overlay to stay between background and UI
-                    // This is a pro-grade fix for composition flickering in 4K
                     child.setZOrderMediaOverlay(true)
-                    Log.d("WebFragment", "Optimized SurfaceView Z-Order for 4K stability")
                     break
                 }
             }

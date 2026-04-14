@@ -73,6 +73,11 @@ object TVList {
 
     private var serverUrl: String = ""
     private var list: List<TV> = emptyList()
+
+    fun removeChannelsBySource(url: String) {
+        list = list.filter { it.sourceUrl != url }
+    }
+
     var listModel: List<TVModel> = listOf()
     val groupModel = TVGroupModel()
     
@@ -167,6 +172,10 @@ object TVList {
                         val result = parseUniversalFile(file)
                         if (result.isNotEmpty()) {
                             list = result
+                            // PRE-POPULATE SOURCE CACHE: Group existing channels by their source URL
+                            result.groupBy { it.sourceUrl }.forEach { (url, channels) ->
+                                if (url != null) sourceCache[url] = channels
+                            }
                             refreshModels(MyTVApplication.getInstance())
                         }
                     }
@@ -397,6 +406,7 @@ object TVList {
                                            
                                            // OPTIMIZATION: Parse in parallel with other downloads
                                            val channels = parseUniversalFile(tempFile)
+                                            channels.forEach { it.sourceUrl = url }
                                            
                                             // DEBUG LOGGING FOR STANDARD API ISSUES
                                             if (channels.isEmpty()) {
@@ -1104,7 +1114,7 @@ object TVList {
             val currentGroupModels = groupModel.getTVListModelList()
             val oldGroupMap = currentGroupModels.associateBy { it.getOriginalName() }
 
-            val (newList, newGroupList) = withContext(Dispatchers.Default) {
+            val (newList, newGroupList, likedChannels) = withContext(Dispatchers.Default) {
                 val listModelNew = mutableListOf<TVModel>()
                 val groupListNew = mutableListOf<TVListModel>()
                 
@@ -1150,16 +1160,18 @@ object TVList {
                     }
                 }
                 
-                // Return both lists
-                Pair(listModelNew, groupListNew)
+                // [FIX] HANG PREVENTION: Filter Liked channels in background thread
+                val likedChannels = listModelNew.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
+                
+                // Return all prepared data
+                Triple(listModelNew, groupListNew, likedChannels)
             }
 
             // 3. Final Commit (Main Thread)
             withContext(Dispatchers.Main) {
-                val collectionGroup = newGroupList[0] // Guaranteed index 0
-                val allChannelsGroup = newGroupList[1] // Guaranteed index 1
+                val collectionGroup = newGroupList[0] 
+                val allChannelsGroup = newGroupList[1] 
 
-                val likedChannels = newList.filter { it.like.value == true || SP.getLike(it.tv.id) }.toMutableList()
                 collectionGroup.setTVListModel(likedChannels)
 
                 listModel = newList
@@ -1195,9 +1207,8 @@ object TVList {
                 // but map + filter is safer.
                 val currentList = list.toList()
                 
-                // Limit concurrency to avoid OOM or OS limits, but high enough for speed
-                // 50 concurrent checks is standard for fast checkers
-                val semaphore = kotlinx.coroutines.sync.Semaphore(50)
+                // Limit concurrency to reduce CPU/IO pressure (Lag prevention)
+                val semaphore = kotlinx.coroutines.sync.Semaphore(10)
                 
                 val validList = currentList.map { tv ->
                     async {

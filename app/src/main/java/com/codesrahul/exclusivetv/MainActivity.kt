@@ -598,8 +598,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         com.codesrahul.exclusivetv.models.TVList.setPosition(newIndex)
                     }
                 } else {
-                    // No video playing, maybe first load finished or error state
-                    TVList.getTVModel(pos)?.let { playChannel(it) }
+                    // No video playing or fresh state, but verify URL before restarting
+                    TVList.getTVModel(pos)?.let { model ->
+                        val currentUrl = webFragment.getCurrentUrl() ?: ""
+                        val targetUrl = model.tv.uris.firstOrNull() ?: ""
+                        if (targetUrl != currentUrl || currentUrl.isEmpty()) {
+                             playChannel(model)
+                        }
+                    }
                 }
                 menuFragment.update()
                 

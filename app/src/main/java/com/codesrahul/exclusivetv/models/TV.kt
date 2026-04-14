@@ -82,6 +82,10 @@ data class TV(
     var framePacking: String? = null,            // "3D" support info
     @SerializedName("mime_type")
     var mimeType: String? = null,                // Explicit Format Hint (e.g. application/dash+xml)
+
+    // Internal Metadata (Non-Serialized or Persisted)
+    @SerializedName("source_url")
+    var sourceUrl: String? = null,               // Originating playlist URL
 ) : Serializable {
 
     override fun toString(): String {

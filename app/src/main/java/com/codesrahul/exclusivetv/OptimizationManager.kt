@@ -62,28 +62,36 @@ object OptimizationManager {
         // Technical Signature Detection
         val isTs = path.endsWith(".ts") || path.contains("/ts/") || host.contains("datahub")
         val isHighRes = url.contains("4K", true) || url.contains("1080", true) || url.contains("FHD", true)
+        
+        // DEVICE SEGMENTATION: 
+        // High-End: > 3GB RAM (Smooth 4K+ experience)
+        // Mid-Range: 1.5GB - 3GB
+        // Low-End: < 1.5GB (Aggressive resource management to prevent crashes)
         val isHighEndDevice = totalRamGb > 3.0
+        val isLowEndDevice = totalRamGb < 1.5
         
         // INDUSTRY STANDARD: Deep buffers for high-bitrate TS streams (Prevents macroblocking)
+        // Low-End Fix: Drastically reduce target bytes to prevent renderer finalize timeouts.
         val minBuffer = if (isTs || isHighRes) (if (isHighEndDevice) 50000 else 30000) else 25000
         val maxBuffer = if (isTs || isHighRes) (if (isHighEndDevice) 120000 else 60000) else 50000
-        val targetBytes = if (isHighEndDevice) {
-            if (isTs || isHighRes) 384 * 1024 * 1024 else 128 * 1024 * 1024
-        } else {
-            if (isTs || isHighRes) 192 * 1024 * 1024 else 64 * 1024 * 1024
+        
+        val targetBytes = when {
+            isLowEndDevice -> 32 * 1024 * 1024 // Aggressive 32MB limit for stable cleanup
+            isHighEndDevice -> if (isTs || isHighRes) 384 * 1024 * 1024 else 128 * 1024 * 1024
+            else -> if (isTs || isHighRes) 128 * 1024 * 1024 else 64 * 1024 * 1024
         }
 
         return PlaybackStrategy(
             minBufferMs = minBuffer,
             maxBufferMs = maxBuffer,
-            bufferForPlaybackMs = if (isTs || isHighRes) 8000 else 2500, // Pre-roll stabilization
+            bufferForPlaybackMs = if (isLowEndDevice) 1500 else if (isTs || isHighRes) 8000 else 2500,
             bufferForPlaybackAfterRebufferMs = 5000,
             targetBufferBytes = targetBytes,
             scalingMode = 1, // VIDEO_SCALING_MODE_SCALE_TO_FIT (Safe default)
             tsExtractorFlags = 1 or 16 or 2048, // FLAG_ALLOW_NON_IDR_KEYFRAMES (0) | FLAG_DETECT_ACCESS_UNITS (16) | FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS (1) | FLAG_IGNORE_SPLICE_INFO_STREAM (2048)
             tsExtractorMode = 1, // TsExtractor.MODE_SINGLE_PMT
             enableDecoderFallback = true, // Always allow fallback for corrupted hardware frames
-            isHighFidelity = isTs || isHighRes
+            isHighFidelity = (isTs || isHighRes) && !isLowEndDevice
         )
     }
 

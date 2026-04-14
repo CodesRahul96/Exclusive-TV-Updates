@@ -898,8 +898,13 @@ class SettingFragment : Fragment() {
             .setPositiveButton("Remove") { _, _ ->
                 SP.removePlaylistUrl(url)
                 Toast.makeText(requireContext(), "Source removed", Toast.LENGTH_SHORT).show()
-                // Refresh list
-                TVList.update(requireContext(), silent = false, force = true)
+                
+                // [FIX] INSTANT REFRESH: Remove channels from memory immediately to avoid UI hang
+                com.codesrahul.exclusivetv.models.TVList.removeChannelsBySource(url)
+                com.codesrahul.exclusivetv.models.TVList.refreshModels(requireContext())
+                
+                // Trigger background update silently to sync with server/cache
+                com.codesrahul.exclusivetv.models.TVList.update(requireContext(), silent = true, force = true)
             }
             .setNegativeButton("Cancel") { _, _ -> showManagePlaylistsDialog() } // Re-show list
             .show()
