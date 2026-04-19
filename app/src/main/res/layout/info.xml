@@ -52,59 +52,65 @@
             android:fontFamily="sans-serif-black"
             android:textColor="@color/white"
             android:textSize="@dimen/text_size_channel_num"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
-            app:layout_constraintBottom_toBottomOf="@+id/title"
+            android:elevation="4dp"
             app:layout_constraintStart_toEndOf="@+id/logo"
-            app:layout_constraintTop_toTopOf="@+id/title"
-            tools:text="001" />
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="1096" />
 
         <TextView
             android:id="@+id/title"
             style="@style/ExclusiveText.Header"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="14dp"
             android:maxLines="1"
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:scrollHorizontally="true"
             android:textSize="@dimen/text_size_info_title"
-            app:layout_constraintBottom_toTopOf="@+id/program_title"
             app:layout_constraintEnd_toStartOf="@+id/date_time"
             app:layout_constraintStart_toEndOf="@+id/channel_number"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_chainStyle="packed" />
+            app:layout_constraintTop_toTopOf="@+id/channel_number"
+            app:layout_constraintBottom_toBottomOf="@+id/channel_number"
+            tools:text="Master 360 332162" />
 
         <TextView
             android:id="@+id/program_title"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="6dp"
             android:fontFamily="sans-serif-medium"
             android:textColor="@color/accent_gold"
             android:textSize="@dimen/text_size_info_program"
+            android:maxLines="1"
+            android:ellipsize="end"
             android:visibility="gone"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginEnd="16dp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintHorizontal_chainStyle="packed"
             app:layout_constraintStart_toStartOf="@+id/channel_number"
+            app:layout_constraintEnd_toStartOf="@+id/program_time"
             app:layout_constraintTop_toBottomOf="@+id/title"
-            tools:text="Current Program"
+            tools:text="Bhabi ji Ghar Par Hai!"
             tools:visibility="visible" />
 
         <TextView
             android:id="@+id/program_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginStart="10dp"
             android:fontFamily="sans-serif"
             android:textColor="#00B0FF"
             android:textSize="@dimen/text_size_info_small"
             android:visibility="gone"
-            app:layout_constraintStart_toStartOf="@+id/channel_number"
-            app:layout_constraintTop_toBottomOf="@+id/program_title"
+            app:layout_constraintBottom_toBottomOf="@+id/program_title"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/program_title"
+            app:layout_constraintTop_toTopOf="@+id/program_title"
             tools:text="12:20 PM - 02:54 PM"
             tools:visibility="visible" />
 
@@ -112,15 +118,14 @@
             android:id="@+id/progress_container"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
             android:layout_marginEnd="16dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="@+id/program_time"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/program_time"
-            app:layout_constraintTop_toTopOf="@+id/program_time"
+            app:layout_constraintStart_toStartOf="@+id/channel_number"
+            app:layout_constraintTop_toBottomOf="@+id/program_title"
             tools:visibility="visible">
 
             <TextView
@@ -174,7 +179,7 @@
             android:textSize="@dimen/text_size_info_small"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@+id/channel_number"
-            app:layout_constraintTop_toBottomOf="@+id/program_time" />
+            app:layout_constraintTop_toBottomOf="@+id/progress_container" />
 
         <TextView
             android:id="@+id/next_program_label"
@@ -232,8 +237,10 @@
             android:id="@+id/quality_container"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
+            app:layout_constraintTop_toBottomOf="@+id/desc"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
