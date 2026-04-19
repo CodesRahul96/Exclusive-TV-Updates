@@ -198,6 +198,10 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     private var lastRefreshTime = 0L
     private val refreshInterval: Long = 30 * 60 * 1000L // 30 minutes
     private val resumeRefreshThreshold: Long = 60 * 1000L // 1 minute
+    
+    // Live Background Sync Heartbeat
+    private var lastDataSyncTime: Long = 0L
+    private val dataSyncInterval: Long = 30 * 60 * 1000L // 30 minutes (Professional Default)
 
     private fun isAddedToContext(): Boolean {
         // Simple check to see if we can still show/hide fragments
@@ -891,6 +895,14 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                         runOnUiThread { onAppMaintenance() }
                     }
 
+                    // 3. Live Data Sync Heartbeat (Silent Refresh)
+                    val now = System.currentTimeMillis()
+                    if (now - lastDataSyncTime >= dataSyncInterval) {
+                        lastDataSyncTime = now
+                        withContext(Dispatchers.Main) {
+                            com.codesrahul.exclusivetv.models.TVList.update(this@MainActivity, silent = true)
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Health check error", e)
                 }
