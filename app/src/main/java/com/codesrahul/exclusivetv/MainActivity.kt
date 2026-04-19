@@ -36,6 +36,10 @@ import com.codesrahul.exclusivetv.models.TVList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
 import com.codesrahul.exclusivetv.models.TVModel
 import com.codesrahul.exclusivetv.RootCheckUtil
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
@@ -106,6 +110,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private var isMaintenanceMode = false
+    private var isFirstPlaybackTriggered = false // Professional flag to prevent startup races
 
     private lateinit var updateManager: UpdateManager
     
@@ -149,19 +154,11 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     // Left arrow key hold tracking for Channel Search (TV Only - 2s)
-    private val leftArrowHandler = Handler(Looper.getMainLooper())
+    // Periodic Monitoring Jobs (Modern Architecture)
+    private var coreHealthJob: kotlinx.coroutines.Job? = null
+    private var leftArrowHoldJob: kotlinx.coroutines.Job? = null
+    private var bootstrapWatchdogJob: kotlinx.coroutines.Job? = null
     private var isLeftArrowPressed = false
-    private val leftArrowHoldRunnable = Runnable {
-        if (isLeftArrowPressed && isTvDevice()) {
-            isLeftArrowPressed = false
-            showSearchFragment()
-        }
-    }
-
-
-
-    // Periodic Update Check
-    private val updateHandler = Handler(Looper.getMainLooper())
     private val updateCheckInterval: Long = 15 * 60 * 1000 // 15 minutes
 
     private var doubleBackToExitPressedOnce = false
@@ -195,40 +192,16 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     private var server: SimpleServer? = null
 
-    private val rootHandler = Handler(Looper.getMainLooper())
-    private val checkInterval: Long = 60000 // Check every 60 seconds (optimized for TV performance)
     private var wasRooted = false
+    private val securityCheckInterval: Long = 60000 // 60 seconds (optimized)
 
     private var lastRefreshTime = 0L
-    private val refreshHandler = Handler(Looper.getMainLooper())
     private val refreshInterval: Long = 30 * 60 * 1000L // 30 minutes
     private val resumeRefreshThreshold: Long = 60 * 1000L // 1 minute
-
-    private val bootstrapWatchdogHandler = Handler(Looper.getMainLooper())
-    private val bootstrapWatchdogRunnable = Runnable {
-        if (!isFinishing && isAddedToContext() && loadingFragment.isAdded && loadingFragment.isVisible) {
-            Toast.makeText(this, "Network is slow. Attempting to load cached content...", Toast.LENGTH_LONG).show()
-            
-            // Emergency Recovery: Try to hide loader and show fragments if possible
-            if (SP.userId != null) {
-                onBootstrapComplete() 
-            } else {
-                showFragment(loginFragment)
-                hideFragment(loadingFragment)
-            }
-        }
-    }
 
     private fun isAddedToContext(): Boolean {
         // Simple check to see if we can still show/hide fragments
         return !supportFragmentManager.isDestroyed && !supportFragmentManager.isStateSaved
-    }
-
-    private val offlineHandler = Handler(Looper.getMainLooper())
-    private val showOfflineRunnable = Runnable {
-        if (!isFinishing) {
-             showOfflineScreenActual()
-        }
     }
 
     private lateinit var connectivityManager: ConnectivityManager
@@ -409,9 +382,21 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun startBootstrapSequence(skipSubCheck: Boolean) {
-        // Start 45s safety watchdog
-        bootstrapWatchdogHandler.removeCallbacks(bootstrapWatchdogRunnable)
-        bootstrapWatchdogHandler.postDelayed(bootstrapWatchdogRunnable, 45000)
+        // [PROFESSIONAL] Start 45s safety watchdog using Coroutines
+        bootstrapWatchdogJob?.cancel()
+        bootstrapWatchdogJob = lifecycleScope.launch {
+            kotlinx.coroutines.delay(45000)
+            if (isActive && !isFinishing && loadingFragment.isAdded && loadingFragment.isVisible) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Network is slow. Attempting to load cached content...", Toast.LENGTH_LONG).show()
+                    if (SP.userId != null) onBootstrapComplete() 
+                    else {
+                        showFragment(loginFragment)
+                        hideFragment(loadingFragment)
+                    }
+                }
+            }
+        }
         
         // Step 1: Initialize Remote Config
         initRemoteConfig { 
@@ -432,7 +417,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
     }
 
     private fun onBootstrapComplete() {
-        bootstrapWatchdogHandler.removeCallbacks(bootstrapWatchdogRunnable)
+        bootstrapWatchdogJob?.cancel()
         if (!loadingFragment.isVisible && !loginFragment.isVisible) return // Already handled or done
 
         // Transition to Landscape upon successful login/bootstrap on mobile
@@ -444,18 +429,17 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         // Background Auto-Update Check
         if (::updateManager.isInitialized) {
             updateManager.checkAndUpdate()
-            startPeriodicUpdateCheck()
         }
 
         // --- SMART BACKGROUND SYNC ---
         scheduleBackgroundSync()
         
-        // Auto-play last channel if available
-        val pos = TVList.position.value ?: -1
-        if (pos != -1 && TVList.getTVModel(pos) != null) {
-            playChannel(TVList.getTVModel(pos)!!)
-        } else if (TVList.listModel.isNotEmpty()) {
-            com.codesrahul.exclusivetv.models.TVList.setPosition(0)
+        // [PROFESSIONAL] Initial playback is now handled centrally by setupObservers() 
+        // to ensure zero race conditions between data loading and fragment attachment.
+        // We set position to -1 to guarantee the first legitimate update triggers playback.
+        if (com.codesrahul.exclusivetv.models.TVList.listModel.isEmpty()) {
+            com.codesrahul.exclusivetv.models.TVList.setPosition(-1)
+            isFirstPlaybackTriggered = false
         }
 
         // Trigger Onboarding for new users
@@ -582,11 +566,17 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 val currentPlayingUrl = webFragment.getCurrentUrl() ?: ""
                 val pos = TVList.position.value ?: -1
                 
-                if (pos == -1) {
-                    // Initial playback on load
+                if ((pos == -1 || pos == 0) && !isFirstPlaybackTriggered) {
+                    // Initial playback on load (Professional approach: only trigger once per cold start)
                     val targetPos = if (SP.watchLast) com.codesrahul.exclusivetv.models.TVList.restorePosition() else if (SP.channel > 0) SP.channel - 1 else 0
-                    if (com.codesrahul.exclusivetv.models.TVList.setPosition(targetPos)) {
-                        // Note: setPosition triggers the position observer which handles playback
+                    
+                    // Verify data existence before committing to first play
+                    if (com.codesrahul.exclusivetv.models.TVList.getTVModel(targetPos) != null) {
+                        isFirstPlaybackTriggered = true
+                        com.codesrahul.exclusivetv.models.TVList.setPosition(targetPos)
+                    } else if (com.codesrahul.exclusivetv.models.TVList.listModel.isNotEmpty()) {
+                        isFirstPlaybackTriggered = true
+                        com.codesrahul.exclusivetv.models.TVList.setPosition(0)
                     }
                 } else if (currentPlayingUrl.isNotEmpty()) {
                     // This was a silent background refresh
@@ -669,18 +659,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         */
     }
 
-    private fun startPeriodicRefresh() {
-        refreshHandler.postDelayed(object : Runnable {
-            override fun run() {
-                if (!SecurityUtil.isAppOutdated && !isMaintenanceMode) {
-                    TVList.update(this@MainActivity, silent = true)
-                    lastRefreshTime = Utils.getDateTimestamp() * 1000L
-                }
-                refreshHandler.postDelayed(this, refreshInterval)
-            }
-        }, refreshInterval)
-    }
-    
     override fun onUserLeaveHint() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val isPlaying = webFragment.isPlaying()
@@ -740,17 +718,6 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         updateWatermarkVisibility()
         updateWatermarkOpacity()
         updateWatermarkPosition()
-    }
-    
-    private fun startPeriodicUpdateCheck() {
-        updateHandler.postDelayed(object : Runnable {
-            override fun run() {
-                if (!isMaintenanceMode) {
-                    updateManager.checkAndUpdate()
-                }
-                updateHandler.postDelayed(this, updateCheckInterval)
-            }
-        }, updateCheckInterval)
     }
     
     fun updateWatermarkVisibility() {
@@ -882,19 +849,59 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onResume() {
         super.onResume()
+        startCoreHealthMonitoring()
+        
         if (!SecurityUtil.isAppOutdated && !isMaintenanceMode) {
-            // Check for refresh on resume
             val now = Utils.getDateTimestamp() * 1000L
             if (now - lastRefreshTime > resumeRefreshThreshold) {
-                // If standard or premium is configured, update list
                 if (!SP.standardConfig.isNullOrEmpty() || !SP.premiumConfig.isNullOrEmpty()) {
-                    handler.post {
-                        TVList.update(this, silent = true, force = true)
-                    }
+                    TVList.update(this, silent = true, force = true)
                     lastRefreshTime = now
                 }
             }
         }
+    }
+
+    override fun onPause() {
+        stopCoreHealthMonitoring()
+        super.onPause()
+    }
+
+    private fun startCoreHealthMonitoring() {
+        coreHealthJob?.cancel()
+        coreHealthJob = lifecycleScope.launch {
+            while (isActive) {
+                try {
+                    // 1. Root Security Check
+                    val isRooted = RootCheckUtil.isDeviceRooted(this@MainActivity)
+                    if (isRooted && !wasRooted) {
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "Rooted device detected. App cannot run.", Toast.LENGTH_LONG).show()
+                            finishAffinity()
+                        }
+                    }
+                    wasRooted = isRooted
+
+                    // 2. Force Update / Maintenance Checks (Every 15 mins)
+                    // We check security state which is updated by SubscriptionManager/CloudTV
+                    if (SecurityUtil.isAppOutdated && !isFinishing) {
+                        runOnUiThread { onForceUpdate() }
+                    }
+                    if (SecurityUtil.isMaintenanceMode && !isFinishing) {
+                        runOnUiThread { onAppMaintenance() }
+                    }
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Health check error", e)
+                }
+                kotlinx.coroutines.delay(securityCheckInterval)
+            }
+        }
+    }
+
+    private fun stopCoreHealthMonitoring() {
+        coreHealthJob?.cancel()
+        coreHealthJob = null
     }
 
     override fun onResumeFragments() {
@@ -1454,20 +1461,21 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         }
     }
 
-    fun showOfflineScreen() {
-        // Add 3s debounce to prevent flickering during network switching
-        offlineHandler.removeCallbacks(showOfflineRunnable)
-        offlineHandler.postDelayed(showOfflineRunnable, 3000)
-    }
+    private var offlineDebounceJob: kotlinx.coroutines.Job? = null
 
-    private fun showOfflineScreenActual() {
-        if (offlineFragment.isHidden) {
-            showFragment(offlineFragment)
+    fun showOfflineScreen() {
+        // [PROFESSIONAL] Async debounce to prevent flickering during network switching
+        offlineDebounceJob?.cancel()
+        offlineDebounceJob = lifecycleScope.launch {
+            kotlinx.coroutines.delay(3000)
+            if (!isNetworkAvailable() && offlineFragment.isHidden) {
+                showFragment(offlineFragment)
+            }
         }
     }
 
     fun hideOfflineScreen() {
-        offlineHandler.removeCallbacks(showOfflineRunnable)
+        offlineDebounceJob?.cancel()
         if (!offlineFragment.isHidden) {
             hideFragment(offlineFragment)
             webFragment.refreshPlayback()
@@ -1675,20 +1683,23 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             if (menuFragment.isHidden && settingFragment.isHidden && trackSelectionFragment.isHidden && epgGridFragment.isHidden && onboardingFragment.isHidden && searchFragment.isHidden) {
                 if (event.action == KeyEvent.ACTION_DOWN) {
                     if (event.repeatCount == 0) {
-                        // Start 2-second timer on first press (TV Only)
                         isLeftArrowPressed = true
                         if (isTvDevice()) {
-                            leftArrowHandler.postDelayed(leftArrowHoldRunnable, 2000)
+                            leftArrowHoldJob?.cancel()
+                            leftArrowHoldJob = this@MainActivity.lifecycleScope.launch {
+                                delay(2000)
+                                if (isLeftArrowPressed) {
+                                    isLeftArrowPressed = false
+                                    showSearchFragment()
+                                }
+                            }
                         }
                     }
                     return true
                 } else if (event.action == KeyEvent.ACTION_UP) {
-                    // Cancel timer on release
                     if (isLeftArrowPressed) {
                         isLeftArrowPressed = false
-                        leftArrowHandler.removeCallbacks(leftArrowHoldRunnable)
-                        
-                        // Short Press: Show Side Menu
+                        leftArrowHoldJob?.cancel()
                         showFragment(menuFragment)
                     }
                     return true
@@ -2102,13 +2113,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        bootstrapWatchdogHandler.removeCallbacksAndMessages(null)
-        offlineHandler.removeCallbacksAndMessages(null)
+        stopCoreHealthMonitoring()
         connectivityManager.unregisterNetworkCallback(networkCallback)
-        rootHandler.removeCallbacksAndMessages(null)
-        refreshHandler.removeCallbacksAndMessages(null)
-        updateHandler.removeCallbacksAndMessages(null)
-        rightArrowHandler.removeCallbacksAndMessages(null)
         SP.removeOnSharedPreferenceChangeListener(spListener)
         server?.stop()
         if (::updateManager.isInitialized) {
@@ -2200,7 +2206,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
                 } catch (e: Exception) {
                     // Ignore background security check errors to prevent crashes
                 }
-                kotlinx.coroutines.delay(checkInterval)
+                kotlinx.coroutines.delay(securityCheckInterval)
             }
         }
     }

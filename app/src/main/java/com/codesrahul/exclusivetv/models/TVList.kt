@@ -611,29 +611,27 @@ object TVList {
                                "Channels Updated: ${list.size}".showToast()
                           }
                           
-                          // OPTIMIZATION: Defer EPG loading to avoid blocking startup
-                          // Load EPG 10 seconds after channels are ready
+                          // [PROFESSIONAL] Defer EPG loading using Coroutines
                           if (SP.epgEnabled) {
-                              android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                              CoroutineScope(Dispatchers.IO).launch {
+                                  kotlinx.coroutines.delay(30000)
                                   EPGManager.init(ctx)
-                                  CoroutineScope(Dispatchers.IO).launch {
-                                      try {
-                                          withContext(Dispatchers.Main) { 
-                                              if (showUi) _importStatus.value = "Updating Guide..." 
-                                          } 
-                                          EPGManager.fetchEPG(force = false)
-                                          withContext(Dispatchers.Main) {
-                                              listModel.forEach { it.updateEPG() }
-                                          }
-                                      } catch (e: Exception) {
-                                      } finally {
-                                          withContext(Dispatchers.Main) {
-                                              // Fix: Clear status so loading spinner doesn't get stuck
-                                              if (showUi) _importStatus.value = ""
-                                          }
+                                  try {
+                                      withContext(Dispatchers.Main) { 
+                                          if (showUi) _importStatus.value = "Updating Guide..." 
+                                      } 
+                                      EPGManager.fetchEPG(force = false)
+                                      withContext(Dispatchers.Main) {
+                                          listModel.forEach { it.updateEPG() }
+                                      }
+                                  } catch (e: Exception) {
+                                  } finally {
+                                      withContext(Dispatchers.Main) {
+                                          // Fix: Clear status so loading spinner doesn't get stuck
+                                          if (showUi) _importStatus.value = ""
                                       }
                                   }
-                              }, 30000) // 30 second delay (optimized for FireTV startup buffer)
+                              }
                           }
                       }
                 } else {

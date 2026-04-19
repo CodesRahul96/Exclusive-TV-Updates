@@ -198,6 +198,7 @@ dependencies {
 
     // WorkManager for background sync
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
     testImplementation("junit:junit:4.13.2")
 }

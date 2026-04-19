@@ -84,10 +84,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private val playbackHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var isWebMode = false
     private var uaFallbackIndex = 0
-    private var playbackWatchdog: Runnable? = null
-    private var lastPlaybackPosition: Long = -1
-    private var bufferingStartTime: Long = -1
-    private var lastCheckTime: Long = -1
     private var seamlessRetryCount = 0
     data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
@@ -298,13 +294,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val url = tvModel.videoUrl.value ?: return
         this.currentVideoUrl = url
         
-        // PERSISTENT RESUME: Check for previously saved position if it's a Movie/VOD
-        if (isVODContent()) {
-            val savedPos = SP.getVODPosition(url)
-            if (savedPos > 0) {
-                lastPlaybackPosition = savedPos
-            }
-        }
+        // [PROFESSIONAL] Resume logic is now handled natively in initializePlayer()
+        // using SP.getVODPosition(url) for better decoupling.
 
         
         // Use the first URI as the canonical key for audio track preference (matches save logic in MainActivity)
@@ -365,13 +356,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         retryCount = 0
         uaFallbackIndex = 0
         
-        // Logic Correction: Don't reset position if it's a VOD (preserve progress)
-        if (!isVod) {
-            lastPlaybackPosition = -1L
-        }
-        
-        bufferingStartTime = -1L
+        // Logic Correction: Don't show "Refreshing..." on fast transitions
+        tvModel?.setErrInfo("Refreshing...")
 
+        // Success: Cancel any pending recovery tasks
         playbackHandler.removeCallbacksAndMessages(null)
         playbackHandler.postDelayed({
             tvModel?.let { play(it) }
@@ -398,7 +386,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
         
         // SILENT AUTO-RECOVERY: Keep player surface, just re-connect
-        doInitializePlayer(currentVideoUrl, seamless = true, seekPosition = lastPlaybackPosition)
+        doInitializePlayer(currentVideoUrl, seamless = true, seekPosition = exoPlayer?.currentPosition ?: -1L)
     }
 
     private fun initializePlayer(url: String) {
@@ -414,8 +402,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                // If we have a saved position (from a VOD hard reset escape), apply it
-                val seekPos = if (isVODContent()) lastPlaybackPosition else -1L
+                // If we have a saved position (from a VOD hard reset escape or fresh start), apply it
+                val seekPos = if (isVODContent()) SP.getVODPosition(url) else -1L
                 
                 // ASYNC PRE-FETCH: If ClearKey URL is present (or derived), fetch it now on Dispatchers.IO
                 val currentTv = tvModel?.tv
@@ -798,104 +786,39 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
                 
-                // ENHANCED ERROR LOGGING
-                android.util.Log.e("PlayerError", "Error Code: ${error.errorCode}, Message: ${error.message}", error.cause)
+                // [PROFESSIONAL] High-level recovery and URL rotation
+                // Transient retries for the same URL are handled natively by IPTVLoadErrorHandlingPolicy.
                 
-                // CODEC/DECRYPT FAILURE RECOVERY - Check for codec-related errors
                 val errorCause = error.cause?.toString() ?: ""
-                val isCodecError = errorCause.contains("decrypt") || 
-                                   errorCause.contains("MediaCodec") || 
-                                   errorCause.contains("Codec") ||
-                                   errorCause.contains("decoder")
+                val isCodecError = errorCause.contains("decrypt") || errorCause.contains("MediaCodec")
                 
-                if (isCodecError && retryCount < 2) {
-                    // FIRST ATTEMPT: Codec error likely due to encrypted stream or hardware decoder failure
-                    // Log and retry with fresh player (may trigger software decoder fallback)
-                    android.util.Log.w("PlayerError", "Codec/Decrypt error detected, forcing retry: ${error.cause}")
+                if (isCodecError && retryCount < 1) {
                     retryCount++
-                    tvModel?.setErrInfo("") // Silent retry for codec issues
-                    playbackHandler.postDelayed({
-                        if (currentVideoUrl.isNotEmpty()) {
-                            initializePlayer(currentVideoUrl) 
-                        }
-                    }, 2000L)
+                    initializePlayer(currentVideoUrl) // Hard reset to trigger potential software/DRM fallback
                     return
                 }
-                
-                // AUTO RETRY & MULTI-URL FALLBACK LOGIC
-                if (retryCount < maxRetries) {
-                    retryCount++
-                    
-                    // SMATER THAN ANY APP: If error is 403 Forbidden, rotate UA immediately
-                    if (error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS) {
-                        val msg = error.message ?: ""
-                        if (msg.contains("403") || msg.contains("401")) {
-                            uaFallbackIndex++
-                            android.util.Log.w("PlayerError", "403 Forbidden detected, rotating UA to index $uaFallbackIndex")
-                        }
-                    }
 
-                    val delay = if(error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) 1000L else 3000L
-                    
-                    // Improved Logic: Don't show "Retrying" immediately on the first transient error.
-                    // This prevents the error screen from flashing on working channels that have a minor network drop.
-                    if (retryCount > 1) {
-                        tvModel?.setErrInfo("Retrying... ($retryCount/$maxRetries)")
-                    } else {
-                        tvModel?.setErrInfo("") // Keep silent loading UI
-                    }
-                    
-                    playbackHandler.postDelayed({
-                        if (retryCount > 0 && currentVideoUrl.isNotEmpty()) { 
-                            // SMART UA ROTATION: Increment UA fallback after some retries or specific errors
-                            if (retryCount % 2 == 0 && uaFallbackIndex < 3) {
-                                uaFallbackIndex++
-                            }
-                            // Last-Resort Global Fix: Use MAG Identity if any channel fails 4+ times
-                            if (retryCount >= 4 && uaFallbackIndex < 4) {
-                                uaFallbackIndex = 4 
-                            }
-                            initializePlayer(currentVideoUrl) // Re-initialize the same URL
+                // URL / Identity Escalation on Persistence Failure
+                if (error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS) {
+                    val msg = error.message ?: ""
+                    if (msg.contains("403") || msg.contains("401")) {
+                        if (uaFallbackIndex < 3) {
+                            uaFallbackIndex++
+                            initializePlayer(currentVideoUrl) 
+                            return
                         }
-                    }, delay)
-                } else if (currentTv != null && currentUrlIndex < (currentTv.uris.size - 1)) {
-                    // TRY NEXT SECONDARY URL FALLBACK
+                    }
+                }
+
+                if (currentTv != null && currentUrlIndex < (currentTv.uris.size - 1)) {
                     currentUrlIndex++
-                    retryCount = 0 // Reset retries for the new URL
-                    uaFallbackIndex = 0 // Reset UA for new URL
+                    retryCount = 0
                     val nextUrl = currentTv.uris[currentUrlIndex]
                     tvModel?.setErrInfo("Switching to Backup Stream...")
-                    
-                    playbackHandler.post {
-                        initializePlayer(nextUrl)
-                    }
+                    initializePlayer(nextUrl)
                 } else {
-                     // All Retries and Fallbacks failed. Check if we should fallback to WebView (Universal Support)
-                     tvModel?.setErrInfo("Stream Offline or Unsupported")
-                     if (isAdded) {
-                         // Persistent error. Trigger a silent force-update in the background in case keys rotated.
-                         try {
-                             com.codesrahul.exclusivetv.models.TVList.update(mainActivity, silent = true, force = true)
-                         } catch (e: Exception) {}
-
-                         val errorUrl = currentVideoUrl
-                         if (!errorUrl.isNullOrEmpty() && (errorUrl.startsWith("http") || errorUrl.startsWith("https"))) {
-                             if (!isWebMode) {
-                                  isWebMode = true
-                                  val b = binding ?: return
-                                  b.playerView.visibility = View.GONE
-                                  b.webView.visibility = View.VISIBLE
-                                  releasePlayer()
-                                  
-                                  val errWebUrl = errorUrl
-                                  val errWebUri = Uri.parse(errWebUrl)
-                                  if (errWebUri.host == "tv.cctv.com") {
-                                      b.webView.evaluateJavascript("localStorage.setItem('cctv_live_resolution', '720');", null)
-                                  }
-                                  b.webView.loadUrl(errWebUrl)
-                             }
-                         }
-                     }
+                    tvModel?.setErrInfo("Stream Offline or Unsupported")
+                    switchToUniversalFallback(currentVideoUrl)
                 }
             }
 
@@ -922,10 +845,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 super.onRenderedFirstFrame()
                 tvModel?.setErrInfo("success")
                 seamlessRetryCount = 0 // SUCCESS: Reset recovery escalation
-                // Success: Cancel Watchdog
-                playbackWatchdog?.let { playbackHandler.removeCallbacks(it) }
-                playbackWatchdog = null
-                // Potentially reset UA fallback index here or keep it for stability
             }
 
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
@@ -1097,70 +1016,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         exoPlayer?.play()
 
         // PLAYBACK WATCHDOG: Continuous robust check for stalling/infinite buffering
-        playbackWatchdog?.let { playbackHandler.removeCallbacks(it) }
-        playbackWatchdog = object : Runnable {
-            override fun run() {
-                if (isAdded && exoPlayer != null) {
-                    val state = exoPlayer?.playbackState ?: Player.STATE_IDLE
-                    val isPlaying = exoPlayer?.playWhenReady == true
-                    val currentPos = exoPlayer?.currentPosition ?: -1L
-                    val now = System.currentTimeMillis()
-                    
-                    if (isPlaying && state == Player.STATE_READY) {
-                        bufferingStartTime = -1L // Reset buffering clock
-                        if (currentPos != -1L && currentPos == lastPlaybackPosition) {
-                            // STALL DETECTED: Position frozen for 5s (responsive check)
-                            playbackHandler.post { seamlessRefresh() }
-                            return 
-                        }
-                        lastPlaybackPosition = currentPos
-                    } else if (isPlaying && state == Player.STATE_BUFFERING) {
-                        if (bufferingStartTime == -1L) bufferingStartTime = now
-                        if (now - bufferingStartTime > 10000) {
-                            // BUFFERING TIMEOUT: Stuck for 10s
-                            playbackHandler.post { seamlessRefresh() }
-                            return
-                        }
-                    } else if (state == Player.STATE_IDLE) {
-                         // Silent startup hang
-                        if (retryCount < maxRetries && lastPlaybackPosition == -1L) {
-                            if (uaFallbackIndex < 3) { uaFallbackIndex++ }
-                            retryCount++
-                            initializePlayer(currentVideoUrl)
-                            return
-                        }
-                    } else if (state == Player.STATE_ENDED) {
-                        // VOD COMPLETION: Clear the saved progress if the movie reached the end
-                        if (isVODContent()) {
-                            SP.setVODPosition(currentVideoUrl, 0)
-                        }
-                    } else {
-                         bufferingStartTime = -1L
-                    }
-                    
-                    // PERIODIC SAVE: Persist VOD position every 15 seconds during playback
-                    if (isVODContent() && isPlaying && state == Player.STATE_READY) {
-                        if (lastCheckTime == -1L) lastCheckTime = now
-                        if (now - lastCheckTime > 15000) { // 15 Second intervals
-                            if (currentPos > 0) {
-                                SP.setVODPosition(currentVideoUrl, currentPos)
-                            }
-                            lastCheckTime = now
-                        }
-                    }
-                    
-                    // Aggressive periodic check every 3 seconds
-                    playbackHandler.postDelayed(this, 3000)
-                }
-            }
-        }
-        
-        // Reset state for new stream ONLY if it's not a VOD resume
-        if (!isVODContent()) {
-            lastPlaybackPosition = -1L
-        }
-        bufferingStartTime = -1L
-        playbackHandler.postDelayed(playbackWatchdog!!, 8000) // 8s grace before first check
+        // Success: Cancel any pending recovery tasks
+        playbackHandler.removeCallbacksAndMessages(null)
     }
 
 
@@ -1546,18 +1403,35 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .build()
     }
 
+    private fun switchToUniversalFallback(errorUrl: String) {
+        if (!isAdded) return
+        if (errorUrl.startsWith("http") || errorUrl.startsWith("https")) {
+            if (!isWebMode) {
+                isWebMode = true
+                _binding?.let { b ->
+                    b.playerView.visibility = View.GONE
+                    b.webView.visibility = View.VISIBLE
+                    releasePlayer()
+                    b.webView.loadUrl(errorUrl)
+                }
+            }
+        }
+    }
+
     private class IPTVLoadErrorHandlingPolicy : DefaultLoadErrorHandlingPolicy() {
         override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorInfo): Long {
-            // Exponential backoff for IPTV stability
+            // [PROFESSIONAL] High-Speed Stream Recovery Limit (3 Retries / 10s Total)
             val errorCount = loadErrorInfo.errorCount
-            if (errorCount > 5) return C.TIME_UNSET // Fallback to URL rotation after 5 internal retries
+            if (errorCount > 3) return C.TIME_UNSET 
             
-            return Math.min(2000L * Math.pow(2.0, (errorCount - 1).toDouble()).toLong(), 10000L)
+            return when (errorCount) {
+                1 -> 2000L  // 2s
+                2 -> 3000L  // 3s
+                3 -> 5000L  // 5s
+                else -> C.TIME_UNSET
+            }
         }
-
-        override fun getMinimumLoadableRetryCount(dataType: Int): Int {
-            return 5
-        }
+        override fun getMinimumLoadableRetryCount(dataType: Int): Int = 3
     }
 
     fun isPlaying(): Boolean {
