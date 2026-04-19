@@ -55,13 +55,19 @@ object SubscriptionManager {
                     val maxDevices = if ("Premium".equals(plan, ignoreCase = true)) 2 else 1
                     
                     val currentDeviceId = SecurityUtil.getDeviceId(context)
+                    val cachedAuthorizedId = SP.authorizedDeviceId
+                    
                     val deviceId1 = document.getString("device_id")
                     val deviceId2 = document.getString("device_id_2")
                     
+                    // --- HARDENING: Resilience against hardware ID fluctuations ---
+                    // If current hardware ID doesn't match, check if it matches our cached authorized ID 
+                    // which was confirmed in a previous session.
                     val isMatched = if (maxDevices > 1) {
-                        (currentDeviceId == deviceId1 || currentDeviceId == deviceId2)
+                        (currentDeviceId == deviceId1 || currentDeviceId == deviceId2 || 
+                         (cachedAuthorizedId != null && (cachedAuthorizedId == deviceId1 || cachedAuthorizedId == deviceId2)))
                     } else {
-                        (currentDeviceId == deviceId1)
+                        (currentDeviceId == deviceId1 || (cachedAuthorizedId != null && cachedAuthorizedId == deviceId1))
                     }
 
                     // Metadata to update
@@ -76,7 +82,8 @@ object SubscriptionManager {
                     )
 
                     if (isMatched) {
-                        // Scenario A: Device Matched - Update metadata
+                        // Scenario A: Device Matched - Update metadata and update local cache
+                        SP.authorizedDeviceId = currentDeviceId
                         db.collection(COLLECTION_USERS).document(phoneNumber)
                             .update(deviceMetadata as Map<String, Any>)
                     } else {

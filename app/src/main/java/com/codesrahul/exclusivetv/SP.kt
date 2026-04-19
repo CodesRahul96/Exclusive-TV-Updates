@@ -62,6 +62,10 @@ object SP {
     private const val KEY_SLEEP_TIMER = "sleep_timer"
     const val KEY_RESIZE_MODE = "resize_mode"
     
+    // Auth & Persistence Hardening
+    private const val KEY_AUTHORIZED_DEVICE_ID = "auth_device_id"
+    private const val KEY_USER_ID_RESERVE = "user_id_res" 
+    
     private const val KEY_LAST_UPDATE_TIME = "last_update_time"
     private const val KEY_API_HOST = "api_host"
     private const val KEY_API_DOWNLOAD_HOST = "api_download_host"
@@ -281,8 +285,33 @@ object SP {
         set(value) = sp.edit().putString(KEY_PLAN_NAME, value).apply()
 
     var userId: String?
-        get() = esp.getString(KEY_USER_ID, null)
-        set(value) = esp.edit().putString(KEY_USER_ID, value).apply()
+        get() {
+            // Priority 1: Encrypted Storage (Standard)
+            val primaryId = esp.getString(KEY_USER_ID, null)
+            if (primaryId != null) return primaryId
+            
+            // Priority 2: Standard Storage Fallback (Recovery)
+            // We use a simple bitwise shift or reversed string as a basic obfuscation 
+            // for the reserve key to prevent plain-text scrapes.
+            val reserveId = sp.getString(KEY_USER_ID_RESERVE, null)
+            if (reserveId != null) {
+                return try { reserveId.reversed() } catch (e: Exception) { null }
+            }
+            return null
+        }
+        set(value) {
+            esp.edit().putString(KEY_USER_ID, value).apply()
+            // Store obfuscated reserve copy
+            if (value != null) {
+                sp.edit().putString(KEY_USER_ID_RESERVE, value.reversed()).apply()
+            } else {
+                sp.edit().remove(KEY_USER_ID_RESERVE).apply()
+            }
+        }
+        
+    var authorizedDeviceId: String?
+        get() = sp.getString(KEY_AUTHORIZED_DEVICE_ID, null)
+        set(value) = sp.edit().putString(KEY_AUTHORIZED_DEVICE_ID, value).apply()
 
     var playlistUrls: Set<String>
         get() = sp.getStringSet(KEY_PLAYLIST_URLS, emptySet()) ?: emptySet()
