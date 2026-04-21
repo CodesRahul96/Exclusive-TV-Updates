@@ -613,7 +613,12 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         // ON (PREFER): High-fidelity passthrough for AVR/Soundbar (Multi-channel)
         // OFF (ON): Standard compatibility mode. If a channel ONLY has Dolby audio,
         // ExoPlayer will still play it via hardware/software downmixing to Stereo.
-        val extMode = if (SP.dolbyAudio) 
+        val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
+        val isTv = uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        
+        // STABILITY FIX: Use ON instead of PREFER on mobile for 5.1 -> 2.0 downmixing.
+        // PREFER is reserved for TVs with hardware passthrough (AVR/Soundbars).
+        val extMode = if (SP.dolbyAudio && isTv) 
             androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
         else 
             androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
@@ -622,7 +627,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .setExtensionRendererMode(extMode)
             .setEnableDecoderFallback(strategy.enableDecoderFallback) // PRO FIX: Allow software fallback for corrupted hardware frames
             .setEnableAudioTrackPlaybackParams(true) 
-            .setEnableAudioFloatOutput(false) 
+            .setEnableAudioFloatOutput(true) 
             .setMediaCodecSelector { mimeType, requiresSecureDecoder, _ ->
                 // STABILITY FIX: Prefer standard hardware decoders without tunneling
                 // Tunneling is the primary cause of flickering/sync issues in 4K TS.
