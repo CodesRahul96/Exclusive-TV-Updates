@@ -1644,7 +1644,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             for (i in 0 until playerView.childCount) {
                 val child = playerView.getChildAt(i)
                 if (child is SurfaceView) {
-                    child.setZOrderMediaOverlay(true)
+                    child.setZOrderMediaOverlay(false)
                     break
                 }
             }
