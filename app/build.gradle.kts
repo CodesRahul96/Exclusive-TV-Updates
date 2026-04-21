@@ -12,7 +12,7 @@ plugins {
 
 android {
     namespace = "com.codesrahul.exclusivetv"
-    compileSdk = 34
+    compileSdk = 35
     ndkVersion = "25.1.8937393"
     
     externalNativeBuild {
@@ -25,7 +25,7 @@ android {
     defaultConfig {
         applicationId = "com.codesrahul.exclusivetv"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 35
         multiDexEnabled = true
         versionCode = if (project.hasProperty("versionCodeOverride")) {
             project.property("versionCodeOverride").toString().toInt()
@@ -162,7 +162,7 @@ dependencies {
 
     implementation("androidx.leanback:leanback:1.0.0")
 
-    val media3Version = "1.4.1"
+    val media3Version = "1.5.0"
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-exoplayer-hls:$media3Version")
@@ -171,6 +171,10 @@ dependencies {
     implementation("androidx.media3:media3-datasource-okhttp:$media3Version")
     implementation("androidx.media3:media3-datasource-rtmp:$media3Version")
     implementation("androidx.media3:media3-extractor:$media3Version")
+    
+    // [AUDIO FIX] Software decoder extension (FFmpeg) required for AC-3/Dolby streams 
+    // on devices lacking hardware codec licenses (like OnePlus 15R / Snapdragon 8 Gen 5)
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.5.0+1")
 
 
 

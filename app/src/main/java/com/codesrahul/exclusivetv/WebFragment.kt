@@ -498,7 +498,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     }
                 }
                 
-                doInitializePlayer(url, seamless = false, seekPosition = seekPos, sniffedMime = sniffedMime)
+                doInitializePlayer(url, seamless = false, seekPosition = seekPos, sniffedMime = sniffedMime, useCompatibility = useCompatibility)
             } catch (e: Exception) {
                 Log.e(TAG, "Playback Init Error: ${e.message}")
                 tvModel?.setErrInfo("Playback Error")
@@ -617,17 +617,28 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val isTv = uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
         
         // STABILITY FIX: Use ON instead of PREFER on mobile for 5.1 -> 2.0 downmixing.
-        // PREFER is reserved for TVs with hardware passthrough (AVR/Soundbars).
-        val extMode = if (SP.dolbyAudio && isTv) 
+        // [MOBILE FIX] On mobile, PREFER extension (software) decoders for audio.
+        // New Qualcomm HALs (Snapdragon 8 Gen 5 in OnePlus 15R) silently fail AC-3/Dolby 
+        // hardware passthrough when no AVR/soundbar is connected.
+        // PREFER mode: software decoder is tried first → guaranteed audible output.
+        // On TV: use PREFER only when Dolby passthrough is explicitly enabled in settings.
+        val extMode = if (isTv && SP.dolbyAudio)
             androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-        else 
+        else if (!isTv)
+            androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+        else
             androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
 
         val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(requireContext())
             .setExtensionRendererMode(extMode)
-            .setEnableDecoderFallback(strategy.enableDecoderFallback) // PRO FIX: Allow software fallback for corrupted hardware frames
-            .setEnableAudioTrackPlaybackParams(true) 
-            .setEnableAudioFloatOutput(true) // [RESTORE] High-fidelity path for all hardware
+            .setEnableDecoderFallback(strategy.enableDecoderFallback)
+            // [MOBILE FIX] Disable hardware audio offloading and float output on mobile.
+            // setEnableAudioTrackPlaybackParams(true) routes audio through the Qualcomm DSP 
+            // which silently discards IPTV audio streams on OnePlus without any error.
+            // setEnableAudioFloatOutput(true) is unsupported on many OnePlus audio HALs.
+            // Both are safe and beneficial on TV hardware only.
+            .setEnableAudioTrackPlaybackParams(isTv)
+            .setEnableAudioFloatOutput(isTv)
             .setMediaCodecSelector { mimeType, requiresSecureDecoder, _ ->
                 // STABILITY FIX: Restricted tunneling to TV hardware only.
                 // Mobile devices (even flagships) often fail to initialize tunneling for TS.
@@ -784,10 +795,13 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                      builder.setPreferredAudioLanguages(defaultLang)
                  }
 
-                 // TV AUDIO FIX: Allow 5.1/6-channel audio to pass through to hardware rather than forcing stereo downmix
-                 val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
-                 val maxChannels = if (uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) 6 else 2
-                 builder.setMaxAudioChannelCount(maxChannels)
+                 // [FIX] Do NOT restrict channel count on mobile.
+                 // Setting maxAudioChannelCount(2) forces stereo-only selection.
+                 // On devices where AC-3 5.1 is present and AAC is NOT, this leaves NO selectable track → silence.
+                 // Let ExoPlayer pick the best supported track automatically.
+                 if (isTv) {
+                     builder.setMaxAudioChannelCount(8) // TV: Allow full surround
+                 }
                  
                  exoPlayer!!.trackSelectionParameters = builder.build()
              } catch (e: Exception) {
@@ -795,7 +809,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
         
         
-        // [DIAGNOSTIC] Monitor specific decoder selection for silent devices
+        // [DIAGNOSTIC] Monitor specific decoder selection and runtime audio sink failures
         exoPlayer?.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
             override fun onAudioDecoderInitialized(
                 eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
@@ -803,7 +817,28 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 initializedTimestampMs: Long,
                 initializationDurationMs: Long
             ) {
-                Log.d("WebFragment", "Audio Decoder Selected: $decoderName")
+                Log.d(TAG, "Audio Decoder Selected: $decoderName")
+            }
+
+            // [PROFESSIONAL] Runtime silence detector via underrun monitoring
+            // The OnePlus/Snapdragon audio sink can silently fail even when tracks are present.
+            // Excessive underruns at stream-start indicates a hardware audio renderer failure.
+            override fun onAudioUnderrun(
+                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                bufferSize: Int,
+                bufferSizeMs: Long,
+                elapsedSinceLastFeedMs: Long
+            ) {
+                val positionMs = exoPlayer?.currentPosition ?: 0L
+                // If underruns happen in the first 5 seconds AND audio has not recovered
+                if (positionMs < 5000 && !isCompatibilityInUse) {
+                    val isTs = currentVideoUrl.contains(".ts", true) || currentVideoUrl.contains("datahub", true)
+                    if (isTs) {
+                        Log.w(TAG, "Audio Sink Underrun at ${positionMs}ms — Audio renderer failing. Escalating to Compatibility Set.")
+                        isCompatibilityInUse = true
+                        playbackHandler.post { initializePlayer(currentVideoUrl, true) }
+                    }
+                }
             }
         })
 

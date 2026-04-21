@@ -55,10 +55,11 @@ object OptimizationManager {
     )
 
     // [INDUSTRIAL] Dual-Profile Flag Strategy
-    // PERFORMANCE: Optimized for zero-flicker on most hardware.
-    // COMPATIBILITY: Includes Flag 8 to resolve missing audio on specific chipsets.
+    // PERFORMANCE: Standard set for most hardware. Flag 1 = Non-IDR keyframes (critical for live streams).
+    // COMPATIBILITY: Full set including Flag 8 to resolve missing audio on specific chipsets.
+    // IMPORTANT: Both profiles MUST include Flag 1, as it is critical for live .ts video decoding.
     const val FLAGS_PERFORMANCE = 1 or 16 or 32 or 2048
-    const val FLAGS_COMPATIBILITY = 8 or 16 or 32 or 2048
+    const val FLAGS_COMPATIBILITY = 1 or 8 or 16 or 32 or 2048  // ALL flags including audio detection
 
     fun getPlaybackStrategy(url: String, totalRamGb: Double, useCompatibility: Boolean = false): PlaybackStrategy {
         val uri = try { android.net.Uri.parse(url) } catch (e: Exception) { null }
@@ -93,6 +94,10 @@ object OptimizationManager {
         }
 
         // [STABILITY] Dynamic Flag Selection
+        // IMPORTANT: FLAG_ALLOW_NON_IDR_KEYFRAMES (1) is CRITICAL for live .ts streams.
+        // It allows the decoder to start from non-IDR keyframes. Removing it causes black screens.
+        // The COMPATIBILITY set (Flag 8) is only used when the auto-recovery system explicitly
+        // detects missing audio tracks via the onTracksChanged callback.
         val extractionFlags = if (useCompatibility) FLAGS_COMPATIBILITY else FLAGS_PERFORMANCE
 
         return PlaybackStrategy(
