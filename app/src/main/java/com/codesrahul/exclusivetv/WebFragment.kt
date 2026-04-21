@@ -889,8 +889,47 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 // [PROFESSIONAL] Auto-Compatibility Discovery logic
                 // If the stream loads but NO audio tracks are detected (and it is a .ts stream), 
                 // the device is suffering from an extraction sync issue. We automatically 
-                // cycle to the Compatibility Profile (Flag 8) without hardcoded brand names.
-                val hasAudio = tracks.isTypeSupported(androidx.media3.common.C.TRACK_TYPE_AUDIO)
+                // cycle to the Compatibility Profile (Flag 8).
+                var hasAudio = false
+                var audioLabel = ""
+                
+                for (group in tracks.groups) {
+                    if (group.type == C.TRACK_TYPE_AUDIO) {
+                        hasAudio = true
+                        if (group.isSelected) {
+                            val format = group.getTrackFormat(0)
+                            val channels = format.channelCount
+                            
+                            // Map Channels to Friendly Names
+                            val channelLabel = when (channels) {
+                                1 -> "Mono"
+                                2 -> "Stereo"
+                                6 -> "5.1ch"
+                                8 -> "7.1ch"
+                                else -> if (channels > 0) "${channels}ch" else ""
+                            }
+                            
+                            // Map Codecs to Friendly Names
+                            val mime = format.sampleMimeType ?: ""
+                            val codecName = when {
+                                mime.contains("mp4a") || mime.contains("aac") -> "AAC"
+                                mime.contains("ac-3") || mime == androidx.media3.common.MimeTypes.AUDIO_AC3 -> "Dolby Digital"
+                                mime.contains("eac-3") || mime == androidx.media3.common.MimeTypes.AUDIO_E_AC3 -> "Dolby Digital Plus"
+                                mime.contains("dts") || mime == androidx.media3.common.MimeTypes.AUDIO_DTS -> "DTS"
+                                mime.contains("mpeg") -> "MP3"
+                                mime.contains("opus") -> "Opus"
+                                else -> ""
+                            }
+                            
+                            audioLabel = if (codecName.isNotEmpty()) {
+                                if (channelLabel.isNotEmpty()) "$codecName $channelLabel" else codecName
+                            } else {
+                                channelLabel.ifEmpty { "Audio OK" }
+                            }
+                        }
+                    }
+                }
+
                 val isTs = currentVideoUrl.contains(".ts", true) || currentVideoUrl.contains("datahub", true)
                 
                 if (!hasAudio && isTs && !isCompatibilityInUse) {
@@ -900,6 +939,9 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     return
                 }
 
+                // Update UI Model for Info Card
+                tvModel?.setAudioQuality(audioLabel)
+                
                 // Apply saved audio track preference if discovered
                 updateAudioTrackFromSettings()
             }
