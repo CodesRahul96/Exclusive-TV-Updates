@@ -54,7 +54,13 @@ object OptimizationManager {
         val isHighFidelity: Boolean
     )
 
-    fun getPlaybackStrategy(url: String, totalRamGb: Double): PlaybackStrategy {
+    // [INDUSTRIAL] Dual-Profile Flag Strategy
+    // PERFORMANCE: Optimized for zero-flicker on most hardware.
+    // COMPATIBILITY: Includes Flag 8 to resolve missing audio on specific chipsets.
+    const val FLAGS_PERFORMANCE = 1 or 16 or 32 or 2048
+    const val FLAGS_COMPATIBILITY = 8 or 16 or 32 or 2048
+
+    fun getPlaybackStrategy(url: String, totalRamGb: Double, useCompatibility: Boolean = false): PlaybackStrategy {
         val uri = try { android.net.Uri.parse(url) } catch (e: Exception) { null }
         val path = uri?.path?.lowercase() ?: ""
         val host = uri?.host?.lowercase() ?: ""
@@ -63,35 +69,43 @@ object OptimizationManager {
         val isTs = path.endsWith(".ts") || path.contains("/ts/") || host.contains("datahub")
         val isHighRes = url.contains("4K", true) || url.contains("1080", true) || url.contains("FHD", true)
         
-        // DEVICE SEGMENTATION: 
-        // High-End: > 3GB RAM (Smooth 4K+ experience)
-        // Mid-Range: 1.5GB - 3GB
-        // Low-End: < 1.5GB (Aggressive resource management to prevent crashes)
-        val isHighEndDevice = totalRamGb > 3.0
-        val isLowEndDevice = totalRamGb < 1.5
-        
-        // INDUSTRY STANDARD: Deep buffers for high-bitrate TS streams (Prevents macroblocking)
-        // Low-End Fix: Drastically reduce target bytes to prevent renderer finalize timeouts.
-        val minBuffer = if (isTs || isHighRes) (if (isHighEndDevice) 50000 else 30000) else 25000
-        val maxBuffer = if (isTs || isHighRes) (if (isHighEndDevice) 120000 else 60000) else 50000
-        
-        val targetBytes = when {
-            isLowEndDevice -> 32 * 1024 * 1024 // Aggressive 32MB limit for stable cleanup
-            isHighEndDevice -> if (isTs || isHighRes) 384 * 1024 * 1024 else 128 * 1024 * 1024
-            else -> if (isTs || isHighRes) 128 * 1024 * 1024 else 64 * 1024 * 1024
+        // [PRO] Performance Tiering (Hardware-agnostic)
+        val isHighTier = totalRamGb > 6.0 
+        val isMidTier = totalRamGb in 2.5..6.0
+        val isLowTier = totalRamGb < 2.5
+
+        val minBuffer = when {
+            isHighTier -> 50000 
+            isMidTier -> 30000
+            else -> 15000 // Fast-start for low-end
         }
+        
+        val maxBuffer = when {
+            isHighTier -> 120000
+            isMidTier -> 60000
+            else -> 30000
+        }
+
+        val targetBytes = when {
+            isLowTier -> 16 * 1024 * 1024
+            isMidTier -> 128 * 1024 * 1024
+            else -> 384 * 1024 * 1024
+        }
+
+        // [STABILITY] Dynamic Flag Selection
+        val extractionFlags = if (useCompatibility) FLAGS_COMPATIBILITY else FLAGS_PERFORMANCE
 
         return PlaybackStrategy(
             minBufferMs = minBuffer,
             maxBufferMs = maxBuffer,
-            bufferForPlaybackMs = if (isLowEndDevice) 1500 else if (isTs || isHighRes) 8000 else 2500,
+            bufferForPlaybackMs = if (isLowTier) 1500 else if (isTs || isHighRes) 8000 else 2500,
             bufferForPlaybackAfterRebufferMs = 5000,
             targetBufferBytes = targetBytes,
-            scalingMode = 1, // VIDEO_SCALING_MODE_SCALE_TO_FIT (Safe default)
-                tsExtractorFlags = 1 or 8 or 16 or 32, // FLAG_ALLOW_NON_IDR_KEYFRAMES (1) | FLAG_DETECT_ACCESS_UNITS (8) | FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS (16) | FLAG_IGNORE_SPLICE_INFO_STREAM (32)
-            tsExtractorMode = 1, // TsExtractor.MODE_SINGLE_PMT
-            enableDecoderFallback = true, // Always allow fallback for corrupted hardware frames
-            isHighFidelity = (isTs || isHighRes) && !isLowEndDevice
+            scalingMode = 1,
+            tsExtractorFlags = extractionFlags,
+            tsExtractorMode = 1,
+            enableDecoderFallback = true,
+            isHighFidelity = isHighTier || isMidTier
         )
     }
 

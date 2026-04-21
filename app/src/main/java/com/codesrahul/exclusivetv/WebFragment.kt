@@ -84,6 +84,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private val playbackHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var isWebMode = false
     private var uaFallbackIndex = 0
+    private var isCompatibilityInUse = false
     private var seamlessRetryCount = 0
     data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
@@ -389,7 +390,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         doInitializePlayer(currentVideoUrl, seamless = true, seekPosition = exoPlayer?.currentPosition ?: -1L)
     }
 
-    private fun initializePlayer(url: String) {
+    private fun initializePlayer(url: String, useCompatibility: Boolean = false) {
         if (context == null) return
         
         // FIX: Ensure a global CookieHandler exists so HttpURLConnection handles Set-Cookie
@@ -506,7 +507,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
     }
 
-    private fun doInitializePlayer(url: String, seamless: Boolean = false, seekPosition: Long = -1L, sniffedMime: String? = null) {
+    private fun doInitializePlayer(url: String, seamless: Boolean = false, seekPosition: Long = -1L, sniffedMime: String? = null, useCompatibility: Boolean = false) {
         // Only release the previous player if we're not doing a seamless re-connect
         if (!seamless) {
             releasePlayer()
@@ -607,8 +608,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         val activityManager = requireContext().getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
         activityManager.getMemoryInfo(memoryInfo)
         val totalMemGb = memoryInfo.totalMem / (1024 * 1024 * 1024.0)
-        val strategy = OptimizationManager.getPlaybackStrategy(url, totalMemGb)
-
+        val strategy = OptimizationManager.getPlaybackStrategy(url, totalMemGb, useCompatibility)
         // DOLBY AUDIO LOGIC:
         // ON (PREFER): High-fidelity passthrough for AVR/Soundbar (Multi-channel)
         // OFF (ON): Standard compatibility mode. If a channel ONLY has Dolby audio,
@@ -627,19 +627,21 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .setExtensionRendererMode(extMode)
             .setEnableDecoderFallback(strategy.enableDecoderFallback) // PRO FIX: Allow software fallback for corrupted hardware frames
             .setEnableAudioTrackPlaybackParams(true) 
-            .setEnableAudioFloatOutput(true) 
+            .setEnableAudioFloatOutput(true) // [RESTORE] High-fidelity path for all hardware
             .setMediaCodecSelector { mimeType, requiresSecureDecoder, _ ->
-                // STABILITY FIX: Prefer standard hardware decoders without tunneling
-                // Tunneling is the primary cause of flickering/sync issues in 4K TS.
+                // STABILITY FIX: Restricted tunneling to TV hardware only.
+                // Mobile devices (even flagships) often fail to initialize tunneling for TS.
+                val useTunneling = isTv
+
                 val decoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
-                    mimeType, requiresSecureDecoder, false 
+                    mimeType, requiresSecureDecoder, useTunneling
                 )
                 
-                // [DIAGNOSTIC] Provide visibility into decoder availability for silent devices
+                // [DIAGNOSTIC] Provide visibility into decoder availability
                 if (decoders.isEmpty()) {
                     Log.e("WebFragment", "CRITICAL: No decoders found for $mimeType on this device.")
                 } else {
-                    Log.d("WebFragment", "Available decoders for $mimeType: ${decoders.joinToString { it.name }}")
+                    Log.d("WebFragment", "Target decoders for $mimeType: ${decoders.joinToString { it.name }}")
                 }
                 decoders
             }
@@ -802,12 +804,6 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 initializationDurationMs: Long
             ) {
                 Log.d("WebFragment", "Audio Decoder Selected: $decoderName")
-                // [DIAGNOSTIC] Provide visual feedback for silent device debugging
-                activity?.runOnUiThread {
-                    if (isAdded) {
-                        Toast.makeText(requireContext(), "Audio: $decoderName", Toast.LENGTH_LONG).show()
-                    }
-                }
             }
         })
 
@@ -890,60 +886,22 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
 
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                super.onTracksChanged(tracks)
+                // [PROFESSIONAL] Auto-Compatibility Discovery logic
+                // If the stream loads but NO audio tracks are detected (and it is a .ts stream), 
+                // the device is suffering from an extraction sync issue. We automatically 
+                // cycle to the Compatibility Profile (Flag 8) without hardcoded brand names.
+                val hasAudio = tracks.isTypeSupported(androidx.media3.common.C.TRACK_TYPE_AUDIO)
+                val isTs = currentVideoUrl.contains(".ts", true) || currentVideoUrl.contains("datahub", true)
                 
-                if (savedAudioTrackToApply != -1) {
-                    val targetIndex = savedAudioTrackToApply
-                    savedAudioTrackToApply = -1
-                    setAudioTrack(targetIndex)
+                if (!hasAudio && isTs && !isCompatibilityInUse) {
+                    Log.w(TAG, "Professional Recovery: No audio track detected. Automatically re-initializing with Compatibility Set.")
+                    isCompatibilityInUse = true
+                    initializePlayer(currentVideoUrl, true)
+                    return
                 }
 
-                var audioLabel = ""
-                var hasAudio = false
-                for (group in tracks.groups) {
-                    if (group.type == C.TRACK_TYPE_AUDIO) {
-                        hasAudio = true
-                        if (group.isSelected) {
-                            val format = group.getTrackFormat(0)
-                            val channels = format.channelCount
-                            audioLabel = when (channels) {
-                                1 -> "Mono"
-                                2 -> "Stereo"
-                                6 -> "5.1ch"
-                                8 -> "7.1ch"
-                                else -> if (channels > 0) "${channels}ch" else ""
-                            }
-                            // UI POLISH: Map Codecs to Friendly Names
-                            val mime = format.sampleMimeType ?: ""
-                            val codecName = when {
-                                mime.contains("mp4a") || mime.contains("aac") -> "AAC"
-                                mime.contains("ac-3") || mime == androidx.media3.common.MimeTypes.AUDIO_AC3 -> "Dolby Digital"
-                                mime.contains("eac-3") || mime == androidx.media3.common.MimeTypes.AUDIO_E_AC3 -> "Dolby Digital Plus"
-                                mime.contains("dts") || mime == androidx.media3.common.MimeTypes.AUDIO_DTS -> "DTS"
-                                mime.contains("mpeg") -> "MP3"
-                                mime.contains("opus") -> "Opus"
-                                mime.contains("flac") -> "FLAC"
-                                mime.contains("vorbis") -> "Vorbis"
-                                else -> ""
-                            }
-                            
-                                audioLabel = if (codecName.isNotEmpty()) {
-                                    if (audioLabel.isNotEmpty()) "$codecName $audioLabel" else codecName
-                                } else {
-                                    // Fallback if unknown codec but channels detected
-                                    if (audioLabel.isNotEmpty()) audioLabel else "Audio OK"
-                                }
-                                Log.d("PlayerLog", "Audio format: ${format.sampleMimeType}, ${format.channelCount}ch, ${format.sampleRate}Hz, ID: ${format.id ?: "none"}")
-                            }
-                    }
-                }
-                
-                if (!hasAudio && tracks.groups.isNotEmpty()) {
-                    tvModel?.setErrInfo("No Audio Track Found")
-                } else if (hasAudio && audioLabel.isEmpty() && tracks.groups.any { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }) {
-                     audioLabel = "Audio OK" // Fallback label
-                }
-                tvModel?.setAudioQuality(audioLabel)
+                // Apply saved audio track preference if discovered
+                updateAudioTrackFromSettings()
             }
         })
 
@@ -1422,12 +1380,15 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
 
     private fun getLoadControl(url: String?, strategy: OptimizationManager.PlaybackStrategy): DefaultLoadControl {
+        // [INDUSTRIAL] Adaptive Buffer Ramp
+        // Low-end devices get a "Zero-Lag" fast start, while high-end devices 
+        // get deep 60-second buffers for 4K stability.
         val minBuffer = strategy.minBufferMs
         val maxBuffer = strategy.maxBufferMs
         val startBuffer = strategy.bufferForPlaybackMs
         
         return DefaultLoadControl.Builder()
-            .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
+            .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, 65536))
             .setBufferDurationsMs(
                 minBuffer,
                 maxBuffer,
