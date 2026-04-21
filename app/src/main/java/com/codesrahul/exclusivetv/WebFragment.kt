@@ -622,7 +622,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .setExtensionRendererMode(extMode)
             .setEnableDecoderFallback(strategy.enableDecoderFallback) // PRO FIX: Allow software fallback for corrupted hardware frames
             .setEnableAudioTrackPlaybackParams(true) 
-            .setEnableAudioFloatOutput(true) 
+            .setEnableAudioFloatOutput(false) 
             .setMediaCodecSelector { mimeType, requiresSecureDecoder, _ ->
                 // STABILITY FIX: Prefer standard hardware decoders without tunneling
                 // Tunneling is the primary cause of flickering/sync issues in 4K TS.
@@ -1644,7 +1644,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             for (i in 0 until playerView.childCount) {
                 val child = playerView.getChildAt(i)
                 if (child is SurfaceView) {
-                    child.setZOrderMediaOverlay(false)
+                    child.setZOrderMediaOverlay(true)
+                    child.setZOrderOnTop(true)
                     break
                 }
             }
