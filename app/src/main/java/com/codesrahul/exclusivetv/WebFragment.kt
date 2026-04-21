@@ -777,9 +777,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
                  // TV AUDIO FIX: Allow 5.1/6-channel audio to pass through to hardware rather than forcing stereo downmix
                  val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
-                 if (uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) {
-                     builder.setMaxAudioChannelCount(6) // 5.1 Surround Support
-                 }
+                 val maxChannels = if (uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) 6 else 2
+                 builder.setMaxAudioChannelCount(maxChannels)
                  
                  exoPlayer!!.trackSelectionParameters = builder.build()
              } catch (e: Exception) {
@@ -1597,16 +1596,14 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 builder.setPreferredAudioLanguages()
             }
             
-            // 2. Apply Dolby / Multi-channel Priority
-            // When Dolby is ON, we avoid lowering channel count to Stereo if a 
-            // multi-channel (AC3/5.1) track is available.
-            if (preferDolby) {
-                // Media3 doesn't have a direct "preferMaxChannels" boolean in builder, 
-                // but we can influence it by ensuring we don't constrain to 2.
-                builder.setMaxAudioChannelCount(Int.MAX_VALUE)
+            val uiModeManager = requireContext().getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
+            val isTv = uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+
+            if (preferDolby && isTv) {
+                builder.setMaxAudioChannelCount(6)
             } else {
-                // If Dolby is OFF, we might want to prioritize compatibility (Stereo)
-                // but standard auto behavior is usually fine.
+                // STABILITY FIX: Force 2-channel downmix on mobile (dialog restoration)
+                builder.setMaxAudioChannelCount(2)
             }
             
             player.trackSelectionParameters = builder.build()
