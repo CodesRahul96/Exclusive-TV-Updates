@@ -634,6 +634,13 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 val decoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
                     mimeType, requiresSecureDecoder, false 
                 )
+                
+                // [DIAGNOSTIC] Provide visibility into decoder availability for silent devices
+                if (decoders.isEmpty()) {
+                    Log.e("WebFragment", "CRITICAL: No decoders found for $mimeType on this device.")
+                } else {
+                    Log.d("WebFragment", "Available decoders for $mimeType: ${decoders.joinToString { it.name }}")
+                }
                 decoders
             }
 
@@ -786,10 +793,35 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         }
         
         
+        // [DIAGNOSTIC] Monitor specific decoder selection for silent devices
+        exoPlayer?.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onAudioDecoderInitialized(
+                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                decoderName: String,
+                initializedTimestampMs: Long,
+                initializationDurationMs: Long
+            ) {
+                Log.d("WebFragment", "Audio Decoder Selected: $decoderName")
+                // [DIAGNOSTIC] Provide visual feedback for silent device debugging
+                activity?.runOnUiThread {
+                    if (isAdded) {
+                        Toast.makeText(requireContext(), "Audio: $decoderName", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        })
+
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
                 
+                // [DIAGNOSTIC] Log detailed audio failures
+                val cause = error.cause?.toString() ?: ""
+                Log.e("WebFragment", "Playback Error [Code: ${error.errorCode}]: $cause")
+                if (cause.contains("AudioSink") || cause.contains("AudioTrack")) {
+                    Log.e("WebFragment", "DETECTION: Audio Sink Failure. Device lacks Dolby/AC3 license or support.")
+                }
+
                 // [PROFESSIONAL] High-level recovery and URL rotation
                 // Transient retries for the same URL are handled natively by IPTVLoadErrorHandlingPolicy.
                 
