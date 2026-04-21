@@ -428,7 +428,7 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
         hideFragment(loginFragment)
-        com.codesrahul.exclusivetv.models.TVList.update(this, silent = true)
+        com.codesrahul.exclusivetv.models.TVList.update(this, silent = true, force = true)
         
         // Background Auto-Update Check
         if (::updateManager.isInitialized) {

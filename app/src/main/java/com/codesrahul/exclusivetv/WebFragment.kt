@@ -1420,14 +1420,14 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
     private class IPTVLoadErrorHandlingPolicy : DefaultLoadErrorHandlingPolicy() {
         override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorInfo): Long {
-            // [PROFESSIONAL] High-Speed Stream Recovery Limit (3 Retries / 10s Total)
+            // [PROFESSIONAL] High-Speed Stream Recovery Limit (3 Retries / 3s Total)
             val errorCount = loadErrorInfo.errorCount
             if (errorCount > 3) return C.TIME_UNSET 
             
             return when (errorCount) {
-                1 -> 2000L  // 2s
-                2 -> 3000L  // 3s
-                3 -> 5000L  // 5s
+                1 -> 1000L  // 1s
+                2 -> 1000L  // 1s
+                3 -> 1000L  // 1s
                 else -> C.TIME_UNSET
             }
         }

@@ -339,7 +339,7 @@ object TVList {
                     }
                 }
                 
-                val client = SecureHttpClient.client
+                val client = SecureHttpClient.syncClient
                 val allChannels = mutableListOf<TV>()
                 
                 // Fetch all playlists concurrently
@@ -855,6 +855,19 @@ object TVList {
                     val secretKey = SecretManager.getAppKey()
                     val decrypted = SecurityUtil.decryptChannelData(decoded, secretKey)
                     parseUniversal(decrypted)
+                } else if (string.isNotBlank() && string.length > 20 && !string.contains(" ")) {
+                    // Strategy B2: Raw AES-CBC Base64 detection
+                    val secretKey = SecretManager.getAppKey()
+                    val decrypted = SecurityUtil.decryptChannelData(string, secretKey)
+                    // If decryption actually changed the string and results in JSON, parse it
+                    if (decrypted != string && decrypted.isNotEmpty() && (decrypted[0] == '[' || decrypted[0] == '{')) {
+                        parseUniversal(decrypted)
+                    } else if (string.contains("[playlist]", ignoreCase = true)) {
+                        PlsParser.parse(string)
+                    } else {
+                        // Final Heuristic Attempt
+                        DeepHeuristicParser.parse(string)
+                    }
                 } else if (string.contains("[playlist]", ignoreCase = true)) {
                     PlsParser.parse(string)
                 } else {
@@ -966,7 +979,7 @@ object TVList {
         if (depth > 3 || originalList.size > 2000) return@withContext originalList
         
         val expandedList = mutableListOf<TV>()
-        val client = SecureHttpClient.client
+        val client = SecureHttpClient.syncClient
         
         for (tv in originalList) {
             val url = tv.uris.firstOrNull() ?: continue
