@@ -640,9 +640,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .setEnableAudioTrackPlaybackParams(isTv)
             .setEnableAudioFloatOutput(isTv)
             .setMediaCodecSelector { mimeType, requiresSecureDecoder, _ ->
-                // STABILITY FIX: Restricted tunneling to TV hardware only.
-                // Mobile devices (even flagships) often fail to initialize tunneling for TS.
-                val useTunneling = isTv
+                // [TV VIDEO FIX] Disable tunneling requirement globally.
+                // Demanding a tunneling decoder on FireTV Stick (isTv = true) for standard IPTV streams
+                // returns an empty decoder list, resulting in no video (blank screen).
+                val useTunneling = false
 
                 val decoders = MediaCodecSelector.DEFAULT.getDecoderInfos(
                     mimeType, requiresSecureDecoder, useTunneling
