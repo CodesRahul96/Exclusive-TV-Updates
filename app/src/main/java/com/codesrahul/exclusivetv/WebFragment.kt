@@ -622,7 +622,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             .setExtensionRendererMode(extMode)
             .setEnableDecoderFallback(strategy.enableDecoderFallback) // PRO FIX: Allow software fallback for corrupted hardware frames
             .setEnableAudioTrackPlaybackParams(true) 
-            .setEnableAudioFloatOutput(false) 
+            .setEnableAudioFloatOutput(true) 
             .setMediaCodecSelector { mimeType, requiresSecureDecoder, _ ->
                 // STABILITY FIX: Prefer standard hardware decoders without tunneling
                 // Tunneling is the primary cause of flickering/sync issues in 4K TS.

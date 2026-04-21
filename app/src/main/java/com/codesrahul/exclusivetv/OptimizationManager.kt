@@ -88,7 +88,7 @@ object OptimizationManager {
             bufferForPlaybackAfterRebufferMs = 5000,
             targetBufferBytes = targetBytes,
             scalingMode = 1, // VIDEO_SCALING_MODE_SCALE_TO_FIT (Safe default)
-            tsExtractorFlags = 1 or 16 or 2048, // FLAG_ALLOW_NON_IDR_KEYFRAMES (0) | FLAG_DETECT_ACCESS_UNITS (16) | FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS (1) | FLAG_IGNORE_SPLICE_INFO_STREAM (2048)
+            tsExtractorFlags = 1 or 8 or 16 or 32, // FLAG_ALLOW_NON_IDR_KEYFRAMES (1) | FLAG_DETECT_ACCESS_UNITS (8) | FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS (16) | FLAG_IGNORE_SPLICE_INFO_STREAM (32)
             tsExtractorMode = 1, // TsExtractor.MODE_SINGLE_PMT
             enableDecoderFallback = true, // Always allow fallback for corrupted hardware frames
             isHighFidelity = (isTs || isHighRes) && !isLowEndDevice
