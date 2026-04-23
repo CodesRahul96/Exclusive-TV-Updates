@@ -1604,7 +1604,12 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
 
         // If login screen is shown, let it handle keys (numeric entry, navigation, etc.)
         if (!loginFragment.isHidden) {
-            return super.dispatchKeyEvent(event)
+            return try {
+                super.dispatchKeyEvent(event)
+            } catch (e: IllegalStateException) {
+                Log.e("EXCL_KEYS", "Focus search failed during login key dispatch: ${e.message}")
+                false
+            }
         }
         
         // Reset ALL auto-hide timers on ANY key event before dispatching it to views
