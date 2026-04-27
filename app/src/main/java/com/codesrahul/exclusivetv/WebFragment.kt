@@ -86,6 +86,22 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private var uaFallbackIndex = 0
     private var isCompatibilityInUse = false
     private var seamlessRetryCount = 0
+    private var autoPlayCountdown = 3
+    private val autoPlayHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val autoPlayRunnable = object : Runnable {
+        override fun run() {
+            if (!isAdded || activity == null || !SP.autoPlayNext) return
+            
+            if (autoPlayCountdown > 0) {
+                tvModel?.setErrInfo("Stream Offline. Next channel in ${autoPlayCountdown}s...")
+                autoPlayCountdown--
+                autoPlayHandler.postDelayed(this, 1000)
+            } else {
+                tvModel?.setErrInfo("Switching to next channel...")
+                (activity as? MainActivity)?.next()
+            }
+        }
+    }
     data class AudioTrack(val index: Int, val name: String, val isSelected: Boolean)
 
     private var _binding: PlayerBinding? = null
@@ -391,6 +407,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     }
 
     private fun initializePlayer(url: String, useCompatibility: Boolean = false) {
+        autoPlayHandler.removeCallbacks(autoPlayRunnable)
+        autoPlayCountdown = 3
+        isWebMode = false
+        
         if (context == null) return
         
         // FIX: Ensure a global CookieHandler exists so HttpURLConnection handles Set-Cookie
@@ -886,7 +906,16 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                     initializePlayer(nextUrl)
                 } else {
                     tvModel?.setErrInfo("Stream Offline or Unsupported")
-                    switchToUniversalFallback(currentVideoUrl)
+                    
+                    // Auto-Play Next Logic
+                    if (SP.autoPlayNext) {
+                        autoPlayHandler.removeCallbacks(autoPlayRunnable)
+                        autoPlayCountdown = 3
+                        autoPlayHandler.postDelayed(autoPlayRunnable, 500) // Start sooner
+                    } else {
+                        // Only fallback if auto-play is disabled
+                        switchToUniversalFallback(currentVideoUrl)
+                    }
                 }
             }
 
@@ -1391,6 +1420,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        autoPlayHandler.removeCallbacks(autoPlayRunnable)
         SP.removeOnSharedPreferenceChangeListener(this)
         releasePlayer()
         clearWebViewResources()

@@ -2061,9 +2061,8 @@ class MainActivity : FragmentActivity(), UpdateManager.UpdateListener {
             errorFragment.showSubMsg("Please check your internet connection and try again.")
         }
 
-        if (!errorFragment.isHidden) {
-            return
-        }
+        // Always show/update, don't return early if already visible
+        // so the countdown text can update.
 
         if (supportFragmentManager.isStateSaved) {
             return

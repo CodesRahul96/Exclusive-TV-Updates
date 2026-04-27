@@ -151,6 +151,7 @@ class SettingFragment : Fragment() {
         binding.statusShowDateInInfo.text = if (SP.showDateInInfo) "ON" else "OFF" // Sync status
         binding.statusTime.text = if (SP.time) "ON" else "OFF"
         binding.statusWatchLast.text = if (SP.watchLast) "ON" else "OFF"
+        binding.statusAutoPlayNext.text = if (SP.autoPlayNext) "ON" else "OFF"
         
         val bitrateLabels = arrayOf("Data Saver (480p Max)", "Low (720p HD Max)", "Medium (1080p FHD Max)", "High (No Limit / 4K)")
         binding.statusBitrateMode.text = bitrateLabels.getOrElse(SP.bitrateMode) { "High" }
@@ -181,7 +182,8 @@ class SettingFragment : Fragment() {
             binding.statusBootStartup,
             binding.statusConfigAutoLoad, binding.statusChannelCheck, binding.statusEpg,
             binding.statusWatermark, binding.statusPipMode, binding.statusBufferMode, 
-            binding.statusAudioStabilizer, binding.statusDolbyAudio, binding.statusEpgShift, binding.statusVoiceSearch
+            binding.statusAudioStabilizer, binding.statusDolbyAudio, binding.statusEpgShift, binding.statusVoiceSearch,
+            binding.statusAutoPlayNext
         )
 
         statusViews.forEach { v ->
@@ -210,6 +212,7 @@ class SettingFragment : Fragment() {
             binding.cardShowDateInInfo,
             binding.cardTime,
             binding.cardWatchLast,
+            binding.cardAutoPlayNext,
             binding.cardForceHighQuality,
             binding.cardAspectRatio,
             binding.cardBootStartup,
@@ -262,6 +265,7 @@ class SettingFragment : Fragment() {
         binding.cardShowDateInInfo.setOnClickListener { toggleSetting("showDateInInfo") }
         binding.cardTime.setOnClickListener { toggleSetting("time") }
         binding.cardWatchLast.setOnClickListener { toggleSetting("watchLast") }
+        binding.cardAutoPlayNext.setOnClickListener { toggleSetting("autoPlayNext") }
         binding.cardForceHighQuality.setOnClickListener { toggleSetting("forceHighQuality") }
         binding.cardAspectRatio.setOnClickListener { setupAspectRatioDialog() }
         binding.cardBootStartup.setOnClickListener { toggleSetting("bootStartup") }
@@ -471,6 +475,7 @@ class SettingFragment : Fragment() {
             "showDateInInfo" -> SP.showDateInInfo = !SP.showDateInInfo
             "time" -> SP.time = !SP.time
             "watchLast" -> SP.watchLast = !SP.watchLast
+            "autoPlayNext" -> SP.autoPlayNext = !SP.autoPlayNext
             "forceHighQuality" -> setupBitrateDialog()
             "bootStartup" -> SP.bootStartup = !SP.bootStartup
             "configAutoLoad" -> SP.configAutoLoad = !SP.configAutoLoad
