@@ -19,6 +19,8 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import android.view.Gravity
+import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import com.codesrahul.exclusivetv.databinding.PlayerBinding
 import com.codesrahul.exclusivetv.models.TVModel
@@ -73,7 +75,7 @@ import androidx.media3.common.util.UnstableApi
 class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     private lateinit var mainActivity: MainActivity
 
-    private lateinit var webView: WebView
+    private var webView: WebView? = null
     private var exoPlayer: ExoPlayer? = null
     private lateinit var playerView: PlayerView
     private var currentVideoUrl: String = ""
@@ -122,40 +124,62 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
     ): View {
         _binding = PlayerBinding.inflate(inflater, container, false)
 
-        webView = binding.webView
+        // [STABILITY FIX] Programmatic WebView initialization
+        // This prevents the android.view.InflateException: failed to redirect ResourcesImpl
+        // which occurs during system WebView updates.
+        try {
+            val context = requireContext()
+            val webViewInstance = WebView(context)
+            webViewInstance.id = View.generateViewId()
+            webViewInstance.layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            ).apply {
+                gravity = Gravity.CENTER
+            }
+            webViewInstance.setBackgroundColor(android.graphics.Color.BLACK)
+            webViewInstance.visibility = View.GONE
+            
+            // Add to layout (behind playerView)
+            (binding.root as? ViewGroup)?.addView(webViewInstance, 0)
+            webView = webViewInstance
+        } catch (e: Exception) {
+            Log.e(TAG, "CRITICAL: WebView creation failed (likely system update in progress)", e)
+            webView = null
+        }
+
         playerView = binding.playerView
 
-        val application = (activity?.applicationContext as? MyTVApplication) ?: return binding.root
-        webView.setBackgroundColor(android.graphics.Color.BLACK)
+        webView?.let { wv ->
+            val application = (activity?.applicationContext as? MyTVApplication) ?: return@let
+            wv.layoutParams.width = application.shouldWidthPx()
+            wv.layoutParams.height = application.shouldHeightPx()
+            if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+                wv.getSettings().setAllowUniversalAccessFromFileURLs(true);
+            }
+            wv.settings.javaScriptEnabled = true
+            wv.settings.domStorageEnabled = true
+            wv.settings.databaseEnabled = true
+            wv.settings.javaScriptCanOpenWindowsAutomatically = true
+            wv.settings.mediaPlaybackRequiresUserGesture = false
+            wv.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            wv.settings.userAgentString = OptimizationManager.UA_CHROME_DESKTOP
 
-        webView.layoutParams.width = application.shouldWidthPx()
-        webView.layoutParams.height = application.shouldHeightPx()
-        if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
-            webView.getSettings().setAllowUniversalAccessFromFileURLs(true);
+            wv.isClickable = false
+            wv.isFocusable = false
+            wv.isFocusableInTouchMode = false
+            wv.settings.loadWithOverviewMode = true
+            wv.settings.useWideViewPort = true
+
+            wv.setOnTouchListener { _, event ->
+                if (event != null) {
+                    (activity as? MainActivity)?.gestureDetector?.onTouchEvent(event)
+                }
+                true
+            }
         }
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.settings.databaseEnabled = true
-        webView.settings.javaScriptCanOpenWindowsAutomatically = true
-        webView.settings.mediaPlaybackRequiresUserGesture = false
-        webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-        webView.settings.userAgentString = OptimizationManager.UA_CHROME_DESKTOP
-
-        webView.isClickable = false
-        webView.isFocusable = false
-        webView.isFocusableInTouchMode = false
-        // Newly added settings
-        webView.settings.loadWithOverviewMode = true
-        webView.settings.useWideViewPort = true
 
         WebView.setWebContentsDebuggingEnabled(true)
-
-        webView.setOnTouchListener { _, event ->
-            if (event != null) {
-                (activity as? MainActivity)?.gestureDetector?.onTouchEvent(event)
-            }
-            true
-        }
 
         (activity as? MainActivity)?.ready(TAG)
         
@@ -222,73 +246,67 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         } catch (e: Exception) {
         }
 
-        webView.webChromeClient = object : WebChromeClient() {
-            override fun getDefaultVideoPoster(): Bitmap {
-                return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-            }
+        webView?.let { wv ->
+            wv.webChromeClient = object : WebChromeClient() {
+                override fun getDefaultVideoPoster(): Bitmap {
+                    return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                }
 
-            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                if (consoleMessage != null) {
-//                        "WebViewConsole",
-//                        "Message: ${consoleMessage.message()}, Source: ${consoleMessage.sourceId()}, Line: ${consoleMessage.lineNumber()}"
-//                    )
-
-                    if (consoleMessage.message() == "success") {
-                        tvModel?.setErrInfo("web ok")
+                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                    if (consoleMessage != null) {
+                        if (consoleMessage.message() == "success") {
+                            tvModel?.setErrInfo("web ok")
+                        }
                     }
+                    return super.onConsoleMessage(consoleMessage)
                 }
-                return super.onConsoleMessage(consoleMessage)
-            }
-        }
-
-        webView.webViewClient = object : WebViewClient() {
-            override fun onReceivedSslError(
-                webView: WebView?,
-                handler: SslErrorHandler,
-                error: SslError?
-            ) {
-                handler.cancel()
             }
 
-            override fun shouldInterceptRequest(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): WebResourceResponse? {
-                val uri = request?.url
-                if (OptimizationManager.shouldBlockRequest(uri)) {
-                    return OptimizationManager.createEmptyResponse()
+            wv.webViewClient = object : WebViewClient() {
+                override fun onReceivedSslError(
+                    webView: WebView?,
+                    handler: SslErrorHandler,
+                    error: SslError?
+                ) {
+                    handler.cancel()
                 }
 
-                // Generic Logic: Block non-essential media/css on non-mainframe requests 
-                // to speed up Portal-based streams.
-                if (request?.isForMainFrame == false && (
-                    uri?.path?.endsWith(".jpg") == true || 
-                    uri?.path?.endsWith(".png") == true || 
-                    uri?.path?.endsWith(".gif") == true || 
-                    uri?.path?.endsWith(".css") == true || 
-                    uri?.path?.endsWith(".ico") == true)) {
-                    return OptimizationManager.createEmptyResponse()
+                override fun shouldInterceptRequest(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): WebResourceResponse? {
+                    val uri = request?.url
+                    if (OptimizationManager.shouldBlockRequest(uri)) {
+                        return OptimizationManager.createEmptyResponse()
+                    }
+
+                    if (request?.isForMainFrame == false && (
+                        uri?.path?.endsWith(".jpg") == true || 
+                        uri?.path?.endsWith(".png") == true || 
+                        uri?.path?.endsWith(".gif") == true || 
+                        uri?.path?.endsWith(".css") == true || 
+                        uri?.path?.endsWith(".ico") == true)) {
+                        return OptimizationManager.createEmptyResponse()
+                    }
+
+                    return null
                 }
 
-                return null
-            }
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    
+                    val fillCss = """
+                        javascript:(function() {
+                            var style = document.createElement('style');
+                            style.innerHTML = 'video, iframe, canvas, div.video-container { object-fit: fill !important; width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; z-index: 99999 !important; } body, html { overflow: hidden !important; margin: 0 !important; padding: 0 !important; }';
+                            document.head.appendChild(style);
+                        })()
+                    """.trimIndent()
+                    wv.loadUrl(fillCss)
 
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                
-                // DATA-DRIVEN: Force Fill Aspect Ratio via CSS Injection
-                val fillCss = """
-                    javascript:(function() {
-                        var style = document.createElement('style');
-                        style.innerHTML = 'video, iframe, canvas, div.video-container { object-fit: fill !important; width: 100vw !important; height: 100vh !important; position: fixed !important; top: 0 !important; left: 0 !important; z-index: 99999 !important; } body, html { overflow: hidden !important; margin: 0 !important; padding: 0 !important; }';
-                        document.head.appendChild(style);
-                    })()
-                """.trimIndent()
-                webView.loadUrl(fillCss)
-
-                // APPLY DYNAMIC OPTIMIZATIONS (JS/CSS)
-                if (url != null) {
-                    OptimizationManager.applyWebView(webView, url)
+                    if (url != null) {
+                        OptimizationManager.applyWebView(wv, url)
+                    }
                 }
             }
         }
@@ -299,7 +317,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         releasePlayer()
         retryCount = 0 // Stop retrying
         playerView.visibility = View.GONE
-        webView.visibility = View.GONE
+        webView?.visibility = View.GONE
     }
 
     fun play(tvModel: TVModel) {
@@ -342,7 +360,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 return
             }
             
-            webView.visibility = View.GONE
+            webView?.visibility = View.GONE
             playerView.visibility = View.VISIBLE
             clearWebViewResources() // Aggressive cleanup before player init
             
@@ -360,9 +378,9 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
     private fun switchToWebView(url: String) {
         playerView.visibility = View.GONE
-        webView.visibility = View.VISIBLE
+        webView?.visibility = View.VISIBLE
         releasePlayer()
-        webView.loadUrl(url)
+        webView?.loadUrl(url)
     }
 
     fun refreshPlayback() {
@@ -1398,7 +1416,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         } else {
             exoPlayer?.pause()
         }
-        webView.onPause()
+        webView?.onPause()
     }
 
     override fun onStop() {
@@ -1415,7 +1433,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         if (exoPlayer == null && tvModel != null) {
             play(tvModel!!)
         }
-        webView.onResume()
+        webView?.onResume()
     }
 
     override fun onDestroyView() {
@@ -1429,13 +1447,11 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
 
     private fun clearWebViewResources() {
         try {
-            binding?.webView?.let { webView ->
-                webView.stopLoading()
-                webView.loadUrl("about:blank")
-                webView.clearHistory()
-                webView.onPause() // Ensure the engine is paused
-                // We don't destroy() here because the instance is often reused by binding,
-                // but we clear all heavy state.
+            webView?.let { wv ->
+                wv.stopLoading()
+                wv.loadUrl("about:blank")
+                wv.clearHistory()
+                wv.onPause()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error clearing WebView resources", e)
@@ -1517,12 +1533,10 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         if (errorUrl.startsWith("http") || errorUrl.startsWith("https")) {
             if (!isWebMode) {
                 isWebMode = true
-                _binding?.let { b ->
-                    b.playerView.visibility = View.GONE
-                    b.webView.visibility = View.VISIBLE
-                    releasePlayer()
-                    b.webView.loadUrl(errorUrl)
-                }
+                playerView.visibility = View.GONE
+                webView?.visibility = View.VISIBLE
+                releasePlayer()
+                webView?.loadUrl(errorUrl)
             }
         }
     }

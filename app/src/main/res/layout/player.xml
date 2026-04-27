@@ -6,12 +6,7 @@
     android:background="@android:color/black"
     android:keepScreenOn="true">
 
-    <WebView
-        android:id="@+id/web_view"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:backgroundTint="@android:color/black"
-        android:layout_gravity="center" />
+    <!-- WebView is added programmatically in WebFragment to handle InflateException during system updates -->
 
     <androidx.media3.ui.PlayerView
         android:id="@+id/player_view"
