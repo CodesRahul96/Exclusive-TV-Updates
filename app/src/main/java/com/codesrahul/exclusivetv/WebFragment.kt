@@ -979,7 +979,11 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
                 tvModel?.setAudioQuality(audioLabel)
                 
                 // Apply saved audio track preference if discovered
-                updateAudioTrackFromSettings()
+                updateAudioTrackFromSettings(showToast = false)
+                if (savedAudioTrackToApply != -1) {
+                    setAudioTrack(savedAudioTrackToApply)
+                    savedAudioTrackToApply = -1
+                }
             }
         })
 
@@ -1617,7 +1621,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             SP.KEY_DEFAULT_AUDIO_LANG -> {
                 activity?.runOnUiThread {
                     if (isAdded && exoPlayer != null) {
-                        updateAudioTrackFromSettings()
+                        updateAudioTrackFromSettings(showToast = true)
                     }
                 }
             }
@@ -1652,7 +1656,7 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
         updateQualityLabel(player.videoSize.height)
     }
 
-    private fun updateAudioTrackFromSettings() {
+    private fun updateAudioTrackFromSettings(showToast: Boolean = false) {
         val player = exoPlayer ?: return
         val lang = SP.defaultAudioLanguage
         val preferDolby = SP.dolbyAudio
@@ -1679,8 +1683,8 @@ class WebFragment : Fragment(), OnSharedPreferenceChangeListener {
             
             player.trackSelectionParameters = builder.build()
             
-            // Show feedback toast if language was changed manually in settings
-            if (lang.isNotEmpty()) {
+            // Show feedback toast ONLY if requested (manual change in settings)
+            if (showToast && lang.isNotEmpty()) {
                 val locale = java.util.Locale(lang)
                 Toast.makeText(requireContext(), "Audio Language: ${locale.displayLanguage}", Toast.LENGTH_SHORT).show()
             }
