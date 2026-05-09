@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [1.2.6] - 2026-05-09
+### Fixed
+- **Gestures**: Crossover gesture HUD to prevent visual blockage (Left swipe shows Brightness on Right; Right swipe shows Volume on Left).
+
 ## [1.2.1] - 2026-04-04
 ### Added
 - **Settings UI & Community**:
