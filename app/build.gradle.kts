@@ -72,6 +72,14 @@ android {
             )
         }
     }
+
+    applicationVariants.all {
+        outputs.forEach { output ->
+            val apkOutput = output as? com.android.build.gradle.api.ApkVariantOutput
+            apkOutput?.outputFileName = "ExclusiveTV-${versionName}.apk"
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
